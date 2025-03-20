@@ -27,6 +27,8 @@ import {
   selectSelectedAd,
 } from '../../store/slices/campaignSlice';
 import { Ad } from '../../services/campaignService';
+import { uploadImage } from '../../services/imageService';
+import ImageUploader from '../../components/common/ImageUploader';
 import AdPreview from './AdPreview';
 
 interface AdEditorProps {
@@ -81,6 +83,7 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState<Partial<Ad>>({
@@ -92,6 +95,9 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     call_to_action: 'Learn More',
     url: '',
   });
+  
+  // Keep track of the uploaded image file
+  const [imageFile, setImageFile] = useState<File | null>(null);
   
   // Form validation
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -144,6 +150,48 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     }
   };
   
+  // Handle image upload
+  const handleImageChange = async (imageUrl: string | null, file?: File) => {
+    if (imageUrl === null) {
+      // Image was removed
+      setFormData(prev => ({ ...prev, image_url: '' }));
+      setImageFile(null);
+      return;
+    }
+    
+    if (file) {
+      setImageFile(file);
+      
+      // For now, we're using the local object URL for preview
+      // In a real application with a backend, we'd upload to cloud storage here
+      setFormData(prev => ({ ...prev, image_url: imageUrl }));
+      
+      try {
+        setUploadingImage(true);
+        
+        // This would upload to a real backend in production
+        // Currently it just returns the object URL from our mock service
+        const result = await uploadImage(file);
+        
+        if (result.success) {
+          // In a real application, we'd use the cloud URL instead of the object URL
+          // setFormData(prev => ({ ...prev, image_url: result.url }));
+          
+          // Clear any previous image error
+          if (formErrors.image_url) {
+            setFormErrors(prev => ({ ...prev, image_url: '' }));
+          }
+        } else {
+          setError(`Failed to upload image: ${result.error}`);
+        }
+      } catch (err: any) {
+        setError(`Image upload error: ${err.message}`);
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+  };
+  
   const validateForm = () => {
     const errors: Record<string, string> = {};
     
@@ -161,6 +209,10 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
       errors.description = 'Description is required';
     } else if (formData.description.length > 200) {
       errors.description = 'Description must be 200 characters or less';
+    }
+    
+    if (!formData.image_url?.trim()) {
+      errors.image_url = 'An image is required for the ad';
     }
     
     if (!formData.call_to_action) {
@@ -187,6 +239,15 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     try {
       setLoading(true);
       setError(null);
+      
+      // In a real application with a backend:
+      // 1. First upload any image file that hasn't been uploaded yet
+      // 2. Wait for the upload to complete and get the permanent URL
+      // 3. Update the formData with the permanent URL
+      // 4. Then create/update the ad with the permanent URL
+      
+      // For this implementation, we're using the object URL directly
+      // In production, you would replace this with code to ensure the image is uploaded first
       
       if (adId) {
         // Update existing ad
@@ -323,15 +384,18 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
           </Grid>
           
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Image URL"
-              name="image_url"
-              value={formData.image_url || ''}
-              onChange={handleInputChange}
-              placeholder="https://example.com/image.jpg"
-              helperText="Enter the URL of the image to display in the ad"
+            <Typography variant="subtitle2" gutterBottom>
+              Ad Image
+            </Typography>
+            <ImageUploader
+              initialImageUrl={formData.image_url || ''}
+              onImageChange={handleImageChange}
+              aspectRatio={1.91} // Facebook/Instagram feed ad aspect ratio
             />
+            {uploadingImage && <CircularProgress size={24} sx={{ mt: 1 }} />}
+            {formErrors.image_url && (
+              <FormHelperText error>{formErrors.image_url}</FormHelperText>
+            )}
           </Grid>
           
           <Grid item xs={12}>
