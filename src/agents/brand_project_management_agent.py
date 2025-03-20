@@ -1,10 +1,14 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from loguru import logger
 import requests
 from bs4 import BeautifulSoup
 import re
+from datetime import datetime
+import json
 
 from src.ultimate_marketing_team.agents.base_agent import BaseAgent
+from src.ultimate_marketing_team.core.database import get_db
+from src.ultimate_marketing_team.models.project import Brand, Project, ProjectType
 
 class BrandProjectManagementAgent(BaseAgent):
     """Agent responsible for brand and project management.
@@ -19,6 +23,12 @@ class BrandProjectManagementAgent(BaseAgent):
         self.enable_web_scraping = kwargs.get("enable_web_scraping", True)
         self.enable_rbac = kwargs.get("enable_rbac", True)
         self.enable_audit_trails = kwargs.get("enable_audit_trails", True)
+        self.default_project_types = [
+            {"name": "Email", "description": "Email marketing campaigns and newsletters"},
+            {"name": "Landing Page", "description": "Website landing pages for marketing campaigns"},
+            {"name": "Social Post", "description": "Social media content for various platforms"},
+            {"name": "Blog", "description": "Blog articles and content marketing"}
+        ]
     
     def _initialize(self):
         super()._initialize()
@@ -32,6 +42,30 @@ class BrandProjectManagementAgent(BaseAgent):
         self.register_task_handler("get_project_info", self.handle_get_project_info)
         self.register_task_handler("assign_project", self.handle_assign_project)
         self.register_task_handler("get_brand_projects", self.handle_get_brand_projects)
+        self.register_task_handler("get_project_types", self.handle_get_project_types)
+        self.register_task_handler("create_project_type", self.handle_create_project_type)
+        
+        # Initialize project types if they don't exist
+        self._initialize_project_types()
+    
+    def _initialize_project_types(self):
+        """Initialize default project types if they don't exist in the database."""
+        try:
+            with get_db() as db:
+                # Check if project types exist
+                existing_types = db.query(ProjectType).all()
+                if not existing_types:
+                    logger.info("Initializing default project types")
+                    for project_type in self.default_project_types:
+                        new_type = ProjectType(
+                            name=project_type["name"],
+                            description=project_type["description"]
+                        )
+                        db.add(new_type)
+                    db.commit()
+                    logger.info(f"Created {len(self.default_project_types)} default project types")
+        except Exception as e:
+            logger.error(f"Error initializing project types: {e}")
     
     def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Process a generic task assigned to this agent."""
@@ -66,32 +100,54 @@ class BrandProjectManagementAgent(BaseAgent):
         # Merge provided guidelines with enriched data
         merged_guidelines = {**enriched_data.get("brand_guidelines", {}), **brand_guidelines}
         
-        # TODO: Implement actual brand creation in database
-        # For now, return a mock response with the enriched data
-        
-        # Record audit trail if enabled
-        if self.enable_audit_trails:
-            self._record_audit_trail(
-                action="brand_onboarded",
-                user_id=user_id,
-                details={
-                    "company_name": company_name,
-                    "website_url": website_url
+        try:
+            with get_db() as db:
+                # Create new brand in database
+                new_brand = Brand(
+                    name=company_name,
+                    website_url=website_url,
+                    description=enriched_data.get("description", ""),
+                    logo_url=enriched_data.get("logo_url"),
+                    guidelines=merged_guidelines,
+                    created_by=user_id
+                )
+                db.add(new_brand)
+                db.flush()  # Flush to get the ID
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="brand_onboarded",
+                        user_id=user_id,
+                        details={
+                            "brand_id": new_brand.id,
+                            "company_name": company_name,
+                            "website_url": website_url
+                        }
+                    )
+                
+                db.commit()
+                
+                # Return the newly created brand
+                return {
+                    "status": "success",
+                    "message": f"Brand {company_name} onboarded successfully",
+                    "brand_id": new_brand.id,
+                    "brand_data": {
+                        "id": new_brand.id,
+                        "name": new_brand.name,
+                        "website_url": new_brand.website_url,
+                        "description": new_brand.description,
+                        "logo_url": new_brand.logo_url,
+                        "brand_guidelines": merged_guidelines
+                    }
                 }
-            )
-        
-        return {
-            "status": "success",
-            "message": f"Brand {company_name} onboarded successfully",
-            "brand_id": 123,  # Mock ID
-            "brand_data": {
-                "name": company_name,
-                "website_url": website_url,
-                "description": enriched_data.get("description", ""),
-                "logo_url": enriched_data.get("logo_url"),
-                "brand_guidelines": merged_guidelines
+        except Exception as e:
+            logger.error(f"Error creating brand: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to create brand: {str(e)}"
             }
-        }
     
     def _scrape_website_data(self, url: str) -> Dict[str, Any]:
         """Scrape website to extract company information and brand elements."""
@@ -144,10 +200,29 @@ class BrandProjectManagementAgent(BaseAgent):
                     fonts.extend([f.strip().strip('\'"') for f in font.split(",")])
                 typography["font_families"] = list(set(fonts))
             
+            # Extract social media links
+            social_links = {}
+            social_patterns = {
+                "facebook": r"facebook\.com",
+                "twitter": r"twitter\.com|x\.com",
+                "instagram": r"instagram\.com",
+                "linkedin": r"linkedin\.com",
+                "youtube": r"youtube\.com",
+                "pinterest": r"pinterest\.com"
+            }
+            
+            for link in soup.find_all("a", href=True):
+                href = link.get("href", "")
+                for platform, pattern in social_patterns.items():
+                    if re.search(pattern, href, re.I):
+                        social_links[platform] = href
+                        break
+            
             # Compile results
             result = {
                 "description": description or title,
                 "logo_url": logo_url,
+                "social_links": social_links,
                 "brand_guidelines": {
                     "color_palette": list(set(color_palette))[:10],  # Limit to top 10 unique colors
                     "typography": typography
@@ -162,6 +237,7 @@ class BrandProjectManagementAgent(BaseAgent):
     def _record_audit_trail(self, action: str, user_id: Any, details: Dict[str, Any]):
         """Record an audit trail entry."""
         # TODO: Implement actual audit trail recording in database
+        # For now, just log the audit trail
         logger.info(f"AUDIT: {action} by user {user_id} - {details}")
     
     def handle_update_brand(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -173,25 +249,71 @@ class BrandProjectManagementAgent(BaseAgent):
         # Log the update attempt
         logger.info(f"Updating brand: {brand_id} by user {user_id}")
         
-        # TODO: Implement actual brand update in database
-        # For now, return a mock response
-        
-        # Record audit trail if enabled
-        if self.enable_audit_trails:
-            self._record_audit_trail(
-                action="brand_updated",
-                user_id=user_id,
-                details={
-                    "brand_id": brand_id,
-                    "fields_updated": list(updates.keys())
+        # Check RBAC permissions if enabled
+        if self.enable_rbac:
+            has_access = self._check_brand_access(brand_id, user_id)
+            if not has_access:
+                return {
+                    "status": "error",
+                    "error": "Access denied"
                 }
-            )
         
-        return {
-            "status": "success",
-            "message": f"Brand {brand_id} updated successfully",
-            "brand_id": brand_id
-        }
+        try:
+            with get_db() as db:
+                # Find the brand
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Update brand fields
+                if "name" in updates:
+                    brand.name = updates["name"]
+                if "website_url" in updates:
+                    brand.website_url = updates["website_url"]
+                if "description" in updates:
+                    brand.description = updates["description"]
+                if "logo_url" in updates:
+                    brand.logo_url = updates["logo_url"]
+                if "guidelines" in updates:
+                    # Merge with existing guidelines instead of replacing
+                    current_guidelines = brand.guidelines or {}
+                    updated_guidelines = {**current_guidelines, **updates["guidelines"]}
+                    brand.guidelines = updated_guidelines
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="brand_updated",
+                        user_id=user_id,
+                        details={
+                            "brand_id": brand_id,
+                            "fields_updated": list(updates.keys())
+                        }
+                    )
+                
+                db.commit()
+                
+                return {
+                    "status": "success",
+                    "message": f"Brand {brand_id} updated successfully",
+                    "brand_id": brand_id,
+                    "brand_data": {
+                        "id": brand.id,
+                        "name": brand.name,
+                        "website_url": brand.website_url,
+                        "description": brand.description,
+                        "logo_url": brand.logo_url
+                    }
+                }
+        except Exception as e:
+            logger.error(f"Error updating brand: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to update brand: {str(e)}"
+            }
     
     def handle_get_brand_info(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle request for brand information."""
@@ -209,41 +331,140 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual brand retrieval from database
-        # For now, return a mock response
-        
-        brand_data = {
-            "id": brand_id,
-            "name": "Example Brand",
-            "website_url": "https://example.com",
-            "description": "An example brand for testing",
-            "logo_url": "https://example.com/logo.png",
-        }
-        
-        if include_guidelines:
-            brand_data["guidelines"] = {
-                "voice": "Professional and friendly",
-                "tone": "Conversational",
-                "color_palette": ["#1a73e8", "#34a853", "#fbbc04", "#ea4335"],
-                "typography": {"font_families": ["Roboto", "Open Sans"]}
+        try:
+            with get_db() as db:
+                # Find the brand
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Prepare brand data
+                brand_data = {
+                    "id": brand.id,
+                    "name": brand.name,
+                    "website_url": brand.website_url,
+                    "description": brand.description,
+                    "logo_url": brand.logo_url,
+                    "created_at": brand.created_at.isoformat() if brand.created_at else None,
+                    "updated_at": brand.updated_at.isoformat() if brand.updated_at else None
+                }
+                
+                # Include guidelines if requested
+                if include_guidelines and brand.guidelines:
+                    brand_data["guidelines"] = brand.guidelines
+                
+                # Include projects if requested
+                if include_projects:
+                    projects = db.query(Project).filter(Project.brand_id == brand_id).all()
+                    brand_data["projects"] = []
+                    for project in projects:
+                        project_type = db.query(ProjectType).filter(ProjectType.id == project.project_type_id).first()
+                        brand_data["projects"].append({
+                            "id": project.id,
+                            "name": project.name,
+                            "project_type": project_type.name if project_type else "Unknown",
+                            "status": project.status,
+                            "due_date": project.due_date.isoformat() if project.due_date else None
+                        })
+                
+                return {
+                    "status": "success",
+                    "brand": brand_data
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving brand information: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to retrieve brand information: {str(e)}"
             }
-        
-        if include_projects:
-            brand_data["projects"] = [
-                {"id": 1, "name": "Email Campaign", "project_type": "Email"},
-                {"id": 2, "name": "Website Redesign", "project_type": "Landing Page"}
-            ]
-        
-        return {
-            "status": "success",
-            "brand": brand_data
-        }
     
     def _check_brand_access(self, brand_id: Any, user_id: Any) -> bool:
         """Check if a user has access to a brand."""
         # TODO: Implement actual RBAC permission checking
         # For now, return True for all cases
         return True
+    
+    def handle_get_project_types(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle request for all available project types."""
+        try:
+            with get_db() as db:
+                project_types = db.query(ProjectType).all()
+                result = []
+                for pt in project_types:
+                    result.append({
+                        "id": pt.id,
+                        "name": pt.name,
+                        "description": pt.description
+                    })
+                
+                return {
+                    "status": "success",
+                    "project_types": result,
+                    "total": len(result)
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving project types: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to retrieve project types: {str(e)}"
+            }
+    
+    def handle_create_project_type(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle creation of a new project type."""
+        name = task.get("name")
+        description = task.get("description", "")
+        user_id = task.get("user_id")
+        
+        try:
+            with get_db() as db:
+                # Check if project type already exists
+                existing = db.query(ProjectType).filter(ProjectType.name == name).first()
+                if existing:
+                    return {
+                        "status": "error",
+                        "error": f"Project type with name '{name}' already exists"
+                    }
+                
+                # Create new project type
+                new_type = ProjectType(
+                    name=name,
+                    description=description
+                )
+                db.add(new_type)
+                db.flush()
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="project_type_created",
+                        user_id=user_id,
+                        details={
+                            "project_type_id": new_type.id,
+                            "name": name
+                        }
+                    )
+                
+                db.commit()
+                
+                return {
+                    "status": "success",
+                    "message": f"Project type '{name}' created successfully",
+                    "project_type_id": new_type.id,
+                    "project_type": {
+                        "id": new_type.id,
+                        "name": new_type.name,
+                        "description": new_type.description
+                    }
+                }
+        except Exception as e:
+            logger.error(f"Error creating project type: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to create project type: {str(e)}"
+            }
     
     def handle_create_project(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle project creation process."""
@@ -266,35 +487,94 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual project creation in database
-        # For now, return a mock response
-        
-        # Record audit trail if enabled
-        if self.enable_audit_trails:
-            self._record_audit_trail(
-                action="project_created",
-                user_id=user_id,
-                details={
+        try:
+            with get_db() as db:
+                # Check if brand exists
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Check if project type exists
+                project_type = db.query(ProjectType).filter(ProjectType.id == project_type_id).first()
+                if not project_type:
+                    return {
+                        "status": "error",
+                        "error": f"Project type with ID {project_type_id} not found"
+                    }
+                
+                # Parse due date if provided
+                parsed_due_date = None
+                if due_date:
+                    try:
+                        parsed_due_date = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+                    except ValueError:
+                        return {
+                            "status": "error",
+                            "error": f"Invalid due date format: {due_date}. Expected ISO format (YYYY-MM-DDTHH:MM:SSZ)"
+                        }
+                
+                # Create new project
+                new_project = Project(
+                    brand_id=brand_id,
+                    project_type_id=project_type_id,
+                    name=name,
+                    description=description,
+                    status="draft",
+                    created_by=user_id,
+                    due_date=parsed_due_date
+                )
+                db.add(new_project)
+                db.flush()
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="project_created",
+                        user_id=user_id,
+                        details={
+                            "project_id": new_project.id,
+                            "brand_id": brand_id,
+                            "project_name": name,
+                            "project_type_id": project_type_id
+                        }
+                    )
+                
+                db.commit()
+                
+                # Broadcast event to notify other agents
+                self.broadcast_event({
+                    "event_type": "project_created",
+                    "project_id": new_project.id,
                     "brand_id": brand_id,
-                    "project_name": name,
-                    "project_type_id": project_type_id
+                    "project_type": project_type.name,
+                    "created_by": user_id
+                })
+                
+                return {
+                    "status": "success",
+                    "message": f"Project {name} created successfully",
+                    "project_id": new_project.id,
+                    "project_data": {
+                        "id": new_project.id,
+                        "name": new_project.name,
+                        "description": new_project.description,
+                        "brand_id": new_project.brand_id,
+                        "project_type_id": new_project.project_type_id,
+                        "project_type_name": project_type.name,
+                        "status": new_project.status,
+                        "created_by": new_project.created_by,
+                        "due_date": new_project.due_date.isoformat() if new_project.due_date else None
+                    }
                 }
-            )
-        
-        return {
-            "status": "success",
-            "message": f"Project {name} created successfully",
-            "project_id": 456,  # Mock ID
-            "project_data": {
-                "name": name,
-                "description": description,
-                "brand_id": brand_id,
-                "project_type_id": project_type_id,
-                "status": "draft",
-                "created_by": user_id,
-                "due_date": due_date
+        except Exception as e:
+            logger.error(f"Error creating project: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to create project: {str(e)}"
             }
-        }
     
     def handle_update_project(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle project update process."""
@@ -314,25 +594,78 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual project update in database
-        # For now, return a mock response
-        
-        # Record audit trail if enabled
-        if self.enable_audit_trails:
-            self._record_audit_trail(
-                action="project_updated",
-                user_id=user_id,
-                details={
+        try:
+            with get_db() as db:
+                # Find the project
+                project = db.query(Project).filter(Project.id == project_id).first()
+                if not project:
+                    return {
+                        "status": "error",
+                        "error": f"Project with ID {project_id} not found"
+                    }
+                
+                # Update project fields
+                if "name" in updates:
+                    project.name = updates["name"]
+                if "description" in updates:
+                    project.description = updates["description"]
+                if "status" in updates:
+                    project.status = updates["status"]
+                if "project_type_id" in updates:
+                    # Verify the project type exists
+                    project_type = db.query(ProjectType).filter(ProjectType.id == updates["project_type_id"]).first()
+                    if not project_type:
+                        return {
+                            "status": "error",
+                            "error": f"Project type with ID {updates['project_type_id']} not found"
+                        }
+                    project.project_type_id = updates["project_type_id"]
+                if "due_date" in updates:
+                    try:
+                        project.due_date = datetime.fromisoformat(updates["due_date"].replace('Z', '+00:00'))
+                    except ValueError:
+                        return {
+                            "status": "error",
+                            "error": f"Invalid due date format: {updates['due_date']}. Expected ISO format (YYYY-MM-DDTHH:MM:SSZ)"
+                        }
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="project_updated",
+                        user_id=user_id,
+                        details={
+                            "project_id": project_id,
+                            "fields_updated": list(updates.keys())
+                        }
+                    )
+                
+                db.commit()
+                
+                # Get project type name for response
+                project_type = db.query(ProjectType).filter(ProjectType.id == project.project_type_id).first()
+                
+                return {
+                    "status": "success",
+                    "message": f"Project {project_id} updated successfully",
                     "project_id": project_id,
-                    "fields_updated": list(updates.keys())
+                    "project_data": {
+                        "id": project.id,
+                        "name": project.name,
+                        "description": project.description,
+                        "brand_id": project.brand_id,
+                        "project_type_id": project.project_type_id,
+                        "project_type_name": project_type.name if project_type else "Unknown",
+                        "status": project.status,
+                        "due_date": project.due_date.isoformat() if project.due_date else None
+                    }
                 }
-            )
-        
-        return {
-            "status": "success",
-            "message": f"Project {project_id} updated successfully",
-            "project_id": project_id
-        }
+        except Exception as e:
+            logger.error(f"Error updating project: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to update project: {str(e)}"
+            }
     
     def _check_project_access(self, project_id: Any, user_id: Any) -> bool:
         """Check if a user has access to a project."""
@@ -355,37 +688,56 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual project retrieval from database
-        # For now, return a mock response
-        
-        project_data = {
-            "id": project_id,
-            "name": "Example Project",
-            "description": "An example project for testing",
-            "brand_id": 123,
-            "project_type": "Email",
-            "status": "in_progress",
-            "created_by": 789,
-            "assigned_to": 456,
-            "due_date": "2025-04-15T00:00:00Z",
-            "created_at": "2025-03-20T06:30:00Z",
-            "updated_at": "2025-03-20T06:30:00Z"
-        }
-        
-        if include_content:
-            project_data["content_drafts"] = [
-                {
-                    "id": 1,
-                    "version": 1,
-                    "status": "draft",
-                    "created_at": "2025-03-20T06:35:00Z"
+        try:
+            with get_db() as db:
+                # Find the project with joined project type
+                project = db.query(Project).filter(Project.id == project_id).first()
+                if not project:
+                    return {
+                        "status": "error",
+                        "error": f"Project with ID {project_id} not found"
+                    }
+                
+                # Get project type name
+                project_type = db.query(ProjectType).filter(ProjectType.id == project.project_type_id).first()
+                
+                # Prepare project data
+                project_data = {
+                    "id": project.id,
+                    "name": project.name,
+                    "description": project.description,
+                    "brand_id": project.brand_id,
+                    "project_type_id": project.project_type_id,
+                    "project_type": project_type.name if project_type else "Unknown",
+                    "status": project.status,
+                    "created_by": project.created_by,
+                    "assigned_to": project.assigned_to,
+                    "due_date": project.due_date.isoformat() if project.due_date else None,
+                    "created_at": project.created_at.isoformat() if project.created_at else None,
+                    "updated_at": project.updated_at.isoformat() if project.updated_at else None
                 }
-            ]
-        
-        return {
-            "status": "success",
-            "project": project_data
-        }
+                
+                # Include content drafts if requested
+                if include_content and hasattr(project, "content_drafts"):
+                    project_data["content_drafts"] = []
+                    for draft in project.content_drafts:
+                        project_data["content_drafts"].append({
+                            "id": draft.id,
+                            "version": draft.version,
+                            "status": draft.status,
+                            "created_at": draft.created_at.isoformat() if draft.created_at else None
+                        })
+                
+                return {
+                    "status": "success",
+                    "project": project_data
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving project information: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to retrieve project information: {str(e)}"
+            }
     
     def handle_assign_project(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle project assignment to a user."""
@@ -405,39 +757,58 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual project assignment in database
-        # For now, return a mock response
-        
-        # Record audit trail if enabled
-        if self.enable_audit_trails:
-            self._record_audit_trail(
-                action="project_assigned",
-                user_id=user_id,
-                details={
+        try:
+            with get_db() as db:
+                # Find the project
+                project = db.query(Project).filter(Project.id == project_id).first()
+                if not project:
+                    return {
+                        "status": "error",
+                        "error": f"Project with ID {project_id} not found"
+                    }
+                
+                # Update assignment
+                project.assigned_to = assigned_to
+                
+                # Record audit trail if enabled
+                if self.enable_audit_trails:
+                    self._record_audit_trail(
+                        action="project_assigned",
+                        user_id=user_id,
+                        details={
+                            "project_id": project_id,
+                            "assigned_to": assigned_to
+                        }
+                    )
+                
+                db.commit()
+                
+                # Notify the assigned user via an event
+                self.broadcast_event({
+                    "event_type": "project_assigned",
+                    "project_id": project_id,
+                    "assigned_to": assigned_to,
+                    "assigned_by": user_id
+                })
+                
+                return {
+                    "status": "success",
+                    "message": f"Project {project_id} assigned to user {assigned_to}",
                     "project_id": project_id,
                     "assigned_to": assigned_to
                 }
-            )
-        
-        # Notify the assigned user via an event
-        self.broadcast_event({
-            "event_type": "project_assigned",
-            "project_id": project_id,
-            "assigned_to": assigned_to,
-            "assigned_by": user_id
-        })
-        
-        return {
-            "status": "success",
-            "message": f"Project {project_id} assigned to user {assigned_to}",
-            "project_id": project_id,
-            "assigned_to": assigned_to
-        }
+        except Exception as e:
+            logger.error(f"Error assigning project: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to assign project: {str(e)}"
+            }
     
     def handle_get_brand_projects(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle request for all projects belonging to a brand."""
         brand_id = task.get("brand_id")
         filter_status = task.get("status")  # Optional status filter
+        filter_type = task.get("project_type_id")  # Optional project type filter
         user_id = task.get("user_id")
         
         # Check RBAC permissions if enabled
@@ -449,40 +820,55 @@ class BrandProjectManagementAgent(BaseAgent):
                     "error": "Access denied"
                 }
         
-        # TODO: Implement actual project retrieval from database
-        # For now, return a mock response
-        
-        projects = [
-            {
-                "id": 1,
-                "name": "Email Campaign",
-                "project_type": "Email",
-                "status": "draft",
-                "due_date": "2025-04-10T00:00:00Z"
-            },
-            {
-                "id": 2,
-                "name": "Website Redesign",
-                "project_type": "Landing Page",
-                "status": "in_progress",
-                "due_date": "2025-05-15T00:00:00Z"
-            },
-            {
-                "id": 3,
-                "name": "Social Media Campaign",
-                "project_type": "Social Post",
-                "status": "completed",
-                "due_date": "2025-03-01T00:00:00Z"
+        try:
+            with get_db() as db:
+                # Find the brand
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Build query with filters
+                query = db.query(Project).filter(Project.brand_id == brand_id)
+                if filter_status:
+                    query = query.filter(Project.status == filter_status)
+                if filter_type:
+                    query = query.filter(Project.project_type_id == filter_type)
+                
+                # Execute query
+                projects_db = query.all()
+                
+                # Get project types mapping
+                project_type_ids = [p.project_type_id for p in projects_db]
+                project_types = {
+                    pt.id: pt.name 
+                    for pt in db.query(ProjectType).filter(ProjectType.id.in_(project_type_ids)).all()
+                }
+                
+                # Format results
+                projects = []
+                for p in projects_db:
+                    projects.append({
+                        "id": p.id,
+                        "name": p.name,
+                        "project_type_id": p.project_type_id,
+                        "project_type": project_types.get(p.project_type_id, "Unknown"),
+                        "status": p.status,
+                        "due_date": p.due_date.isoformat() if p.due_date else None
+                    })
+                
+                return {
+                    "status": "success",
+                    "brand_id": brand_id,
+                    "brand_name": brand.name,
+                    "projects": projects,
+                    "total": len(projects)
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving brand projects: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to retrieve brand projects: {str(e)}"
             }
-        ]
-        
-        # Apply status filter if provided
-        if filter_status:
-            projects = [p for p in projects if p["status"] == filter_status]
-        
-        return {
-            "status": "success",
-            "brand_id": brand_id,
-            "projects": projects,
-            "total": len(projects)
-        }

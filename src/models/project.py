@@ -1,10 +1,30 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from src.ultimate_marketing_team.core.database import Base
+
+class Brand(Base):
+    """Brand model for managing brand information and guidelines."""
+    
+    __tablename__ = "brands"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    website_url = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    logo_url = Column(String(512), nullable=True)
+    guidelines = Column(JSON, nullable=True)
+    created_by = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    projects = relationship("Project", back_populates="brand", cascade="all, delete-orphan")
+    competitors = relationship("Competitor", back_populates="brand", cascade="all, delete-orphan")
 
 class ProjectType(Base):
     """Project type model for categorizing projects (e.g., Email, Blog, Social Post)."""

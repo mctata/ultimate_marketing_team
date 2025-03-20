@@ -38,23 +38,9 @@ CREATE TABLE IF NOT EXISTS umt.brands (
     name VARCHAR(255) NOT NULL,
     website_url VARCHAR(255),
     description TEXT,
-    logo_url VARCHAR(255),
+    logo_url VARCHAR(512),
+    guidelines JSONB,
     created_by INTEGER REFERENCES umt.users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Brand guidelines table
-CREATE TABLE IF NOT EXISTS umt.brand_guidelines (
-    id SERIAL PRIMARY KEY,
-    brand_id INTEGER NOT NULL REFERENCES umt.brands(id) ON DELETE CASCADE,
-    voice TEXT,
-    tone TEXT,
-    color_palette JSONB,
-    typography JSONB,
-    imagery_style TEXT,
-    logos JSONB,
-    target_audience JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
