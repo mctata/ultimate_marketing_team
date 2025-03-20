@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from loguru import logger
 import requests
 import json
@@ -7,9 +7,15 @@ import os
 import hmac
 import hashlib
 import base64
+import datetime
 from urllib.parse import urlencode, quote
+from sqlalchemy.orm import Session
+from threading import Thread, Event
 
 from src.agents.base_agent import BaseAgent
+from src.core.database import get_db
+from src.core.security import encrypt_sensitive_data, decrypt_sensitive_data
+from src.models.integration import SocialAccount, CMSAccount, AdAccount, IntegrationHealth
 
 class AuthIntegrationAgent(BaseAgent):
     """Agent responsible for authentication and platform integrations.
@@ -26,6 +32,15 @@ class AuthIntegrationAgent(BaseAgent):
         self.integration_health_cache_key = "integration_health"
         self.oauth_tokens_cache_prefix = "oauth_tokens"
         self.enable_audit_trails = kwargs.get("enable_audit_trails", True)
+        
+        # Initialize health check monitoring thread
+        self.health_check_interval = kwargs.get("health_check_interval", 3600)  # Check every hour by default
+        self.health_check_thread = None
+        self.health_check_stop_event = Event()
+        
+        # Start health monitoring automatically if enabled
+        if kwargs.get("auto_start_monitoring", True):
+            self.start_health_monitoring()
         
         # OAuth configuration
         self.oauth_config = {
@@ -929,8 +944,11 @@ class AuthIntegrationAgent(BaseAgent):
         else:
             return {"valid": False, "message": f"Unsupported advertising platform: {platform}"}
     
-    def _store_integration_credentials(self, platform_type: str, brand_id: Any, credentials: Dict[str, Any]) -> str:
-        """Store integration credentials securely in the database based on platform type."""
+    def _store_integration_credentials(self, platform_type: str, brand_id: Any, credentials: Dict[str, Any]) -> int:
+        """Store integration credentials securely in the database based on platform type.
+        
+        Now uses real database storage with proper encryption for sensitive data.
+        """
         logger.info(f"Storing credentials for {platform_type}, brand {brand_id}")
         
         # Determine platform category
@@ -944,96 +962,143 @@ class AuthIntegrationAgent(BaseAgent):
             logger.error(f"Unknown platform type: {platform_type}")
             raise ValueError(f"Unknown platform type: {platform_type}")
         
-        # Generate an integration ID (would be replaced by database ID in production)
-        integration_id = f"integration_{platform_type}_{brand_id}_{int(time.time())}"
+        integration_id = None
         
-        try:
-            # In a production environment, this would create database records
-            # For now, we'll simulate it by storing in cache with appropriate expiry
-            
-            if platform_category == "social_media":
-                # Store as SocialAccount
-                account_data = {
+        with get_db() as db:
+            try:
+                if platform_category == "social_media":
+                    # Store as SocialAccount with encrypted tokens
+                    account = SocialAccount()
+                    account.brand_id = brand_id
+                    account.platform = platform_type
+                    account.account_id = credentials.get("account_id", f"acc_{int(time.time())}")
+                    account.account_name = credentials.get("account_name", "")
+                    
+                    # Encrypt access token
+                    if access_token := credentials.get("access_token"):
+                        encrypted_token, token_salt = encrypt_sensitive_data(access_token)
+                        account.access_token = encrypted_token
+                        account.access_token_salt = token_salt
+                    
+                    # Encrypt refresh token
+                    if refresh_token := credentials.get("refresh_token"):
+                        encrypted_refresh, refresh_salt = encrypt_sensitive_data(refresh_token)
+                        account.refresh_token = encrypted_refresh
+                        account.refresh_token_salt = refresh_salt
+                    
+                    # Set expiry time if provided
+                    if "expires_in" in credentials:
+                        expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=credentials["expires_in"])
+                        account.token_expires_at = expiry_time
+                    
+                    account.health_status = "pending"
+                    db.add(account)
+                    db.flush()  # Get the ID
+                    integration_id = account.id
+                    
+                elif platform_category == "cms":
+                    # Store as CMSAccount with encrypted credentials
+                    cms = CMSAccount()
+                    cms.brand_id = brand_id
+                    cms.platform = platform_type
+                    cms.site_url = credentials.get("url") or credentials.get("shop_url", "")
+                    cms.username = credentials.get("username", "")
+                    
+                    # Encrypt API key
+                    if api_key := credentials.get("api_key"):
+                        encrypted_key, key_salt = encrypt_sensitive_data(api_key)
+                        cms.api_key = encrypted_key
+                        cms.api_key_salt = key_salt
+                    
+                    # Encrypt API secret
+                    if api_secret := credentials.get("api_secret"):
+                        encrypted_secret, secret_salt = encrypt_sensitive_data(api_secret)
+                        cms.api_secret = encrypted_secret
+                        cms.api_secret_salt = secret_salt
+                    
+                    # Encrypt password
+                    if password := credentials.get("password"):
+                        encrypted_password, password_salt = encrypt_sensitive_data(password)
+                        cms.password = encrypted_password
+                        cms.password_salt = password_salt
+                    
+                    cms.health_status = "pending"
+                    db.add(cms)
+                    db.flush()  # Get the ID
+                    integration_id = cms.id
+                    
+                elif platform_category == "advertising":
+                    # Store as AdAccount with encrypted credentials
+                    ad = AdAccount()
+                    ad.brand_id = brand_id
+                    ad.platform = platform_type
+                    ad.account_id = credentials.get("account_id") or credentials.get("customer_id", f"acc_{int(time.time())}")
+                    
+                    # Encrypt access token
+                    if access_token := credentials.get("access_token"):
+                        encrypted_token, token_salt = encrypt_sensitive_data(access_token)
+                        ad.access_token = encrypted_token
+                        ad.access_token_salt = token_salt
+                    
+                    # Encrypt refresh token
+                    if refresh_token := credentials.get("refresh_token"):
+                        encrypted_refresh, refresh_salt = encrypt_sensitive_data(refresh_token)
+                        ad.refresh_token = encrypted_refresh
+                        ad.refresh_token_salt = refresh_salt
+                    
+                    # For Google Ads, store additional fields with encryption
+                    if platform_type == "google_ads":
+                        if developer_token := credentials.get("developer_token"):
+                            encrypted_dev_token, dev_token_salt = encrypt_sensitive_data(developer_token)
+                            ad.developer_token = encrypted_dev_token
+                            ad.developer_token_salt = dev_token_salt
+                            
+                        if client_id := credentials.get("client_id"):
+                            encrypted_client_id, client_id_salt = encrypt_sensitive_data(client_id)
+                            ad.client_id = encrypted_client_id
+                            ad.client_id_salt = client_id_salt
+                            
+                        if client_secret := credentials.get("client_secret"):
+                            encrypted_client_secret, client_secret_salt = encrypt_sensitive_data(client_secret)
+                            ad.client_secret = encrypted_client_secret
+                            ad.client_secret_salt = client_secret_salt
+                    
+                    # Set expiry time if provided
+                    if "expires_in" in credentials:
+                        expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=credentials["expires_in"])
+                        ad.token_expires_at = expiry_time
+                    
+                    ad.health_status = "pending"
+                    db.add(ad)
+                    db.flush()  # Get the ID
+                    integration_id = ad.id
+                
+                # Also store the credential in cache for fast access (without sensitive info)
+                metadata = {
                     "id": integration_id,
+                    "platform_type": platform_type,
+                    "platform_category": platform_category,
                     "brand_id": brand_id,
-                    "platform": platform_type,
-                    "account_id": credentials.get("account_id", f"acc_{int(time.time())}"),
-                    "account_name": credentials.get("account_name", ""),
-                    "access_token": credentials.get("access_token", ""),
-                    "refresh_token": credentials.get("refresh_token", ""),
-                    "token_expires_at": time.time() + credentials.get("expires_in", 3600) if "expires_in" in credentials else None,
                     "created_at": time.time(),
-                    "updated_at": time.time()
+                    "last_health_check": None,
+                    "health_status": "pending"
                 }
+                metadata_cache_key = f"integration:{platform_category}:{integration_id}"
+                self.cache.set(metadata_cache_key, json.dumps(metadata))
                 
-                # Encrypt sensitive data in a real implementation
-                cache_key = f"integration:social:{integration_id}"
-                self.cache.set(cache_key, json.dumps(account_data))
+                logger.info(f"Successfully stored integration credentials for {platform_type}, brand {brand_id}, ID: {integration_id}")
+                return integration_id
                 
-            elif platform_category == "cms":
-                # Store as CMSAccount
-                cms_data = {
-                    "id": integration_id,
-                    "brand_id": brand_id,
-                    "platform": platform_type,
-                    "site_url": credentials.get("url") or credentials.get("shop_url", ""),
-                    "api_key": credentials.get("api_key", ""),
-                    "api_secret": credentials.get("api_secret", ""),
-                    "username": credentials.get("username", ""),
-                    "password": credentials.get("password", ""),  # Would be encrypted in production
-                    "created_at": time.time(),
-                    "updated_at": time.time()
-                }
-                
-                # Encrypt sensitive data in a real implementation
-                cache_key = f"integration:cms:{integration_id}"
-                self.cache.set(cache_key, json.dumps(cms_data))
-                
-            elif platform_category == "advertising":
-                # Store as AdAccount
-                ad_data = {
-                    "id": integration_id,
-                    "brand_id": brand_id,
-                    "platform": platform_type,
-                    "account_id": credentials.get("account_id") or credentials.get("customer_id", f"acc_{int(time.time())}"),
-                    "access_token": credentials.get("access_token", ""),
-                    "refresh_token": credentials.get("refresh_token", ""),
-                    "token_expires_at": time.time() + credentials.get("expires_in", 3600) if "expires_in" in credentials else None,
-                    "created_at": time.time(),
-                    "updated_at": time.time()
-                }
-                
-                # For Google Ads, store additional fields
-                if platform_type == "google_ads":
-                    ad_data["developer_token"] = credentials.get("developer_token", "")
-                    ad_data["client_id"] = credentials.get("client_id", "")
-                    ad_data["client_secret"] = credentials.get("client_secret", "")
-                
-                # Encrypt sensitive data in a real implementation
-                cache_key = f"integration:ad:{integration_id}"
-                self.cache.set(cache_key, json.dumps(ad_data))
-            
-            # Store basic metadata in cache for health checking
-            metadata_cache_key = f"integration:{integration_id}"
-            metadata = {
-                "platform_type": platform_type,
-                "platform_category": platform_category,
-                "brand_id": brand_id,
-                "created_at": time.time(),
-                "last_health_check": None,
-                "health_status": "pending"
-            }
-            self.cache.set(metadata_cache_key, json.dumps(metadata))
-            
-            logger.info(f"Successfully stored integration credentials for {platform_type}, brand {brand_id}")
-            return integration_id
-            
-        except Exception as e:
-            logger.error(f"Error storing integration credentials for {platform_type}: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Error storing integration credentials for {platform_type}: {e}")
+                db.rollback()
+                raise
     
-    def _check_integration_health(self, platform_type: str, integration_id: str, credentials: Dict[str, Any]) -> Dict[str, Any]:
-        """Check health of a platform integration by making an API call to verify connectivity."""
+    def _check_integration_health(self, platform_type: str, integration_id: Union[str, int], credentials: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Check health of a platform integration by making an API call to verify connectivity.
+        Stores results in database and cache.
+        """
         logger.info(f"Checking health for integration: {integration_id} ({platform_type})")
         
         # Determine platform category
@@ -1050,6 +1115,13 @@ class AuthIntegrationAgent(BaseAgent):
                 "timestamp": time.time(),
                 "error": "Unknown platform type"
             }
+        
+        # Convert string ID to integer if necessary for database operations
+        db_id = None
+        if isinstance(integration_id, int):
+            db_id = integration_id
+        elif isinstance(integration_id, str) and integration_id.isdigit():
+            db_id = int(integration_id)
         
         try:
             # Start timer for response time measurement
@@ -1082,8 +1154,45 @@ class AuthIntegrationAgent(BaseAgent):
             if "error" in health_result:
                 health_status["error"] = health_result["error"]
             
+            # Store health check result in both database and cache
+            with get_db() as db:
+                # 1. Update the health status in the appropriate account table
+                if db_id is not None:
+                    now = datetime.datetime.now()
+                    status = health_status["status"]
+                    
+                    # Update the appropriate table based on platform category
+                    if platform_category == "social_media":
+                        account = db.query(SocialAccount).filter(SocialAccount.id == db_id).first()
+                        if account:
+                            account.health_status = status
+                            account.last_health_check = now
+                    elif platform_category == "cms":
+                        cms = db.query(CMSAccount).filter(CMSAccount.id == db_id).first()
+                        if cms:
+                            cms.health_status = status
+                            cms.last_health_check = now
+                    elif platform_category == "advertising":
+                        ad = db.query(AdAccount).filter(AdAccount.id == db_id).first()
+                        if ad:
+                            ad.health_status = status
+                            ad.last_health_check = now
+                    
+                    # 2. Create a historical health check record
+                    health_record = IntegrationHealth(
+                        integration_type=platform_category,
+                        integration_id=db_id,
+                        check_time=now,
+                        status=status,
+                        response_time_ms=response_time_ms,
+                        error_message=health_status.get("error"),
+                        details=health_result.get("details", {})
+                    )
+                    db.add(health_record)
+            
+            # 3. Update cache for quick access
             # Update health status in cache
-            cache_key = f"integration:{integration_id}"
+            cache_key = f"integration:{platform_category}:{integration_id}"
             metadata_str = self.cache.get(cache_key)
             if metadata_str:
                 try:
@@ -1108,6 +1217,43 @@ class AuthIntegrationAgent(BaseAgent):
                     "exception_type": type(e).__name__
                 }
             }
+            
+            # Store error status in database if we have a valid ID
+            if db_id is not None:
+                try:
+                    with get_db() as db:
+                        now = datetime.datetime.now()
+                        
+                        # Update the appropriate table
+                        if platform_category == "social_media":
+                            account = db.query(SocialAccount).filter(SocialAccount.id == db_id).first()
+                            if account:
+                                account.health_status = "unhealthy"
+                                account.last_health_check = now
+                        elif platform_category == "cms":
+                            cms = db.query(CMSAccount).filter(CMSAccount.id == db_id).first()
+                            if cms:
+                                cms.health_status = "unhealthy"
+                                cms.last_health_check = now
+                        elif platform_category == "advertising":
+                            ad = db.query(AdAccount).filter(AdAccount.id == db_id).first()
+                            if ad:
+                                ad.health_status = "unhealthy"
+                                ad.last_health_check = now
+                        
+                        # Create a health check record with error
+                        health_record = IntegrationHealth(
+                            integration_type=platform_category,
+                            integration_id=db_id,
+                            check_time=now,
+                            status="unhealthy",
+                            response_time_ms=None,
+                            error_message=str(e),
+                            details={"exception_type": type(e).__name__}
+                        )
+                        db.add(health_record)
+                except Exception as db_err:
+                    logger.error(f"Failed to store health check error in database: {db_err}")
             
             # Update health status in cache to reflect the error
             cache_key = f"integration:{integration_id}"
@@ -1651,10 +1797,176 @@ class AuthIntegrationAgent(BaseAgent):
                 "error": "Missing integration_id or check_all parameter"
             }
     
-    def _get_integration_credentials(self, integration_id: str) -> Dict[str, Any]:
-        """Retrieve integration credentials."""
-        # TODO: Implement actual credential retrieval from database
-        # Mock implementation for testing
+    def _get_integration_credentials(self, integration_id: Union[str, int], platform_type: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Retrieve integration credentials from database based on integration ID.
+        Decrypts sensitive data for use.
+        
+        Args:
+            integration_id: The ID of the integration record
+            platform_type: Optional platform type (if known) to optimize the query
+            
+        Returns:
+            Dictionary with decrypted credentials
+        """
+        logger.info(f"Retrieving credentials for integration ID: {integration_id}")
+        
+        try:
+            # Convert string ID to integer if necessary
+            if isinstance(integration_id, str) and integration_id.isdigit():
+                integration_id = int(integration_id)
+            elif isinstance(integration_id, str) and not integration_id.startswith("integration_"):
+                # If it's a string but not an old format integration ID, it might be a cache key
+                cached_data = self.cache.get(integration_id)
+                if cached_data:
+                    return json.loads(cached_data)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            pass
+        
+        # New implementation handling database records
+        if isinstance(integration_id, int):
+            # First check cache for metadata to determine platform category
+            platform_category = None
+            
+            if platform_type:
+                # If platform type is provided, determine the category
+                for category, platforms in self.integration_config.items():
+                    if platform_type in platforms:
+                        platform_category = category
+                        break
+            else:
+                # Try to find in cache
+                for category in ["social_media", "cms", "advertising"]:
+                    cache_key = f"integration:{category}:{integration_id}"
+                    cached_data = self.cache.get(cache_key)
+                    if cached_data:
+                        try:
+                            metadata = json.loads(cached_data)
+                            platform_type = metadata.get("platform_type")
+                            platform_category = category
+                            break
+                        except json.JSONDecodeError:
+                            continue
+            
+            # If still not determined, we'll need to check all tables
+            with get_db() as db:
+                credentials = {}
+                
+                if platform_category == "social_media" or not platform_category:
+                    # Check SocialAccount
+                    social_account = db.query(SocialAccount).filter(SocialAccount.id == integration_id).first()
+                    if social_account:
+                        credentials = {
+                            "account_id": social_account.account_id,
+                            "account_name": social_account.account_name,
+                            "platform": social_account.platform,
+                            "brand_id": social_account.brand_id
+                        }
+                        
+                        # Decrypt access token
+                        if social_account.access_token and social_account.access_token_salt:
+                            credentials["access_token"] = decrypt_sensitive_data(
+                                social_account.access_token, social_account.access_token_salt
+                            )
+                        
+                        # Decrypt refresh token
+                        if social_account.refresh_token and social_account.refresh_token_salt:
+                            credentials["refresh_token"] = decrypt_sensitive_data(
+                                social_account.refresh_token, social_account.refresh_token_salt
+                            )
+                        
+                        if social_account.token_expires_at:
+                            # Convert datetime to seconds from now
+                            now = datetime.datetime.now()
+                            if social_account.token_expires_at > now:
+                                credentials["expires_in"] = int((social_account.token_expires_at - now).total_seconds())
+                            else:
+                                credentials["expires_in"] = 0
+                        
+                        return credentials
+                
+                if platform_category == "cms" or not platform_category:
+                    # Check CMSAccount
+                    cms_account = db.query(CMSAccount).filter(CMSAccount.id == integration_id).first()
+                    if cms_account:
+                        credentials = {
+                            "site_url": cms_account.site_url,
+                            "username": cms_account.username,
+                            "platform": cms_account.platform,
+                            "brand_id": cms_account.brand_id
+                        }
+                        
+                        # Decrypt API key
+                        if cms_account.api_key and cms_account.api_key_salt:
+                            credentials["api_key"] = decrypt_sensitive_data(
+                                cms_account.api_key, cms_account.api_key_salt
+                            )
+                        
+                        # Decrypt API secret
+                        if cms_account.api_secret and cms_account.api_secret_salt:
+                            credentials["api_secret"] = decrypt_sensitive_data(
+                                cms_account.api_secret, cms_account.api_secret_salt
+                            )
+                        
+                        # Decrypt password
+                        if cms_account.password and cms_account.password_salt:
+                            credentials["password"] = decrypt_sensitive_data(
+                                cms_account.password, cms_account.password_salt
+                            )
+                        
+                        return credentials
+                
+                if platform_category == "advertising" or not platform_category:
+                    # Check AdAccount
+                    ad_account = db.query(AdAccount).filter(AdAccount.id == integration_id).first()
+                    if ad_account:
+                        credentials = {
+                            "account_id": ad_account.account_id,
+                            "platform": ad_account.platform,
+                            "brand_id": ad_account.brand_id
+                        }
+                        
+                        # Decrypt access token
+                        if ad_account.access_token and ad_account.access_token_salt:
+                            credentials["access_token"] = decrypt_sensitive_data(
+                                ad_account.access_token, ad_account.access_token_salt
+                            )
+                        
+                        # Decrypt refresh token
+                        if ad_account.refresh_token and ad_account.refresh_token_salt:
+                            credentials["refresh_token"] = decrypt_sensitive_data(
+                                ad_account.refresh_token, ad_account.refresh_token_salt
+                            )
+                        
+                        # Additional fields for Google Ads
+                        if ad_account.platform == "google_ads":
+                            if ad_account.developer_token and ad_account.developer_token_salt:
+                                credentials["developer_token"] = decrypt_sensitive_data(
+                                    ad_account.developer_token, ad_account.developer_token_salt
+                                )
+                            
+                            if ad_account.client_id and ad_account.client_id_salt:
+                                credentials["client_id"] = decrypt_sensitive_data(
+                                    ad_account.client_id, ad_account.client_id_salt
+                                )
+                            
+                            if ad_account.client_secret and ad_account.client_secret_salt:
+                                credentials["client_secret"] = decrypt_sensitive_data(
+                                    ad_account.client_secret, ad_account.client_secret_salt
+                                )
+                        
+                        if ad_account.token_expires_at:
+                            # Convert datetime to seconds from now
+                            now = datetime.datetime.now()
+                            if ad_account.token_expires_at > now:
+                                credentials["expires_in"] = int((ad_account.token_expires_at - now).total_seconds())
+                            else:
+                                credentials["expires_in"] = 0
+                        
+                        return credentials
+        
+        # Legacy support for old integration IDs or fallback mock
+        logger.warning(f"Using mock credentials for integration ID: {integration_id}")
         return {
             "api_key": f"mock_api_key_{integration_id}",
             "api_secret": f"mock_api_secret_{integration_id}"
@@ -1963,3 +2275,92 @@ class AuthIntegrationAgent(BaseAgent):
         """Record an audit trail entry."""
         # TODO: Implement actual audit trail recording in database
         logger.info(f"AUDIT: {action} by user {user_id} - {details}")
+    
+    # Health monitoring methods
+    def start_health_monitoring(self):
+        """Start the background health monitoring thread."""
+        if self.health_check_thread is None or not self.health_check_thread.is_alive():
+            self.health_check_stop_event.clear()
+            self.health_check_thread = Thread(
+                target=self._health_monitoring_worker,
+                name="IntegrationHealthMonitor",
+                daemon=True  # Thread will exit when main thread exits
+            )
+            self.health_check_thread.start()
+            logger.info("Started integration health monitoring thread")
+    
+    def stop_health_monitoring(self):
+        """Stop the background health monitoring thread."""
+        if self.health_check_thread and self.health_check_thread.is_alive():
+            logger.info("Stopping health monitoring thread...")
+            self.health_check_stop_event.set()
+            self.health_check_thread.join(timeout=10)
+            logger.info("Health monitoring thread stopped")
+    
+    def _health_monitoring_worker(self):
+        """Worker function for the health monitoring thread."""
+        logger.info("Health monitoring thread started")
+        
+        while not self.health_check_stop_event.is_set():
+            try:
+                # Perform health check on all integrations
+                logger.info("Running scheduled health checks on all integrations")
+                
+                with get_db() as db:
+                    # Check social media accounts
+                    social_accounts = db.query(SocialAccount).all()
+                    for account in social_accounts:
+                        if self.health_check_stop_event.is_set():
+                            break
+                        
+                        try:
+                            # Get credentials
+                            credentials = self._get_integration_credentials(account.id, account.platform)
+                            # Perform health check
+                            self._check_integration_health(account.platform, account.id, credentials)
+                            logger.debug(f"Checked health for social account: {account.id} ({account.platform})")
+                        except Exception as e:
+                            logger.error(f"Error checking health for social account {account.id}: {e}")
+                    
+                    # Check CMS accounts
+                    cms_accounts = db.query(CMSAccount).all()
+                    for cms in cms_accounts:
+                        if self.health_check_stop_event.is_set():
+                            break
+                        
+                        try:
+                            # Get credentials
+                            credentials = self._get_integration_credentials(cms.id, cms.platform)
+                            # Perform health check
+                            self._check_integration_health(cms.platform, cms.id, credentials)
+                            logger.debug(f"Checked health for CMS account: {cms.id} ({cms.platform})")
+                        except Exception as e:
+                            logger.error(f"Error checking health for CMS account {cms.id}: {e}")
+                    
+                    # Check ad accounts
+                    ad_accounts = db.query(AdAccount).all()
+                    for ad in ad_accounts:
+                        if self.health_check_stop_event.is_set():
+                            break
+                        
+                        try:
+                            # Get credentials
+                            credentials = self._get_integration_credentials(ad.id, ad.platform)
+                            # Perform health check
+                            self._check_integration_health(ad.platform, ad.id, credentials)
+                            logger.debug(f"Checked health for ad account: {ad.id} ({ad.platform})")
+                        except Exception as e:
+                            logger.error(f"Error checking health for ad account {ad.id}: {e}")
+                
+                logger.info("Scheduled health checks completed")
+                
+                # Sleep until next check interval, but check for stop event every 10 seconds
+                for _ in range(self.health_check_interval // 10):
+                    if self.health_check_stop_event.is_set():
+                        break
+                    time.sleep(10)
+                
+            except Exception as e:
+                logger.error(f"Error in health monitoring thread: {e}")
+                # Sleep for a while before retrying
+                time.sleep(60)
