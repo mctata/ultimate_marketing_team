@@ -39,3 +39,4 @@ docker-compose.override.yml
 # Project-specific
 ai_models/  
 uploaded_content/
+CLAUDE.md
