@@ -162,6 +162,32 @@ The platform operates with both sequential workflows and parallel processing pat
 - **Regulatory Compliance**: Ensure marketing content meets industry and regional requirements
 - **Enterprise Security**: Role-based access control and comprehensive audit trails
 - **Cost Optimization**: Intelligent resource allocation minimizes AI API costs while maximizing results
+- **Smart Image Processing**: Focal point-based image optimization for consistent visual messaging across platforms
+
+## Smart Image Processing with Focal Points
+
+The Ultimate Marketing Team platform includes an advanced image optimization system that uses focal points to ensure the most important parts of your images remain visible across all platforms and formats:
+
+### How It Works
+
+1. **Focal Point Selection**: When uploading images, users select the most important area of the image - the part that should always remain visible regardless of cropping or resizing.
+
+2. **Platform-Specific Variants**: The system automatically generates optimized image variants for different platforms (Facebook, Instagram, LinkedIn, Twitter, etc.) with different aspect ratios.
+
+3. **Smart Cropping Algorithm**: Our intelligent cropping algorithm ensures the focal point remains centered whenever possible, calculating the optimal crop area based on:
+   - The target platform's required dimensions
+   - The original image's aspect ratio
+   - The location of the focal point
+
+4. **Cross-Platform Consistency**: This approach ensures your marketing visuals maintain consistent messaging across platforms with different image requirements.
+
+5. **User Experience**: The intuitive focal point selector includes:
+   - Click and drag functionality for selecting focal points
+   - Visual crosshair indicators showing selected areas
+   - Fine-tuning sliders for precise control
+   - Real-time preview of results
+
+This eliminates the need for manually creating multiple versions of images for different platforms, saving time and ensuring visual consistency in your marketing campaigns.
 
 ## Customization
 
