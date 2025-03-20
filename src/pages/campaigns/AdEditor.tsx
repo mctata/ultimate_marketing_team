@@ -162,20 +162,22 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     if (file) {
       setImageFile(file);
       
-      // For now, we're using the local object URL for preview
-      // In a real application with a backend, we'd upload to cloud storage here
+      // Set the local object URL for immediate preview
       setFormData(prev => ({ ...prev, image_url: imageUrl }));
       
       try {
         setUploadingImage(true);
         
-        // This would upload to a real backend in production
-        // Currently it just returns the object URL from our mock service
-        const result = await uploadImage(file);
+        // Upload the image to the server with Facebook/Instagram recommended dimensions
+        const result = await uploadImage(file, {
+          width: 1200,  // Facebook/Instagram feed ad recommended width
+          height: 628,  // Facebook/Instagram feed ad recommended height
+          quality: 90   // High quality but slightly compressed
+        });
         
         if (result.success) {
-          // In a real application, we'd use the cloud URL instead of the object URL
-          // setFormData(prev => ({ ...prev, image_url: result.url }));
+          // Update the form data with the server URL
+          setFormData(prev => ({ ...prev, image_url: result.url }));
           
           // Clear any previous image error
           if (formErrors.image_url) {

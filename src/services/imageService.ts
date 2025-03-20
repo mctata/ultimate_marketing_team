@@ -1,19 +1,27 @@
 // Service for handling image uploads and management
-// In a production environment, this would integrate with S3, Cloudinary, or other storage services
+import api from './api';
 
 interface UploadResponse {
   url: string;
-  public_id: string;
+  public_id: string; // Corresponds to filename in our API
   success: boolean;
   error?: string;
+  width?: number;
+  height?: number;
+  size?: number;
 }
 
-// This is a mock implementation that simulates uploading images to a cloud service
-// In a real application, this would make API calls to your backend service
-export const uploadImage = async (file: File): Promise<UploadResponse> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
+interface UploadOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+}
+
+// Upload an image to the server
+export const uploadImage = async (
+  file: File, 
+  options: UploadOptions = {}
+): Promise<UploadResponse> => {
   // Check file size (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
     throw new Error('File size exceeds 5MB limit');
@@ -26,66 +34,159 @@ export const uploadImage = async (file: File): Promise<UploadResponse> => {
   }
   
   try {
-    // In a real implementation, this would be an API call to your backend
-    // which would then upload the file to S3, Cloudinary, etc.
+    // Create FormData object for the file upload
+    const formData = new FormData();
+    formData.append('file', file);
     
-    // For this mock implementation, we'll create an object URL
-    // NOTE: In a real app, this URL would come from your cloud storage provider
-    const objectUrl = URL.createObjectURL(file);
+    // Add optional parameters for image processing
+    if (options.width) {
+      formData.append('width', options.width.toString());
+    }
     
-    // Generate a mock public_id (would be provided by the storage service)
-    const public_id = `image_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    if (options.height) {
+      formData.append('height', options.height.toString());
+    }
     
+    if (options.quality) {
+      formData.append('quality', options.quality.toString());
+    }
+    
+    // Make the API call to upload the image
+    const response = await api.post('/content/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    // In development, we might want to fall back to object URLs if the API call fails
+    if (process.env.NODE_ENV === 'development' && !response.data) {
+      console.warn('Using local object URL for image preview in development');
+      const objectUrl = URL.createObjectURL(file);
+      return {
+        url: objectUrl,
+        public_id: `local_${Date.now()}`,
+        success: true
+      };
+    }
+    
+    // Return the uploaded image data
     return {
-      url: objectUrl,
-      public_id,
-      success: true
+      url: response.data.url,
+      public_id: response.data.filename,
+      success: true,
+      width: response.data.width,
+      height: response.data.height,
+      size: response.data.size
     };
   } catch (error: any) {
     console.error('Error uploading image:', error);
+    
+    // For development, provide a fallback to still show the image
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Using local object URL for image preview in development');
+      const objectUrl = URL.createObjectURL(file);
+      return {
+        url: objectUrl,
+        public_id: `local_${Date.now()}`,
+        success: true
+      };
+    }
+    
     return {
       url: '',
       public_id: '',
       success: false,
-      error: error.message || 'Failed to upload image'
+      error: error.response?.data?.detail || error.message || 'Failed to upload image'
     };
   }
 };
 
 // Delete an image from storage
-// In a real app, this would call your backend API to remove the image from cloud storage
 export const deleteImage = async (publicId: string): Promise<boolean> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  // Skip API call for local object URLs created in development mode
+  if (publicId.startsWith('local_')) {
+    console.log(`Skipping delete for local image: ${publicId}`);
+    return true;
+  }
   
   try {
-    // In a real implementation, this would call your backend API
-    // to delete the image from cloud storage
+    // Call the API to delete the image
+    await api.delete(`/content/images/${publicId}`);
     console.log(`Image deleted: ${publicId}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting image:', error);
+    
+    // In development, return success even if API call fails
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Development mode: Pretending image deletion succeeded');
+      return true;
+    }
+    
     return false;
   }
 };
 
 // Get a signed URL for an image (useful for private images)
-// In a real app, this would request a signed URL from your backend
 export const getSignedUrl = async (publicId: string): Promise<string> => {
-  // In a real implementation, this would call your backend API
-  // to get a signed URL with temporary access to a private image
-  return `https://example.com/images/${publicId}?signature=mock_signature`;
+  // For local development object URLs
+  if (publicId.startsWith('local_')) {
+    return publicId;
+  }
+  
+  try {
+    // In a production implementation, this would call your backend API
+    // to get a signed URL with temporary access to a private image
+    const response = await api.get(`/content/images/${publicId}/signed-url`);
+    return response.data.url;
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    
+    // Fallback for development
+    return `/uploads/images/${publicId}`;
+  }
 };
 
+/**
+ * Optimize and transform an image URL
+ * In a production app, this would be used with cloud storage like Cloudinary
+ */
 export const optimizeImageUrl = (url: string, options: {
   width?: number;
   height?: number;
   crop?: 'fill' | 'fit' | 'scale';
   quality?: number;
 } = {}): string => {
-  // This is a mock implementation
-  // In a real app with Cloudinary or similar, you would transform the URL
-  // For now, we just return the original URL
+  // Skip processing for local object URLs
+  if (url.startsWith('blob:')) {
+    return url;
+  }
+  
+  // For API-based images, we can append query parameters for on-the-fly processing
+  // This assumes your API or CDN supports this. If not, you'd return the original URL
+  const params = new URLSearchParams();
+  
+  if (options.width) {
+    params.append('w', options.width.toString());
+  }
+  
+  if (options.height) {
+    params.append('h', options.height.toString());
+  }
+  
+  if (options.crop) {
+    params.append('fit', options.crop);
+  }
+  
+  if (options.quality) {
+    params.append('q', options.quality.toString());
+  }
+  
+  const queryString = params.toString();
+  if (queryString) {
+    return `${url}${url.includes('?') ? '&' : '?'}${queryString}`;
+  }
+  
   return url;
 };
 
