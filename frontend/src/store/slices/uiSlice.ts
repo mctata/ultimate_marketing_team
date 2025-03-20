@@ -40,17 +40,22 @@ const uiSlice = createSlice({
       state.darkMode = action.payload;
       localStorage.setItem('darkMode', action.payload.toString());
     },
-    addNotification: (state, action: PayloadAction<Omit<Notification, 'id' | 'read' | 'createdAt'>>) => {
+    addNotification: (state, action: PayloadAction<Partial<Notification>>) => {
       const newNotification: Notification = {
-        id: Date.now().toString(),
-        ...action.payload,
-        read: false,
-        createdAt: new Date().toISOString(),
+        id: action.payload.id || Date.now().toString(),
+        type: action.payload.type || 'info',
+        message: action.payload.message || '',
+        read: action.payload.read || false,
+        createdAt: action.payload.createdAt || new Date().toISOString(),
       };
-      state.notifications.unshift(newNotification);
-      // Keep only the 50 most recent notifications
-      if (state.notifications.length > 50) {
-        state.notifications = state.notifications.slice(0, 50);
+      
+      // Don't add duplicates (same id)
+      if (!state.notifications.some(n => n.id === newNotification.id)) {
+        state.notifications.unshift(newNotification);
+        // Keep only the 50 most recent notifications
+        if (state.notifications.length > 50) {
+          state.notifications = state.notifications.slice(0, 50);
+        }
       }
     },
     markNotificationAsRead: (state, action: PayloadAction<string>) => {

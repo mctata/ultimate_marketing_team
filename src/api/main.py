@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Dict, Any, List, Optional
@@ -8,6 +8,8 @@ import uuid
 from src.ultimate_marketing_team.core.settings import settings
 from src.ultimate_marketing_team.core.logging import setup_logging
 from src.ultimate_marketing_team.core.cache import rate_limiter
+from src.ultimate_marketing_team.api.websocket import websocket_endpoint
+from src.ultimate_marketing_team.core.websocket_bridge import start_websocket_bridge, stop_websocket_bridge
 
 # Setup logging
 setup_logging()
@@ -21,6 +23,17 @@ app = FastAPI(
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
 )
+
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    # Start WebSocket bridge
+    await start_websocket_bridge()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Stop WebSocket bridge
+    await stop_websocket_bridge()
 
 # Configure CORS
 app.add_middleware(
@@ -41,6 +54,9 @@ app.include_router(projects.router, prefix=f"{settings.API_PREFIX}/projects", ta
 app.include_router(content.router, prefix=f"{settings.API_PREFIX}/content", tags=["Content"])
 app.include_router(competitors.router, prefix=f"{settings.API_PREFIX}/competitors", tags=["Competitors"])
 app.include_router(ads.router, prefix=f"{settings.API_PREFIX}/ads", tags=["Advertising"])
+
+# Add WebSocket endpoint
+app.add_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)
 
 # Rate limiting middleware
 @app.middleware("http")

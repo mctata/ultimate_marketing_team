@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/common/LoadingScreen';
+import websocketService from './services/websocket';
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -50,6 +51,20 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const { isAuthenticated } = useAuth();
+  
+  // Initialize WebSocket connection when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      websocketService.connect();
+      
+      // Cleanup on unmount
+      return () => {
+        websocketService.disconnect();
+      };
+    }
+  }, [isAuthenticated]);
+  
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
