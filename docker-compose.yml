@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/api_gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: ./frontend/.env.local
+    depends_on:
+      - api-gateway
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - umt-network
+
+  # Agent Services
+  auth-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: .env
+    environment:
+      - AGENT_NAME=auth_integration_agent
+    depends_on:
+      - rabbitmq
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  brand-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: .env
+    environment:
+      - AGENT_NAME=brand_project_management_agent
+    depends_on:
+      - rabbitmq
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  content-strategy-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: .env
+    environment:
+      - AGENT_NAME=content_strategy_agent
+    depends_on:
+      - rabbitmq
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  content-creation-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: .env
+    environment:
+      - AGENT_NAME=content_creation_agent
+    depends_on:
+      - rabbitmq
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  content-ad-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: .env
+    environment:
+      - AGENT_NAME=content_ad_management_agent
+    depends_on:
+      - rabbitmq
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - umt-network
+
+  # Infrastructure Services
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ultimatemarketing
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - umt-network
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - umt-network
+
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - umt-network
+
+  vector-db:
+    image: ankane/pgvector:latest
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=vectordb
+    volumes:
+      - vector-db-data:/var/lib/postgresql/data
+    networks:
+      - umt-network
+
+networks:
+  umt-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  vector-db-data:
