@@ -6,7 +6,7 @@ import functools
 import logging
 from typing import Any, Optional, Dict, Union, List, Callable, TypeVar, cast
 from redis import Redis
-from src.ultimate_marketing_team.core.settings import settings
+from src.core.settings import settings
 
 # Type definitions for function decorators
 F = TypeVar('F', bound=Callable[..., Any])

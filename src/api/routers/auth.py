@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, EmailStr, Field
 import uuid
 
-from src.ultimate_marketing_team.core.security import create_access_token, verify_token
+from src.core.security import create_access_token, verify_token
 
 router = APIRouter()
 

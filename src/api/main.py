@@ -5,11 +5,11 @@ from typing import Dict, Any, List, Optional
 import time
 import uuid
 
-from src.ultimate_marketing_team.core.settings import settings
-from src.ultimate_marketing_team.core.logging import setup_logging
-from src.ultimate_marketing_team.core.cache import rate_limiter
-from src.ultimate_marketing_team.api.websocket import websocket_endpoint
-from src.ultimate_marketing_team.core.websocket_bridge import start_websocket_bridge, stop_websocket_bridge
+from src.core.settings import settings
+from src.core.logging import setup_logging
+from src.core.cache import rate_limiter
+from src.api.websocket import websocket_endpoint
+from src.core.websocket_bridge import start_websocket_bridge, stop_websocket_bridge
 
 # Setup logging
 setup_logging()
@@ -45,18 +45,15 @@ app.add_middleware(
 )
 
 # Import routers
-from src.ultimate_marketing_team.api.routers import auth, brands, projects, content, competitors, ads
+from src.api.routers import auth, brands, content
 
 # Add routers to app
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(brands.router, prefix=f"{settings.API_PREFIX}/brands", tags=["Brands"])
-app.include_router(projects.router, prefix=f"{settings.API_PREFIX}/projects", tags=["Projects"])
 app.include_router(content.router, prefix=f"{settings.API_PREFIX}/content", tags=["Content"])
-app.include_router(competitors.router, prefix=f"{settings.API_PREFIX}/competitors", tags=["Competitors"])
-app.include_router(ads.router, prefix=f"{settings.API_PREFIX}/ads", tags=["Advertising"])
 
 # Add WebSocket endpoint
-app.add_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)
+app.add_api_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)
 
 # Rate limiting middleware
 @app.middleware("http")

@@ -13,8 +13,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from sqlalchemy.orm import Session
 
-from src.ultimate_marketing_team.core.settings import settings
-from src.ultimate_marketing_team.core.database import get_db
+from src.core.settings import settings
+from src.core.database import get_db
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -74,7 +74,7 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ):
     """Get the current authenticated user."""
-    from src.ultimate_marketing_team.models.system import User
+    from src.models.system import User
     
     payload = decode_token(token)
     if not payload:
@@ -167,7 +167,7 @@ def create_audit_log(
     user_agent: Optional[str] = None
 ):
     """Create an audit log entry for user actions."""
-    from src.ultimate_marketing_team.models.system import AuditLog
+    from src.models.system import AuditLog
     
     audit_log = AuditLog(
         user_id=user_id,
@@ -270,7 +270,7 @@ DEFAULT_ROLES = [
 
 def initialize_rbac(db: Session):
     """Initialize default roles and permissions in the database."""
-    from src.ultimate_marketing_team.models.system import Role, Permission
+    from src.models.system import Role, Permission
     
     # Create default permissions
     permissions = {}

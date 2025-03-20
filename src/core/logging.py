@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 from loguru import logger
-from src.ultimate_marketing_team.core.settings import settings
+from src.core.settings import settings
 
 # Configure loguru
 class InterceptHandler(logging.Handler):
