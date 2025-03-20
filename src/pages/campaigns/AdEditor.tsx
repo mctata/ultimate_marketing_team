@@ -27,8 +27,8 @@ import {
   selectSelectedAd,
 } from '../../store/slices/campaignSlice';
 import { Ad } from '../../services/campaignService';
-import { uploadImage } from '../../services/imageService';
-import ImageUploader from '../../components/common/ImageUploader';
+import { getOptimizedImageUrl } from '../../services/imageService';
+import ImageUploader, { ImageData } from '../../components/common/ImageUploader';
 import AdPreview from './AdPreview';
 
 interface AdEditorProps {
@@ -85,8 +85,13 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
   const [tabValue, setTabValue] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
   
+  // Extended form state with image data
+  interface ExtendedAdFormData extends Partial<Ad> {
+    image_data?: string; // Serialized ImageData for storing focal point info
+  }
+  
   // Form state
-  const [formData, setFormData] = useState<Partial<Ad>>({
+  const [formData, setFormData] = useState<ExtendedAdFormData>({
     name: '',
     status: 'paused',
     headline: '',
@@ -94,6 +99,7 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     image_url: '',
     call_to_action: 'Learn More',
     url: '',
+    image_data: '',
   });
   
   // Keep track of the uploaded image file
@@ -150,47 +156,26 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     }
   };
   
-  // Handle image upload
-  const handleImageChange = async (imageUrl: string | null, file?: File) => {
-    if (imageUrl === null) {
+  // Handle image upload with focal point data
+  const handleImageChange = async (imageData: ImageData | null) => {
+    if (imageData === null) {
       // Image was removed
       setFormData(prev => ({ ...prev, image_url: '' }));
       setImageFile(null);
       return;
     }
     
-    if (file) {
-      setImageFile(file);
-      
-      // Set the local object URL for immediate preview
-      setFormData(prev => ({ ...prev, image_url: imageUrl }));
-      
-      try {
-        setUploadingImage(true);
-        
-        // Upload the image to the server with Facebook/Instagram recommended dimensions
-        const result = await uploadImage(file, {
-          width: 1200,  // Facebook/Instagram feed ad recommended width
-          height: 628,  // Facebook/Instagram feed ad recommended height
-          quality: 90   // High quality but slightly compressed
-        });
-        
-        if (result.success) {
-          // Update the form data with the server URL
-          setFormData(prev => ({ ...prev, image_url: result.url }));
-          
-          // Clear any previous image error
-          if (formErrors.image_url) {
-            setFormErrors(prev => ({ ...prev, image_url: '' }));
-          }
-        } else {
-          setError(`Failed to upload image: ${result.error}`);
-        }
-      } catch (err: any) {
-        setError(`Image upload error: ${err.message}`);
-      } finally {
-        setUploadingImage(false);
-      }
+    // Update the form data with the server URL and use optimized variants for different platforms
+    setFormData(prev => ({ 
+      ...prev, 
+      image_url: imageData.url,
+      // Store the full image data in a hidden field if needed
+      image_data: JSON.stringify(imageData)
+    }));
+    
+    // Clear any previous image error
+    if (formErrors.image_url) {
+      setFormErrors(prev => ({ ...prev, image_url: '' }));
     }
   };
   
@@ -390,14 +375,12 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
               Ad Image
             </Typography>
             <ImageUploader
-              initialImageUrl={formData.image_url || ''}
+              initialImage={formData.image_data ? JSON.parse(formData.image_data) : null}
               onImageChange={handleImageChange}
               aspectRatio={1.91} // Facebook/Instagram feed ad aspect ratio
+              error={formErrors.image_url}
             />
             {uploadingImage && <CircularProgress size={24} sx={{ mt: 1 }} />}
-            {formErrors.image_url && (
-              <FormHelperText error>{formErrors.image_url}</FormHelperText>
-            )}
           </Grid>
           
           <Grid item xs={12}>
@@ -454,7 +437,10 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
         <Typography variant="body2" color="textSecondary" paragraph>
           This is how your ad will appear on different platforms. The actual appearance may vary slightly on different devices and platforms.
         </Typography>
-        <AdPreview ad={previewAd} />
+        <AdPreview 
+          ad={previewAd} 
+          imageData={formData.image_data ? JSON.parse(formData.image_data) : null} 
+        />
       </TabPanel>
       
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>

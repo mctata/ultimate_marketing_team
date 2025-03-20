@@ -30,6 +30,8 @@ import {
   LinkedIn as LinkedInIcon,
 } from '@mui/icons-material';
 import { Ad } from '../../services/campaignService';
+import { getOptimizedImageUrl } from '../../services/imageService';
+import { ImageData } from '../../components/common/ImageUploader';
 
 // Tab panel component for switching between different platform previews
 interface TabPanelProps {
@@ -56,10 +58,19 @@ function TabPanel(props: TabPanelProps) {
 
 interface AdPreviewProps {
   ad: Ad;
+  imageData?: ImageData | null;
 }
 
-const AdPreview = ({ ad }: AdPreviewProps) => {
+const AdPreview = ({ ad, imageData }: AdPreviewProps) => {
   const [platformTab, setPlatformTab] = useState(0);
+  
+  // Helper function to get the optimal image for each platform
+  const getImageForPlatform = (platform: string): string => {
+    if (imageData && imageData.variants && imageData.variants[platform]) {
+      return imageData.variants[platform];
+    }
+    return ad.image_url || 'https://via.placeholder.com/800x400?text=Ad+Image';
+  };
   
   const handlePlatformChange = (_: React.SyntheticEvent, newValue: number) => {
     setPlatformTab(newValue);
@@ -118,7 +129,7 @@ const AdPreview = ({ ad }: AdPreviewProps) => {
             <CardMedia
               component="img"
               height="300"
-              image={ad.image_url || 'https://via.placeholder.com/800x400?text=Ad+Image'}
+              image={getImageForPlatform('facebook')}
               alt={ad.headline}
             />
           </Box>
@@ -162,7 +173,7 @@ const AdPreview = ({ ad }: AdPreviewProps) => {
           
           <CardMedia
             component="img"
-            image={ad.image_url || 'https://via.placeholder.com/800x800?text=Ad+Image'}
+            image={getImageForPlatform('instagram_square')}
             alt={ad.headline}
             sx={{ aspectRatio: '1/1', objectFit: 'cover' }}
           />
@@ -223,7 +234,7 @@ const AdPreview = ({ ad }: AdPreviewProps) => {
           
           <CardMedia
             component="img"
-            image={ad.image_url || 'https://via.placeholder.com/800x400?text=Ad+Image'}
+            image={getImageForPlatform('linkedin')}
             alt={ad.headline}
             sx={{ height: 300 }}
           />
@@ -265,7 +276,7 @@ const AdPreview = ({ ad }: AdPreviewProps) => {
               <Box sx={{ display: 'flex', height: '100%' }}>
                 <Box 
                   component="img" 
-                  src={ad.image_url || 'https://via.placeholder.com/160x90?text=Ad'} 
+                  src={getImageForPlatform('facebook')} 
                   alt={ad.headline}
                   sx={{ height: '100%', width: 160, objectFit: 'cover' }}
                 />
@@ -296,7 +307,7 @@ const AdPreview = ({ ad }: AdPreviewProps) => {
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <Box 
                   component="img" 
-                  src={ad.image_url || 'https://via.placeholder.com/300x125?text=Ad'} 
+                  src={getImageForPlatform('twitter')} 
                   alt={ad.headline}
                   sx={{ width: '100%', height: 125, objectFit: 'cover' }}
                 />

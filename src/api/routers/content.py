@@ -154,10 +154,11 @@ async def upload_image(
     user=Depends(get_current_user),
     width: Optional[int] = Query(None, description="Resize image to this width"),
     height: Optional[int] = Query(None, description="Resize image to this height"),
-    quality: int = Query(85, description="JPEG quality (1-100)")
+    quality: int = Query(85, description="JPEG quality (1-100)"),
+    focal_point: Optional[str] = Form(None, description="Focal point coordinates (x,y) as JSON string")
 ) -> Dict[str, Any]:
     """
-    Upload an image file and optionally process it.
+    Upload an image file and optionally process it with focal point awareness.
     
     Args:
         file: The image file to upload
@@ -165,9 +166,10 @@ async def upload_image(
         width: Optional width to resize the image to
         height: Optional height to resize the image to
         quality: JPEG quality (1-100)
+        focal_point: Optional JSON string with focal point coordinates {x: 50, y: 50} (percentages)
         
     Returns:
-        Image details including URL
+        Image details including URL and variants
     """
     try:
         # Validate file type
@@ -177,57 +179,118 @@ async def upload_image(
         if file_ext not in allowed_extensions:
             raise HTTPException(status_code=400, detail="Invalid file format. Allowed formats: JPG, PNG, GIF, WebP")
         
-        # Create a unique filename
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        # Parse focal point if provided
+        fp_data = {"x": 50, "y": 50}  # Default center
+        if focal_point:
+            try:
+                import json
+                parsed_fp = json.loads(focal_point)
+                if isinstance(parsed_fp, dict) and 'x' in parsed_fp and 'y' in parsed_fp:
+                    fp_data = {
+                        'x': max(0, min(100, float(parsed_fp['x']))),
+                        'y': max(0, min(100, float(parsed_fp['y'])))
+                    }
+            except Exception as e:
+                logger.warning(f"Could not parse focal point data: {str(e)}")
+        
+        # Create a unique filename with UUID to avoid collisions
+        image_id = str(uuid.uuid4())
+        unique_filename = f"{image_id}{file_ext}"
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
         
-        # Process the image if resizing is requested
-        if width or height:
-            # Read the image into memory
-            contents = await file.read()
-            image = Image.open(io.BytesIO(contents))
+        # Read the image into memory
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        
+        # Save the original file
+        image.save(file_path, optimize=True)
+        
+        # Generate standard variants for different platforms
+        variants = {}
+        sizes = {
+            "facebook": (1200, 628),  # Facebook/Instagram feed
+            "instagram_square": (1080, 1080),  # Instagram square
+            "story": (1080, 1920),  # Instagram/Facebook story
+            "twitter": (1200, 675),  # Twitter feed
+            "linkedin": (1200, 627),  # LinkedIn feed
+            "thumbnail": (400, 400),  # General thumbnail
+        }
+        
+        # If specific dimensions were requested, add them to the sizes
+        if width and height:
+            sizes["custom"] = (width, height)
+        
+        original_width, original_height = image.size
+        
+        for name, (target_width, target_height) in sizes.items():
+            variant_filename = f"{image_id}_{name}{file_ext}"
+            variant_path = os.path.join(UPLOAD_DIR, variant_filename)
             
-            # Calculate new dimensions while maintaining aspect ratio
-            if width and height:
-                # Resize to exact dimensions
-                resized_img = image.resize((width, height), Image.LANCZOS)
-            elif width:
-                # Maintain aspect ratio with given width
-                wpercent = width / float(image.size[0])
-                hsize = int(float(image.size[1]) * float(wpercent))
-                resized_img = image.resize((width, hsize), Image.LANCZOS)
-            elif height:
-                # Maintain aspect ratio with given height
-                hpercent = height / float(image.size[1])
-                wsize = int(float(image.size[0]) * float(hpercent))
-                resized_img = image.resize((wsize, height), Image.LANCZOS)
+            # Create a copy to avoid modifying the original
+            img_copy = image.copy()
             
-            # Save the processed image
+            # Calculate target dimensions maintaining aspect ratio
+            original_aspect = original_width / original_height
+            target_aspect = target_width / target_height
+            
+            # Determine crop box based on focal point
+            # Convert focal point percentages to pixel coordinates
+            fx = (fp_data['x'] / 100) * original_width
+            fy = (fp_data['y'] / 100) * original_height
+            
+            if original_aspect > target_aspect:  # Original is wider
+                # Calculate height-based crop width
+                crop_height = original_height
+                crop_width = crop_height * target_aspect
+                
+                # Adjust left position based on focal point
+                left = max(0, min(fx - (crop_width / 2), original_width - crop_width))
+                top = 0
+            else:  # Original is taller
+                # Calculate width-based crop height
+                crop_width = original_width
+                crop_height = crop_width / target_aspect
+                
+                # Adjust top position based on focal point
+                top = max(0, min(fy - (crop_height / 2), original_height - crop_height))
+                left = 0
+                
+            # Crop the image based on calculated dimensions
+            right = left + crop_width
+            bottom = top + crop_height
+            img_copy = img_copy.crop((int(left), int(top), int(right), int(bottom)))
+            
+            # Resize to target dimensions
+            img_copy = img_copy.resize((target_width, target_height), Image.LANCZOS)
+            
+            # Optimize and save
             if file_ext.lower() in ['.jpg', '.jpeg']:
-                resized_img.save(file_path, "JPEG", quality=quality)
+                img_copy.save(variant_path, "JPEG", quality=quality, optimize=True)
             elif file_ext.lower() == '.png':
-                resized_img.save(file_path, "PNG", optimize=True)
+                img_copy.save(variant_path, "PNG", optimize=True)
             elif file_ext.lower() == '.gif':
-                resized_img.save(file_path, "GIF")
+                img_copy.save(variant_path, "GIF")
             elif file_ext.lower() == '.webp':
-                resized_img.save(file_path, "WEBP", quality=quality)
-        else:
-            # Save the original file without processing
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                img_copy.save(variant_path, "WEBP", quality=quality)
+                
+            # Add to variants
+            variants[name] = f"/uploads/images/{variant_filename}"
         
         # In a production app, you'd return a URL to a cloud storage service
-        # Here we just return a local path for demonstration
         image_url = f"/uploads/images/{unique_filename}"
         
         return {
+            "success": True,
+            "image_id": image_id,
             "url": image_url,
             "filename": unique_filename,
             "original_filename": file.filename,
             "content_type": file.content_type,
             "size": os.path.getsize(file_path),
-            "width": width,
-            "height": height
+            "width": original_width,
+            "height": original_height,
+            "focal_point": fp_data,
+            "variants": variants
         }
     
     except Exception as e:
@@ -240,30 +303,181 @@ async def delete_image(
     user=Depends(get_current_user)
 ) -> JSONResponse:
     """
-    Delete an uploaded image.
+    Delete an uploaded image and all its variants.
     
     Args:
-        image_id: The ID/filename of the image to delete
+        image_id: The ID of the image to delete
         user: The authenticated user
         
     Returns:
         Confirmation of deletion
     """
     try:
-        # Validate filename to prevent path traversal attacks
+        # Validate image_id to prevent path traversal attacks
         if "/" in image_id or "\\" in image_id:
             raise HTTPException(status_code=400, detail="Invalid image ID")
-            
-        # Check if the file exists
-        file_path = os.path.join(UPLOAD_DIR, image_id)
-        if not os.path.isfile(file_path):
+        
+        # Find all files matching the image_id pattern
+        deleted_files = []
+        
+        for filename in os.listdir(UPLOAD_DIR):
+            # Match both the original file and any variants (image_id_variant.ext)
+            if filename.startswith(image_id):
+                file_path = os.path.join(UPLOAD_DIR, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    deleted_files.append(filename)
+        
+        if not deleted_files:
             raise HTTPException(status_code=404, detail="Image not found")
         
-        # Delete the file
-        os.remove(file_path)
-        
-        return JSONResponse(content={"message": f"Image {image_id} deleted"})
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Image {image_id} and its variants deleted",
+            "deleted_files": deleted_files
+        })
     
     except Exception as e:
         logger.error(f"Error deleting image: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error deleting image: {str(e)}")
+
+@router.put("/images/{image_id}/focal-point")
+async def update_focal_point(
+    image_id: str,
+    focal_point: Dict[str, float],
+    user=Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Update the focal point for an existing image and regenerate all variants.
+    
+    Args:
+        image_id: The ID of the image to update
+        focal_point: Object containing x, y coordinates as percentages (0-100)
+        user: The authenticated user
+        
+    Returns:
+        Updated image details including regenerated variants
+    """
+    try:
+        # Validate focal point
+        if 'x' not in focal_point or 'y' not in focal_point:
+            raise HTTPException(status_code=400, detail="Focal point must contain x and y coordinates")
+            
+        # Ensure values are within valid range
+        x = max(0, min(100, float(focal_point['x'])))
+        y = max(0, min(100, float(focal_point['y'])))
+        
+        # Validate image_id to prevent path traversal attacks
+        if "/" in image_id or "\\" in image_id:
+            raise HTTPException(status_code=400, detail="Invalid image ID")
+        
+        # Find the original image file
+        original_file = None
+        file_ext = None
+        
+        for filename in os.listdir(UPLOAD_DIR):
+            if filename.startswith(image_id) and '_' not in filename:
+                original_file = filename
+                file_ext = os.path.splitext(filename)[1]
+                break
+                
+        if not original_file:
+            raise HTTPException(status_code=404, detail="Original image not found")
+            
+        # Load the original image
+        original_path = os.path.join(UPLOAD_DIR, original_file)
+        try:
+            with Image.open(original_path) as image:
+                original_width, original_height = image.size
+                
+                # Remove existing variants 
+                for filename in os.listdir(UPLOAD_DIR):
+                    if filename.startswith(image_id) and '_' in filename:
+                        variant_path = os.path.join(UPLOAD_DIR, filename)
+                        if os.path.isfile(variant_path):
+                            os.remove(variant_path)
+                
+                # Generate new variants with updated focal point
+                variants = {}
+                sizes = {
+                    "facebook": (1200, 628),  # Facebook/Instagram feed
+                    "instagram_square": (1080, 1080),  # Instagram square
+                    "story": (1080, 1920),  # Instagram/Facebook story
+                    "twitter": (1200, 675),  # Twitter feed
+                    "linkedin": (1200, 627),  # LinkedIn feed
+                    "thumbnail": (400, 400),  # General thumbnail
+                }
+                
+                for name, (target_width, target_height) in sizes.items():
+                    variant_filename = f"{image_id}_{name}{file_ext}"
+                    variant_path = os.path.join(UPLOAD_DIR, variant_filename)
+                    
+                    # Create a copy to avoid modifying the original
+                    img_copy = image.copy()
+                    
+                    # Calculate target dimensions maintaining aspect ratio
+                    original_aspect = original_width / original_height
+                    target_aspect = target_width / target_height
+                    
+                    # Determine crop box based on focal point
+                    # Convert focal point percentages to pixel coordinates
+                    fx = (x / 100) * original_width
+                    fy = (y / 100) * original_height
+                    
+                    if original_aspect > target_aspect:  # Original is wider
+                        # Calculate height-based crop width
+                        crop_height = original_height
+                        crop_width = crop_height * target_aspect
+                        
+                        # Adjust left position based on focal point
+                        left = max(0, min(fx - (crop_width / 2), original_width - crop_width))
+                        top = 0
+                    else:  # Original is taller
+                        # Calculate width-based crop height
+                        crop_width = original_width
+                        crop_height = crop_width / target_aspect
+                        
+                        # Adjust top position based on focal point
+                        top = max(0, min(fy - (crop_height / 2), original_height - crop_height))
+                        left = 0
+                        
+                    # Crop the image based on calculated dimensions
+                    right = left + crop_width
+                    bottom = top + crop_height
+                    img_copy = img_copy.crop((int(left), int(top), int(right), int(bottom)))
+                    
+                    # Resize to target dimensions
+                    img_copy = img_copy.resize((target_width, target_height), Image.LANCZOS)
+                    
+                    # Optimize and save
+                    quality = 85  # Default quality
+                    if file_ext.lower() in ['.jpg', '.jpeg']:
+                        img_copy.save(variant_path, "JPEG", quality=quality, optimize=True)
+                    elif file_ext.lower() == '.png':
+                        img_copy.save(variant_path, "PNG", optimize=True)
+                    elif file_ext.lower() == '.gif':
+                        img_copy.save(variant_path, "GIF")
+                    elif file_ext.lower() == '.webp':
+                        img_copy.save(variant_path, "WEBP", quality=quality)
+                        
+                    # Add to variants
+                    variants[name] = f"/uploads/images/{variant_filename}"
+                
+                # Return updated image information
+                return {
+                    "success": True,
+                    "image_id": image_id,
+                    "url": f"/uploads/images/{original_file}",
+                    "width": original_width,
+                    "height": original_height,
+                    "focal_point": {"x": x, "y": y},
+                    "variants": variants
+                }
+                
+        except Exception as e:
+            logger.error(f"Error processing image: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+    
+    except Exception as e:
+        logger.error(f"Error updating focal point: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating focal point: {str(e)}")
