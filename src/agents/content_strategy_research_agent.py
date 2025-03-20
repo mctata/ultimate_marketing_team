@@ -7,7 +7,7 @@ import re
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
-from src.ultimate_marketing_team.agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent
 
 class ContentStrategyResearchAgent(BaseAgent):
     """Agent responsible for content strategy research and development.
