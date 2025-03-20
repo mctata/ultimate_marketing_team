@@ -51,6 +51,8 @@ export interface Ad {
   headline: string;
   description: string;
   image_url: string;
+  image_variants?: Record<string, string>;  // Platform-specific image variants
+  image_focal_point?: { x: number; y: number };  // Stored focal point
   call_to_action: string;
   url: string;
   performance: Record<string, number>;

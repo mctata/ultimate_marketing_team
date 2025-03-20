@@ -66,9 +66,17 @@ const AdPreview = ({ ad, imageData }: AdPreviewProps) => {
   
   // Helper function to get the optimal image for each platform
   const getImageForPlatform = (platform: string): string => {
+    // First check imageData object from props
     if (imageData && imageData.variants && imageData.variants[platform]) {
       return imageData.variants[platform];
     }
+    
+    // Then check if the ad has variants directly
+    if (ad.image_variants && ad.image_variants[platform]) {
+      return ad.image_variants[platform];
+    }
+    
+    // Fall back to the original image URL or placeholder
     return ad.image_url || 'https://via.placeholder.com/800x400?text=Ad+Image';
   };
   

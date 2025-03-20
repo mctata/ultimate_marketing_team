@@ -118,6 +118,23 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
   // Set form data from existing ad if available
   useEffect(() => {
     if (adId && existingAd) {
+      // Prepare image data if the ad has focal point and variants information
+      let imageData: string | undefined;
+      
+      if (existingAd.image_focal_point && existingAd.image_url) {
+        const reconstructedImageData: ImageData = {
+          image_id: existingAd.id,
+          url: existingAd.image_url,
+          filename: existingAd.image_url.split('/').pop() || 'image.jpg',
+          width: 1200, // Default if not available
+          height: 628, // Default if not available
+          focal_point: existingAd.image_focal_point,
+          variants: existingAd.image_variants || {}
+        };
+        
+        imageData = JSON.stringify(reconstructedImageData);
+      }
+      
       setFormData({
         name: existingAd.name,
         status: existingAd.status,
@@ -127,6 +144,7 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
         call_to_action: existingAd.call_to_action,
         url: existingAd.url,
         content_id: existingAd.content_id,
+        image_data: imageData,
       });
     }
   }, [adId, existingAd]);
@@ -227,14 +245,23 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
       setLoading(true);
       setError(null);
       
-      // In a real application with a backend:
-      // 1. First upload any image file that hasn't been uploaded yet
-      // 2. Wait for the upload to complete and get the permanent URL
-      // 3. Update the formData with the permanent URL
-      // 4. Then create/update the ad with the permanent URL
+      // Prepare the ad data, extracting focal point and image variants from the image_data
+      const adData = { ...formData };
       
-      // For this implementation, we're using the object URL directly
-      // In production, you would replace this with code to ensure the image is uploaded first
+      if (formData.image_data) {
+        try {
+          const imageData = JSON.parse(formData.image_data) as ImageData;
+          
+          // Add the focal point and variants to the ad data
+          adData.image_focal_point = imageData.focal_point;
+          adData.image_variants = imageData.variants;
+          
+          // Remove the temporary image_data field as it's not part of the Ad interface
+          delete adData.image_data;
+        } catch (e) {
+          console.warn('Could not parse image data', e);
+        }
+      }
       
       if (adId) {
         // Update existing ad
@@ -242,14 +269,14 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
           campaignId,
           adSetId,
           adId,
-          ad: formData
+          ad: adData
         })).unwrap();
       } else {
         // Create new ad
         await dispatch(createAd({
           campaignId,
           adSetId,
-          ad: formData as Omit<Ad, 'id' | 'ad_set_id'>
+          ad: adData as Omit<Ad, 'id' | 'ad_set_id'>
         })).unwrap();
       }
       
@@ -275,6 +302,17 @@ const AdEditor = ({ campaignId, adSetId, adId, onSave, onCancel }: AdEditorProps
     url: formData.url || 'https://example.com',
     performance: {},
   };
+  
+  // Add focal point and variants if available
+  if (formData.image_data) {
+    try {
+      const imageData = JSON.parse(formData.image_data) as ImageData;
+      previewAd.image_focal_point = imageData.focal_point;
+      previewAd.image_variants = imageData.variants;
+    } catch (e) {
+      console.warn('Could not parse image data for preview', e);
+    }
+  }
   
   return (
     <Box>
