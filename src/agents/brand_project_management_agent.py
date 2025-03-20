@@ -1,14 +1,22 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple, BinaryIO
 from loguru import logger
 import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import json
+import os
+import uuid
+import mimetypes
+from pathlib import Path
+import base64
+from io import BytesIO
 
 from src.ultimate_marketing_team.agents.base_agent import BaseAgent
 from src.ultimate_marketing_team.core.database import get_db
+from src.ultimate_marketing_team.core.security import create_audit_log
 from src.ultimate_marketing_team.models.project import Brand, Project, ProjectType
+from src.ultimate_marketing_team.models.system import AuditLog, User
 
 class BrandProjectManagementAgent(BaseAgent):
     """Agent responsible for brand and project management.
@@ -23,6 +31,28 @@ class BrandProjectManagementAgent(BaseAgent):
         self.enable_web_scraping = kwargs.get("enable_web_scraping", True)
         self.enable_rbac = kwargs.get("enable_rbac", True)
         self.enable_audit_trails = kwargs.get("enable_audit_trails", True)
+        
+        # File upload configuration
+        self.enable_file_uploads = kwargs.get("enable_file_uploads", True)
+        self.upload_directory = kwargs.get("upload_directory", "/uploads")
+        self.allowed_extensions = kwargs.get("allowed_extensions", ["jpg", "jpeg", "png", "gif", "svg", "webp"])
+        self.max_file_size = kwargs.get("max_file_size", 10 * 1024 * 1024)  # 10MB default
+        
+        # Make sure upload directory exists
+        if self.enable_file_uploads and not os.path.exists(self.upload_directory):
+            os.makedirs(self.upload_directory, exist_ok=True)
+            os.makedirs(os.path.join(self.upload_directory, "logos"), exist_ok=True)
+        
+        # Cache configuration
+        self.enable_caching = kwargs.get("enable_caching", True)
+        self.cache_ttl = kwargs.get("cache_ttl", 3600)  # 1 hour default
+        
+        # Health check configuration
+        self.health_check_interval = kwargs.get("health_check_interval", 60)  # 60 seconds default
+        
+        # Webhook configuration
+        self.webhook_urls = kwargs.get("webhook_urls", {})
+        
         self.default_project_types = [
             {"name": "Email", "description": "Email marketing campaigns and newsletters"},
             {"name": "Landing Page", "description": "Website landing pages for marketing campaigns"},
@@ -45,8 +75,27 @@ class BrandProjectManagementAgent(BaseAgent):
         self.register_task_handler("get_project_types", self.handle_get_project_types)
         self.register_task_handler("create_project_type", self.handle_create_project_type)
         
+        # File upload handlers
+        self.register_task_handler("upload_brand_logo", self.handle_upload_brand_logo)
+        self.register_task_handler("delete_brand_logo", self.handle_delete_brand_logo)
+        
+        # Health check handlers
+        self.register_task_handler("health_check", self.handle_health_check)
+        
+        # Webhook handlers
+        self.register_task_handler("register_webhook", self.handle_register_webhook)
+        self.register_task_handler("unregister_webhook", self.handle_unregister_webhook)
+        
+        # Register event handlers for other agents' events
+        self.register_event_handler("user_created", self.handle_user_created_event)
+        self.register_event_handler("content_published", self.handle_content_published_event)
+        
         # Initialize project types if they don't exist
         self._initialize_project_types()
+        
+        # Start health check background task if enabled
+        if hasattr(self, "health_check_interval") and self.health_check_interval > 0:
+            self.start_background_task(self._background_health_check, self.health_check_interval)
     
     def _initialize_project_types(self):
         """Initialize default project types if they don't exist in the database."""
@@ -115,16 +164,24 @@ class BrandProjectManagementAgent(BaseAgent):
                 db.flush()  # Flush to get the ID
                 
                 # Record audit trail if enabled
-                if self.enable_audit_trails:
-                    self._record_audit_trail(
-                        action="brand_onboarded",
-                        user_id=user_id,
-                        details={
-                            "brand_id": new_brand.id,
-                            "company_name": company_name,
-                            "website_url": website_url
-                        }
-                    )
+                self._record_audit_trail(
+                    action="brand_onboarded",
+                    user_id=user_id,
+                    resource_type="brand",
+                    resource_id=new_brand.id,
+                    new_state={
+                        "name": company_name,
+                        "website_url": website_url,
+                        "description": new_brand.description,
+                        "logo_url": new_brand.logo_url,
+                        "guidelines": merged_guidelines
+                    },
+                    details={
+                        "brand_id": new_brand.id,
+                        "company_name": company_name,
+                        "website_url": website_url
+                    }
+                )
                 
                 db.commit()
                 
@@ -234,11 +291,56 @@ class BrandProjectManagementAgent(BaseAgent):
             logger.error(f"Error scraping website {url}: {e}")
             return {}
     
-    def _record_audit_trail(self, action: str, user_id: Any, details: Dict[str, Any]):
-        """Record an audit trail entry."""
-        # TODO: Implement actual audit trail recording in database
-        # For now, just log the audit trail
-        logger.info(f"AUDIT: {action} by user {user_id} - {details}")
+    def _record_audit_trail(self, action: str, user_id: Any, resource_type: str, resource_id: int, 
+                        previous_state: Optional[Dict[str, Any]] = None, 
+                        new_state: Optional[Dict[str, Any]] = None,
+                        ip_address: Optional[str] = None,
+                        user_agent: Optional[str] = None,
+                        details: Optional[Dict[str, Any]] = None):
+        """Record an audit trail entry in the database."""
+        try:
+            # Log the audit trail as a fallback
+            log_msg = f"AUDIT: {action} - {resource_type}:{resource_id} by user {user_id}"
+            if details:
+                log_msg += f" - {json.dumps(details)}"
+            logger.info(log_msg)
+            
+            # Create audit log in database if enabled
+            if self.enable_audit_trails:
+                with get_db() as db:
+                    # Convert action from our domain terminology to standard CRUD terminology
+                    action_mapping = {
+                        "brand_onboarded": "create",
+                        "brand_updated": "update",
+                        "project_created": "create",
+                        "project_updated": "update",
+                        "project_assigned": "assign",
+                        "project_type_created": "create",
+                        "logo_uploaded": "create",
+                        "logo_deleted": "delete"
+                    }
+                    
+                    std_action = action_mapping.get(action, action)
+                    
+                    # Merge details into state if provided
+                    if details and not new_state:
+                        new_state = details
+                    
+                    # Create the audit log entry
+                    create_audit_log(
+                        db=db,
+                        user_id=user_id,
+                        action=std_action,
+                        resource_type=resource_type,
+                        resource_id=resource_id,
+                        previous_state=previous_state,
+                        new_state=new_state,
+                        ip_address=ip_address,
+                        user_agent=user_agent
+                    )
+                    
+        except Exception as e:
+            logger.error(f"Error recording audit trail: {e}")
     
     def handle_update_brand(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle brand update process."""
@@ -283,16 +385,34 @@ class BrandProjectManagementAgent(BaseAgent):
                     updated_guidelines = {**current_guidelines, **updates["guidelines"]}
                     brand.guidelines = updated_guidelines
                 
-                # Record audit trail if enabled
-                if self.enable_audit_trails:
-                    self._record_audit_trail(
-                        action="brand_updated",
-                        user_id=user_id,
-                        details={
-                            "brand_id": brand_id,
-                            "fields_updated": list(updates.keys())
-                        }
-                    )
+                # Capture the previous state for audit trail
+                previous_state = {
+                    "name": brand.name,
+                    "website_url": brand.website_url,
+                    "description": brand.description,
+                    "logo_url": brand.logo_url,
+                    "guidelines": brand.guidelines
+                }
+                
+                # Record audit trail
+                self._record_audit_trail(
+                    action="brand_updated",
+                    user_id=user_id,
+                    resource_type="brand",
+                    resource_id=brand_id,
+                    previous_state=previous_state,
+                    new_state={
+                        "name": brand.name,
+                        "website_url": brand.website_url,
+                        "description": brand.description,
+                        "logo_url": brand.logo_url,
+                        "guidelines": brand.guidelines
+                    },
+                    details={
+                        "brand_id": brand_id,
+                        "fields_updated": list(updates.keys())
+                    }
+                )
                 
                 db.commit()
                 
@@ -804,6 +924,236 @@ class BrandProjectManagementAgent(BaseAgent):
                 "error": f"Failed to assign project: {str(e)}"
             }
     
+    def handle_upload_brand_logo(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle brand logo upload."""
+        brand_id = task.get("brand_id")
+        logo_data = task.get("logo_data")  # Base64 encoded image data
+        file_name = task.get("file_name", "")
+        user_id = task.get("user_id")
+        content_type = task.get("content_type")
+        
+        if not self.enable_file_uploads:
+            return {
+                "status": "error",
+                "error": "File uploads are disabled"
+            }
+        
+        # Log the upload attempt
+        logger.info(f"Uploading logo for brand: {brand_id} by user {user_id}")
+        
+        # Check RBAC permissions if enabled
+        if self.enable_rbac:
+            has_access = self._check_brand_access(brand_id, user_id)
+            if not has_access:
+                return {
+                    "status": "error",
+                    "error": "Access denied"
+                }
+        
+        try:
+            # Validate input
+            if not logo_data:
+                return {
+                    "status": "error",
+                    "error": "No logo data provided"
+                }
+            
+            # Check if brand exists
+            with get_db() as db:
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Get previous logo URL for cleanup
+                previous_logo_url = brand.logo_url
+                previous_logo_path = None
+                
+                if previous_logo_url and previous_logo_url.startswith("/uploads/"):
+                    previous_logo_path = os.path.join(
+                        os.path.dirname(self.upload_directory), 
+                        previous_logo_url.lstrip("/")
+                    )
+                
+                # Process the image data
+                try:
+                    # Decode base64 data
+                    logo_binary = base64.b64decode(logo_data)
+                    
+                    # Determine file extension
+                    if not file_name:
+                        # Generate a filename if none provided
+                        if content_type:
+                            ext = mimetypes.guess_extension(content_type) or ".png"
+                        else:
+                            ext = ".png"  # Default to png
+                        file_name = f"{brand.name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:8]}{ext}"
+                    else:
+                        # Get extension from provided filename
+                        _, ext = os.path.splitext(file_name)
+                        if not ext:
+                            ext = ".png"  # Default if no extension
+                            file_name += ext
+                    
+                    # Validate file extension
+                    if ext.lstrip(".").lower() not in self.allowed_extensions:
+                        return {
+                            "status": "error",
+                            "error": f"File type not allowed. Allowed types: {', '.join(self.allowed_extensions)}"
+                        }
+                    
+                    # Create directory structure
+                    logo_dir = os.path.join(self.upload_directory, "logos", str(brand_id))
+                    os.makedirs(logo_dir, exist_ok=True)
+                    
+                    # Full path to save the file
+                    file_path = os.path.join(logo_dir, file_name)
+                    
+                    # Save the file
+                    with open(file_path, "wb") as f:
+                        f.write(logo_binary)
+                    
+                    # Generate URL path for the logo
+                    logo_url = f"/uploads/logos/{brand_id}/{file_name}"
+                    
+                    # Update brand with new logo URL
+                    brand.logo_url = logo_url
+                    
+                    # Record audit trail
+                    self._record_audit_trail(
+                        action="logo_uploaded",
+                        user_id=user_id,
+                        resource_type="brand",
+                        resource_id=brand_id,
+                        previous_state={"logo_url": previous_logo_url},
+                        new_state={"logo_url": logo_url},
+                        details={
+                            "brand_id": brand_id,
+                            "file_name": file_name
+                        }
+                    )
+                    
+                    # Delete previous logo file if it exists
+                    if previous_logo_path and os.path.exists(previous_logo_path) and previous_logo_path != file_path:
+                        try:
+                            os.remove(previous_logo_path)
+                            logger.info(f"Deleted previous logo file: {previous_logo_path}")
+                        except Exception as e:
+                            logger.warning(f"Error deleting previous logo file: {e}")
+                    
+                    # Commit changes
+                    db.commit()
+                    
+                    # Return success
+                    return {
+                        "status": "success",
+                        "message": f"Logo uploaded successfully for brand {brand_id}",
+                        "logo_url": logo_url,
+                        "brand_id": brand_id
+                    }
+                    
+                except base64.binascii.Error:
+                    return {
+                        "status": "error",
+                        "error": "Invalid base64 encoded image data"
+                    }
+                
+        except Exception as e:
+            logger.error(f"Error uploading brand logo: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to upload logo: {str(e)}"
+            }
+    
+    def handle_delete_brand_logo(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle brand logo deletion."""
+        brand_id = task.get("brand_id")
+        user_id = task.get("user_id")
+        
+        if not self.enable_file_uploads:
+            return {
+                "status": "error",
+                "error": "File uploads are disabled"
+            }
+        
+        # Log the deletion attempt
+        logger.info(f"Deleting logo for brand: {brand_id} by user {user_id}")
+        
+        # Check RBAC permissions if enabled
+        if self.enable_rbac:
+            has_access = self._check_brand_access(brand_id, user_id)
+            if not has_access:
+                return {
+                    "status": "error",
+                    "error": "Access denied"
+                }
+        
+        try:
+            with get_db() as db:
+                # Find the brand
+                brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                if not brand:
+                    return {
+                        "status": "error",
+                        "error": f"Brand with ID {brand_id} not found"
+                    }
+                
+                # Get previous logo URL for deletion
+                previous_logo_url = brand.logo_url
+                
+                if not previous_logo_url:
+                    return {
+                        "status": "error",
+                        "error": "Brand does not have a logo to delete"
+                    }
+                
+                # Only delete local files, not external URLs
+                if previous_logo_url.startswith("/uploads/"):
+                    previous_logo_path = os.path.join(
+                        os.path.dirname(self.upload_directory), 
+                        previous_logo_url.lstrip("/")
+                    )
+                    
+                    # Delete the file if it exists
+                    if os.path.exists(previous_logo_path):
+                        try:
+                            os.remove(previous_logo_path)
+                            logger.info(f"Deleted logo file: {previous_logo_path}")
+                        except Exception as e:
+                            logger.warning(f"Error deleting logo file: {e}")
+                
+                # Record audit trail
+                self._record_audit_trail(
+                    action="logo_deleted",
+                    user_id=user_id,
+                    resource_type="brand",
+                    resource_id=brand_id,
+                    previous_state={"logo_url": previous_logo_url},
+                    new_state={"logo_url": None},
+                    details={
+                        "brand_id": brand_id
+                    }
+                )
+                
+                # Update brand to remove logo URL
+                brand.logo_url = None
+                db.commit()
+                
+                return {
+                    "status": "success",
+                    "message": f"Logo deleted successfully for brand {brand_id}",
+                    "brand_id": brand_id
+                }
+                
+        except Exception as e:
+            logger.error(f"Error deleting brand logo: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to delete logo: {str(e)}"
+            }
+    
     def handle_get_brand_projects(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Handle request for all projects belonging to a brand."""
         brand_id = task.get("brand_id")
@@ -872,3 +1222,254 @@ class BrandProjectManagementAgent(BaseAgent):
                 "status": "error",
                 "error": f"Failed to retrieve brand projects: {str(e)}"
             }
+    
+    def handle_health_check(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle health check request."""
+        components_to_check = task.get("components", ["database", "messaging", "files"])
+        health_status = {
+            "database": True,
+            "messaging": True,
+            "files": True,
+            "external_integrations": {}
+        }
+        
+        # Check database connection
+        if "database" in components_to_check:
+            try:
+                with get_db() as db:
+                    # Execute a simple query to verify connection
+                    db.execute("SELECT 1").fetchone()
+            except Exception as e:
+                health_status["database"] = False
+                logger.error(f"Database health check failed: {e}")
+        
+        # Check messaging system
+        if "messaging" in components_to_check:
+            try:
+                # Verify connection to RabbitMQ
+                is_connected = hasattr(self, "message_client") and self.message_client.is_connected()
+                health_status["messaging"] = is_connected
+                if not is_connected:
+                    logger.error("Messaging system health check failed: Not connected")
+            except Exception as e:
+                health_status["messaging"] = False
+                logger.error(f"Messaging system health check failed: {e}")
+        
+        # Check file system access
+        if "files" in components_to_check and self.enable_file_uploads:
+            try:
+                test_file_path = os.path.join(self.upload_directory, "health_check.txt")
+                with open(test_file_path, "w") as f:
+                    f.write("Health check")
+                os.remove(test_file_path)
+            except Exception as e:
+                health_status["files"] = False
+                logger.error(f"File system health check failed: {e}")
+        
+        # Check external integrations if specified
+        integrations = task.get("integrations", [])
+        for integration in integrations:
+            try:
+                # For each integration, check its status
+                # This is a placeholder and should be replaced with actual integration checks
+                health_status["external_integrations"][integration] = True
+            except Exception as e:
+                health_status["external_integrations"][integration] = False
+                logger.error(f"Integration {integration} health check failed: {e}")
+        
+        # Overall status is healthy only if all components are healthy
+        overall_status = all([
+            health_status["database"],
+            health_status["messaging"],
+            health_status["files"],
+            all(health_status["external_integrations"].values()) if health_status["external_integrations"] else True
+        ])
+        
+        return {
+            "status": "success",
+            "health": "healthy" if overall_status else "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "components": health_status
+        }
+    
+    def _background_health_check(self):
+        """Background task for regular health checks."""
+        try:
+            health = self.handle_health_check({"components": ["database", "messaging", "files"]})
+            
+            if health.get("health") == "unhealthy":
+                logger.warning(f"Background health check failed: {health}")
+                
+                # Send alerts if configured
+                if hasattr(self, "webhook_urls") and "alerts" in self.webhook_urls:
+                    try:
+                        requests.post(
+                            self.webhook_urls["alerts"],
+                            json={
+                                "event": "health_check_failed",
+                                "agent": self.name,
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "details": health
+                            },
+                            timeout=5
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send health check alert: {e}")
+        except Exception as e:
+            logger.error(f"Error in background health check: {e}")
+    
+    def handle_register_webhook(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle webhook registration."""
+        webhook_type = task.get("webhook_type")
+        url = task.get("url")
+        user_id = task.get("user_id")
+        
+        if not webhook_type or not url:
+            return {
+                "status": "error",
+                "error": "Missing required parameters: webhook_type and url"
+            }
+        
+        try:
+            # Validate URL
+            response = requests.head(url, timeout=5)
+            response.raise_for_status()
+            
+            # Store webhook
+            if not hasattr(self, "webhook_urls"):
+                self.webhook_urls = {}
+            
+            self.webhook_urls[webhook_type] = url
+            
+            # Record registration
+            logger.info(f"Webhook registered: {webhook_type} - {url} by user {user_id}")
+            
+            return {
+                "status": "success",
+                "message": f"Webhook {webhook_type} registered successfully",
+                "webhook_type": webhook_type,
+                "url": url
+            }
+        except requests.RequestException as e:
+            logger.error(f"Error validating webhook URL: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to validate webhook URL: {str(e)}"
+            }
+        except Exception as e:
+            logger.error(f"Error registering webhook: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to register webhook: {str(e)}"
+            }
+    
+    def handle_unregister_webhook(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle webhook unregistration."""
+        webhook_type = task.get("webhook_type")
+        user_id = task.get("user_id")
+        
+        if not webhook_type:
+            return {
+                "status": "error",
+                "error": "Missing required parameter: webhook_type"
+            }
+        
+        try:
+            # Remove webhook
+            if hasattr(self, "webhook_urls") and webhook_type in self.webhook_urls:
+                url = self.webhook_urls.pop(webhook_type)
+                logger.info(f"Webhook unregistered: {webhook_type} - {url} by user {user_id}")
+                
+                return {
+                    "status": "success",
+                    "message": f"Webhook {webhook_type} unregistered successfully",
+                    "webhook_type": webhook_type
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"Webhook {webhook_type} not found"
+                }
+        except Exception as e:
+            logger.error(f"Error unregistering webhook: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to unregister webhook: {str(e)}"
+            }
+    
+    def handle_user_created_event(self, event: Dict[str, Any]) -> None:
+        """Handle user created event from auth agent."""
+        try:
+            user_id = event.get("user_id")
+            username = event.get("username")
+            
+            logger.info(f"Received user_created event for user {username} (ID: {user_id})")
+            
+            # Send notification using webhooks if configured
+            if hasattr(self, "webhook_urls") and "user_notifications" in self.webhook_urls:
+                try:
+                    requests.post(
+                        self.webhook_urls["user_notifications"],
+                        json={
+                            "event": "user_created",
+                            "user_id": user_id,
+                            "username": username,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                        timeout=5
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send user_created notification: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error handling user_created event: {e}")
+    
+    def handle_content_published_event(self, event: Dict[str, Any]) -> None:
+        """Handle content published event from content agent."""
+        try:
+            content_id = event.get("content_id")
+            project_id = event.get("project_id")
+            brand_id = event.get("brand_id")
+            published_by = event.get("published_by")
+            
+            logger.info(f"Received content_published event for content {content_id} under project {project_id}")
+            
+            # Update project status if needed
+            if project_id:
+                with get_db() as db:
+                    project = db.query(Project).filter(Project.id == project_id).first()
+                    if project and project.status != "published":
+                        project.status = "published"
+                        db.commit()
+                        logger.info(f"Updated project {project_id} status to 'published'")
+            
+            # Send notification using webhooks if configured
+            if hasattr(self, "webhook_urls") and "content_notifications" in self.webhook_urls:
+                try:
+                    # Get additional project and brand info
+                    with get_db() as db:
+                        project = db.query(Project).filter(Project.id == project_id).first()
+                        brand = db.query(Brand).filter(Brand.id == brand_id).first()
+                        
+                        project_name = project.name if project else "Unknown"
+                        brand_name = brand.name if brand else "Unknown"
+                    
+                    requests.post(
+                        self.webhook_urls["content_notifications"],
+                        json={
+                            "event": "content_published",
+                            "content_id": content_id,
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "brand_id": brand_id,
+                            "brand_name": brand_name,
+                            "published_by": published_by,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                        timeout=5
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send content_published notification: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error handling content_published event: {e}")

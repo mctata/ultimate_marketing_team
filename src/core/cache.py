@@ -1,8 +1,16 @@
 import json
 import time
-from typing import Any, Optional, Dict, Union, List
+import hashlib
+import inspect
+import functools
+import logging
+from typing import Any, Optional, Dict, Union, List, Callable, TypeVar, cast
 from redis import Redis
 from src.ultimate_marketing_team.core.settings import settings
+
+# Type definitions for function decorators
+F = TypeVar('F', bound=Callable[..., Any])
+T = TypeVar('T')
 
 class RedisCache:
     """Redis cache client for storing and retrieving data."""
@@ -108,3 +116,138 @@ class RateLimiter:
 # Create global instances
 cache = RedisCache()
 rate_limiter = RateLimiter()
+
+
+def generate_cache_key(func: Callable, args: tuple, kwargs: dict) -> str:
+    """Generate a unique cache key based on function name and arguments."""
+    # Get function module and name
+    module = func.__module__
+    name = func.__qualname__
+    
+    # Convert args and kwargs to strings for hashing
+    args_str = ','.join(str(arg) for arg in args)
+    kwargs_str = ','.join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+    
+    # Create a unique key
+    key_components = [module, name, args_str, kwargs_str]
+    key_base = ':'.join(key_components)
+    
+    # Hash the key to ensure reasonable length
+    key_hash = hashlib.md5(key_base.encode()).hexdigest()
+    
+    return f"cache:{name}:{key_hash}"
+
+
+def cached(ttl: int = 3600) -> Callable[[F], F]:
+    """
+    Cache decorator for functions.
+    
+    Args:
+        ttl: Time to live in seconds (default: 1 hour)
+        
+    Returns:
+        Decorated function that caches results
+    """
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Handle cache busting with a special kwarg
+            skip_cache = kwargs.pop('_skip_cache', False)
+            
+            # Generate unique cache key
+            cache_key = generate_cache_key(func, args, kwargs)
+            
+            # Try to get from cache first if not skipping cache
+            if not skip_cache:
+                cached_result = cache.get(cache_key)
+                if cached_result is not None:
+                    return cached_result
+            
+            # Execute function if not in cache or skipping cache
+            result = func(*args, **kwargs)
+            
+            # Cache the result
+            if not skip_cache:
+                try:
+                    cache.set(cache_key, result, expire=ttl)
+                except Exception as e:
+                    logging.warning(f"Failed to cache result for {func.__name__}: {e}")
+            
+            return result
+        
+        # Add a method to invalidate cache for this function
+        def invalidate_cache(*args: Any, **kwargs: Any) -> None:
+            cache_key = generate_cache_key(func, args, kwargs)
+            cache.delete(cache_key)
+        
+        wrapper.invalidate_cache = invalidate_cache  # type: ignore
+        
+        return cast(F, wrapper)
+    
+    return decorator
+
+
+def method_cached(ttl: int = 3600) -> Callable[[F], F]:
+    """
+    Cache decorator for class methods.
+    Same as @cached but skips the first argument (self) when generating cache key.
+    
+    Args:
+        ttl: Time to live in seconds (default: 1 hour)
+        
+    Returns:
+        Decorated method that caches results
+    """
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            # Handle cache busting with a special kwarg
+            skip_cache = kwargs.pop('_skip_cache', False)
+            
+            # Generate unique cache key (skipping self)
+            cache_key = generate_cache_key(func, args, kwargs)
+            
+            # Try to get from cache first if not skipping cache
+            if not skip_cache:
+                cached_result = cache.get(cache_key)
+                if cached_result is not None:
+                    return cached_result
+            
+            # Execute function if not in cache or skipping cache
+            result = func(self, *args, **kwargs)
+            
+            # Cache the result
+            if not skip_cache:
+                try:
+                    cache.set(cache_key, result, expire=ttl)
+                except Exception as e:
+                    logging.warning(f"Failed to cache result for {func.__name__}: {e}")
+            
+            return result
+        
+        # Add a method to invalidate cache for this method
+        def invalidate_cache(self: Any, *args: Any, **kwargs: Any) -> None:
+            cache_key = generate_cache_key(func, args, kwargs)
+            cache.delete(cache_key)
+        
+        wrapper.invalidate_cache = invalidate_cache  # type: ignore
+        
+        return cast(F, wrapper)
+    
+    return decorator
+
+
+def bulk_invalidate_cache(pattern: str) -> int:
+    """
+    Invalidate all cache keys matching a pattern.
+    
+    Args:
+        pattern: Redis key pattern (e.g., "cache:get_brands:*")
+        
+    Returns:
+        Number of invalidated keys
+    """
+    keys = cache.client.keys(pattern)
+    if keys:
+        return cache.client.delete(*keys)
+    return 0
