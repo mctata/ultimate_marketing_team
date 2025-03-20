@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 
-from src.ultimate_marketing_team.core.settings import settings
+from src.core.settings import settings
 
 # Create SQLAlchemy engine
 engine = create_engine(str(settings.DATABASE_URL))

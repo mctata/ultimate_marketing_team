@@ -4,7 +4,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.ultimate_marketing_team.core.database import Base
+from src.core.database import Base
 
 class SocialAccount(Base):
     """Social media account model for integration with social platforms."""

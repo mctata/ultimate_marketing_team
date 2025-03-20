@@ -4,7 +4,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Floa
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.ultimate_marketing_team.core.database import Base
+from src.core.database import Base
 
 class AdCampaign(Base):
     """Ad campaign model for managing advertising campaigns."""

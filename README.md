@@ -6,7 +6,7 @@ Welcome to the Ultimate Marketing Team platform, powered by [Landing Pad Digital
 
 The Ultimate Marketing Team platform serves as a complete marketing department replacement, managing the entire marketing lifecycle from strategy to execution. Our integrated team of specialized AI agents collaborates seamlessly to handle content strategy, creation, publishing, engagement, and advertising while leveraging real-time data, competitor research, and predictive analytics.
 
-Designed for large enterprise environments (like Google), the platform supports multiple brands and project types with enterprise-grade security and seamless integrations with existing marketing technology stacks.
+The platform is designed to support multiple brands and project types with enterprise-grade IT security and seamless integrations with existing marketing technology stacks.
 
 ## System Architecture
 
@@ -85,7 +85,7 @@ The platform processes these essential inputs to customize operations for enterp
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/landingpad-digital/ultimate-marketing-team.git
+git clone https://github.com/landingpad-digital/ultimate_marketing_team.git
 cd ultimate-marketing-team
 ```
 
