@@ -97,35 +97,66 @@ async def register(user: UserCreate):
 @router.post("/oauth", response_model=Dict[str, str])
 async def oauth_login(request: OAuthRequest):
     """Initiate OAuth login flow."""
-    # Create OAuth authorization URL
-    providers = {
-        "google": "https://accounts.google.com/o/oauth2/auth",
-        "facebook": "https://www.facebook.com/dialog/oauth",
-        "linkedin": "https://www.linkedin.com/oauth/v2/authorization"
+    from src.agents.auth_integration_agent import AuthIntegrationAgent
+    
+    # Create an instance of the agent
+    auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
+    
+    # Prepare task
+    task = {
+        "task_type": "create_oauth_url_task",
+        "provider": request.provider,
+        "redirect_uri": request.redirect_uri,
+        "state": f"auth-{uuid.uuid4()}"
     }
     
-    if request.provider not in providers:
+    # Execute task
+    result = auth_agent.handle_create_oauth_url(task)
+    
+    if result.get("status") != "success":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported OAuth provider: {request.provider}"
+            detail=result.get("error", f"Failed to create OAuth URL for {request.provider}")
         )
     
-    # In a real implementation, this would construct a proper OAuth URL
-    # with all required parameters
-    auth_url = f"{providers[request.provider]}?redirect_uri={request.redirect_uri}"
-    
-    return {"auth_url": auth_url}
+    return {"auth_url": result["oauth_url"]}
 
 @router.post("/oauth/callback", response_model=Token)
 async def oauth_callback(callback: OAuthCallback):
     """Handle OAuth callback and generate token."""
-    # In a real implementation, this would exchange the authorization code
-    # for an access token and retrieve user information from the OAuth provider
+    from src.agents.auth_integration_agent import AuthIntegrationAgent
     
-    # For now, generate a mock user and token
-    user_email = f"user@{callback.provider}.example.com"
+    # Create an instance of the agent
+    auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
     
+    # Prepare task to handle the OAuth callback
+    task = {
+        "task_type": "user_authentication_task",
+        "auth_provider": callback.provider,
+        "auth_code": callback.code,
+        "redirect_uri": "http://localhost:8000/api/v1/auth/oauth/callback",  # Should be configurable
+        "state": callback.state
+    }
+    
+    # Execute task
+    result = auth_agent.handle_user_authentication(task)
+    
+    if result.get("status") != "success":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=result.get("error", f"Authentication failed for {callback.provider}")
+        )
+    
+    # Get user info from the result
+    user_info = result.get("user_info", {})
+    user_id = user_info.get("user_id", "")
+    user_email = user_info.get("email", f"user_{user_id}@{callback.provider}.example.com")
+    
+    # Create a JWT token for the user
     access_token = create_access_token(subject=user_email)
+    
+    # Store the OAuth token in the agent's secure storage
+    # This is now handled by the agent itself
     
     return {
         "access_token": access_token,
