@@ -21,6 +21,7 @@ const ContentABTest = lazy(() => import('./pages/content/ContentABTest'));
 const CampaignList = lazy(() => import('./pages/campaigns/CampaignList'));
 const CampaignEditor = lazy(() => import('./pages/campaigns/CampaignEditor'));
 const CampaignMetrics = lazy(() => import('./pages/campaigns/CampaignMetrics'));
+const AdSetDetail = lazy(() => import('./pages/campaigns/AdSetDetail'));
 
 // Loading component
 const LoadingScreen = () => (
@@ -65,6 +66,7 @@ function App() {
               <Route path="/campaigns/new" element={<CampaignEditor />} />
               <Route path="/campaigns/:id" element={<CampaignEditor />} />
               <Route path="/campaigns/:id/metrics" element={<CampaignMetrics />} />
+              <Route path="/campaigns/:campaignId/adsets/:adSetId" element={<AdSetDetail />} />
             </Route>
           </Route>
 
