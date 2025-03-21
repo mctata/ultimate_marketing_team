@@ -5,9 +5,10 @@ import time
 import random
 import os
 from datetime import datetime, timedelta
-import openai
+import asyncio
 
 from src.agents.base_agent import BaseAgent
+from src.agents.integrations.ai_integration import ai_client, AIRequestError, AIRateLimitExceeded
 
 class ContentCreationTestingAgent(BaseAgent):
     """Agent responsible for content creation and testing.
@@ -26,25 +27,32 @@ class ContentCreationTestingAgent(BaseAgent):
         # Default content variation count for A/B testing
         self.default_variation_count = kwargs.get("default_variation_count", 3)
         
-        # OpenAI API configuration (to be used in content generation)
-        self.openai_model = kwargs.get("openai_model", "gpt-4-turbo")
-        self.openai_api_key = kwargs.get("openai_api_key", os.getenv("OPENAI_API_KEY"))
-        self.max_tokens = kwargs.get("max_tokens", 4000)
+        # AI model configuration (for content generation)
+        self.primary_provider = kwargs.get("primary_provider", "openai")
+        self.primary_model = kwargs.get("primary_model", os.getenv("DEFAULT_CONTENT_MODEL", "gpt-4-turbo"))
+        self.backup_provider = kwargs.get("backup_provider", "anthropic")
+        self.backup_model = kwargs.get("backup_model", "claude-3-sonnet")
+        self.max_tokens = kwargs.get("max_tokens", int(os.getenv("MAX_TOKENS_PER_REQUEST", "4000")))
         self.temperature = kwargs.get("temperature", 0.7)
         
-        # Initialize the OpenAI client if API key is available
-        if self.openai_api_key:
-            openai.api_key = self.openai_api_key
-            self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
-            logger.info(f"OpenAI client initialized with model: {self.openai_model}")
-        else:
-            logger.warning("OpenAI API key not found. AI content generation will be simulated.")
-            self.openai_client = None
-            
+        # Whether to fallback to smaller models on rate limit or error
+        self.enable_model_fallback = kwargs.get(
+            "enable_model_fallback", 
+            os.getenv("AI_FALLBACK_TO_SMALLER_MODEL", "true").lower() == "true"
+        )
+        
+        # Models to try in order if primary fails
+        self.fallback_models = kwargs.get("fallback_models", [
+            {"provider": "openai", "model": "gpt-3.5-turbo"},
+            {"provider": "anthropic", "model": "claude-3-haiku"}
+        ])
+        
         # Cache key prefix for storing content variations
         self.content_variations_cache_prefix = "content_variations"
         # Cache key prefix for storing test results
         self.test_results_cache_prefix = "test_results"
+        
+        logger.info(f"Content Creation Agent initialized with primary model: {self.primary_provider}/{self.primary_model}")
     
     def _initialize(self):
         super()._initialize()
@@ -138,21 +146,21 @@ class ContentCreationTestingAgent(BaseAgent):
         
         variations = []
         
-        # Try to use OpenAI API if available
-        if self.enable_ai_content_generation and self.openai_client:
+        # Try to use AI provider if available
+        if self.enable_ai_content_generation:
             try:
-                # Generate content using OpenAI
-                variations = self._generate_content_with_openai(
+                # Generate content using our AI client
+                variations = asyncio.run(self._generate_content_with_ai(
                     project_type, 
                     content_topic, 
                     content_brief, 
                     brand_guidelines, 
                     variation_count
-                )
-                logger.info(f"Successfully generated {len(variations)} variations using OpenAI API")
+                ))
+                logger.info(f"Successfully generated {len(variations)} variations using AI ({self.primary_provider}/{self.primary_model})")
                 return variations
             except Exception as e:
-                logger.error(f"Error generating content with OpenAI: {e}")
+                logger.error(f"Error generating content with AI: {e}")
                 logger.info("Falling back to mock content generation")
         
         # Fallback to mock implementation
@@ -171,10 +179,17 @@ class ContentCreationTestingAgent(BaseAgent):
         
         return variations
         
-    def _generate_content_with_openai(self, project_type: str, content_topic: str,
-                                   content_brief: Dict[str, Any], brand_guidelines: Dict[str, Any],
-                                   variation_count: int) -> List[Dict[str, Any]]:
-        """Generate content variations using the OpenAI API."""
+    async def _generate_content_with_ai(self, project_type: str, content_topic: str,
+                                    content_brief: Dict[str, Any], brand_guidelines: Dict[str, Any],
+                                    variation_count: int) -> List[Dict[str, Any]]:
+        """Generate content variations using our AI client with advanced caching and rate limiting.
+        
+        This method handles:
+        - Load balancing across multiple AI providers
+        - Fallback to alternate models if rate limited
+        - Caching to reduce costs
+        - Parallel content generation
+        """
         variations = []
         
         # Format brand guidelines into a string
@@ -195,37 +210,217 @@ class ContentCreationTestingAgent(BaseAgent):
         # Define variation approaches based on project type
         approaches = self._get_variation_approaches(project_type)
         
-        # Generate each variation with a different approach
+        # Create tasks for concurrent generation
+        tasks = []
         for i in range(variation_count):
             approach_index = i % len(approaches)
             approach = approaches[approach_index]
             
+            # Alternate between providers for load balancing if both are available
+            provider_to_use = self.primary_provider if i % 2 == 0 else self.backup_provider
+            model_to_use = self.primary_model if provider_to_use == self.primary_provider else self.backup_model
+            
+            # Schedule generation tasks
+            tasks.append(
+                self._generate_single_variation_with_ai(
+                    i, project_type, content_topic, content_brief_str, 
+                    brand_guidelines_str, approach, provider_to_use, model_to_use
+                )
+            )
+        
+        # Execute all tasks concurrently
+        variations = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter out exceptions and retry failures
+        filtered_variations = []
+        retry_tasks = []
+        
+        for i, result in enumerate(variations):
+            if isinstance(result, Exception):
+                logger.warning(f"Variation {i} failed: {str(result)}")
+                # Try again with fallback model
+                if self.enable_model_fallback:
+                    fallback_idx = i % len(self.fallback_models)
+                    fallback = self.fallback_models[fallback_idx]
+                    approach_index = i % len(approaches)
+                    approach = approaches[approach_index]
+                    
+                    logger.info(f"Retrying variation {i} with fallback model {fallback['provider']}/{fallback['model']}")
+                    retry_tasks.append(
+                        self._generate_single_variation_with_ai(
+                            i, project_type, content_topic, content_brief_str,
+                            brand_guidelines_str, approach, fallback['provider'], fallback['model']
+                        )
+                    )
+            else:
+                filtered_variations.append(result)
+        
+        # Run retry tasks if any
+        if retry_tasks:
+            retry_results = await asyncio.gather(*retry_tasks, return_exceptions=True)
+            for result in retry_results:
+                if not isinstance(result, Exception):
+                    filtered_variations.append(result)
+        
+        return filtered_variations
+    
+    async def _generate_single_variation_with_ai(
+        self, 
+        variation_index: int,
+        project_type: str, 
+        content_topic: str,
+        content_brief_str: str,
+        brand_guidelines_str: str,
+        approach: str,
+        provider: str,
+        model: str
+    ) -> Dict[str, Any]:
+        """Generate a single content variation with AI."""
+        try:
             # Build the prompt based on project type
             if project_type == "Blog":
-                variation = self._generate_blog_with_openai(
-                    i, content_topic, content_brief, brand_guidelines, approach
-                )
+                prompt = self._build_blog_prompt(content_topic, content_brief_str, brand_guidelines_str, approach)
             elif project_type == "Social Post":
-                variation = self._generate_social_post_with_openai(
-                    i, content_topic, content_brief, brand_guidelines, approach
-                )
+                prompt = self._build_social_post_prompt(content_topic, content_brief_str, brand_guidelines_str, approach)
             elif project_type == "Email":
-                variation = self._generate_email_with_openai(
-                    i, content_topic, content_brief, brand_guidelines, approach
-                )
+                prompt = self._build_email_prompt(content_topic, content_brief_str, brand_guidelines_str, approach)
             elif project_type == "Landing Page":
-                variation = self._generate_landing_page_with_openai(
-                    i, content_topic, content_brief, brand_guidelines, approach
-                )
+                prompt = self._build_landing_page_prompt(content_topic, content_brief_str, brand_guidelines_str, approach)
             else:
-                variation = self._generate_generic_with_openai(
-                    i, project_type, content_topic, content_brief, brand_guidelines, approach
-                )
-                
-            variations.append(variation)
+                prompt = self._build_generic_prompt(project_type, content_topic, content_brief_str, brand_guidelines_str, approach)
             
-        return variations
+            # Request content generation with the AI client
+            response = await ai_client.get_text_completion(
+                provider=provider,
+                model=model,
+                prompt=prompt,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                cache=True  # Use cache to avoid duplicate generations
+            )
+            
+            # Create the variation object
+            variation = {
+                "variation_id": f"{variation_index}",
+                "approach": approach,
+                "content": response['text'],
+                "generated_at": datetime.now().isoformat(),
+                "metadata": {
+                    "model": model,
+                    "provider": provider,
+                    "tokens_used": response.get('usage', {}).get('total_tokens', 0),
+                    "generation_approach": approach
+                }
+            }
+            
+            return variation
+            
+        except AIRateLimitExceeded as e:
+            logger.warning(f"Rate limit exceeded for {provider}/{model}: {str(e)}")
+            raise
+        except AIRequestError as e:
+            logger.error(f"AI request error with {provider}/{model}: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in content generation: {str(e)}")
+            raise
         
+    def _build_blog_prompt(self, content_topic: str, content_brief_str: str, brand_guidelines_str: str, approach: str) -> str:
+        """Build a prompt for blog content generation."""
+        prompt = f"""You are an expert marketing content writer tasked with creating a blog post.
+
+Topic: {content_topic}
+
+{content_brief_str}
+
+{brand_guidelines_str}
+
+Approach: {approach}
+
+Please create a high-quality, engaging blog post following the brief and brand guidelines.
+Format your response with appropriate headings, subheadings, and paragraphs.
+Focus on delivering value to the reader while incorporating SEO best practices.
+"""
+        return prompt
+    
+    def _build_social_post_prompt(self, content_topic: str, content_brief_str: str, brand_guidelines_str: str, approach: str) -> str:
+        """Build a prompt for social media post generation."""
+        prompt = f"""You are an expert social media copywriter tasked with creating a social media post.
+
+Topic: {content_topic}
+
+{content_brief_str}
+
+{brand_guidelines_str}
+
+Approach: {approach}
+
+Please create a compelling social media post that drives engagement.
+Include appropriate hashtags and a clear call-to-action.
+Keep the tone consistent with the brand guidelines.
+"""
+        return prompt
+    
+    def _build_email_prompt(self, content_topic: str, content_brief_str: str, brand_guidelines_str: str, approach: str) -> str:
+        """Build a prompt for email content generation."""
+        prompt = f"""You are an expert email marketer tasked with creating an email message.
+
+Topic: {content_topic}
+
+{content_brief_str}
+
+{brand_guidelines_str}
+
+Approach: {approach}
+
+Please create a persuasive email that resonates with the target audience.
+Include a compelling subject line, engaging body content, and clear call-to-action.
+Format the email with appropriate sections and spacing.
+"""
+        return prompt
+    
+    def _build_landing_page_prompt(self, content_topic: str, content_brief_str: str, brand_guidelines_str: str, approach: str) -> str:
+        """Build a prompt for landing page content generation."""
+        prompt = f"""You are an expert conversion copywriter tasked with creating landing page content.
+
+Topic: {content_topic}
+
+{content_brief_str}
+
+{brand_guidelines_str}
+
+Approach: {approach}
+
+Please create high-converting landing page copy with the following sections:
+- Headline
+- Subheadline
+- Value proposition
+- Feature/benefit sections
+- Social proof elements
+- Call-to-action
+
+Focus on persuasive language that drives conversions while maintaining brand voice.
+"""
+        return prompt
+    
+    def _build_generic_prompt(self, project_type: str, content_topic: str, content_brief_str: str, brand_guidelines_str: str, approach: str) -> str:
+        """Build a prompt for generic content generation."""
+        prompt = f"""You are an expert content creator tasked with creating {project_type} content.
+
+Topic: {content_topic}
+
+{content_brief_str}
+
+{brand_guidelines_str}
+
+Approach: {approach}
+
+Please create high-quality content that achieves the objectives outlined in the brief.
+Ensure the content aligns with the brand guidelines and speaks to the target audience.
+Format the output appropriately for the content type.
+"""
+        return prompt
+    
     def _get_variation_approaches(self, project_type: str) -> List[str]:
         """Get list of variation approaches based on project type."""
         if project_type == "Blog":
