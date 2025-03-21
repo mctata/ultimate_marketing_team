@@ -48,6 +48,7 @@ services:
       - ./src:/app/src
     networks:
       - umt-network
+    command: ["python", "-m", "src.agents.runner"]
 
   brand-agent:
     build:
@@ -63,6 +64,7 @@ services:
       - ./src:/app/src
     networks:
       - umt-network
+    command: ["python", "-m", "src.agents.runner"]
 
   content-strategy-agent:
     build:
@@ -78,6 +80,7 @@ services:
       - ./src:/app/src
     networks:
       - umt-network
+    command: ["python", "-m", "src.agents.runner"]
 
   content-creation-agent:
     build:
@@ -93,6 +96,7 @@ services:
       - ./src:/app/src
     networks:
       - umt-network
+    command: ["python", "-m", "src.agents.runner"]
 
   content-ad-agent:
     build:
@@ -108,6 +112,7 @@ services:
       - ./src:/app/src
     networks:
       - umt-network
+    command: ["python", "-m", "src.agents.runner"]
 
   # Infrastructure Services
   postgres:

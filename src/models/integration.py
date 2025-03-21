@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, JSON
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, JSON, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -93,7 +93,6 @@ class IntegrationHealth(Base):
     """Model for storing historical integration health check data."""
     
     __tablename__ = "integration_health"
-    __table_args__ = {"schema": "umt"}
     
     id = Column(Integer, primary_key=True, index=True)
     integration_type = Column(String(50), nullable=False)  # social, cms, ad
@@ -104,8 +103,8 @@ class IntegrationHealth(Base):
     error_message = Column(Text, nullable=True)
     details = Column(JSON, nullable=True)
     
-    # Index for faster lookups
+    # Schema and Index for faster lookups
     __table_args__ = (
-        {"schema": "umt"},
-        Index("idx_integration_health_lookup", "integration_type", "integration_id")
+        Index("idx_integration_health_lookup", "integration_type", "integration_id"),
+        {"schema": "umt"}
     )

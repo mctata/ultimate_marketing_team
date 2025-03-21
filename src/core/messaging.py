@@ -4,8 +4,9 @@ import pika
 import asyncio
 from typing import Dict, Any, Callable, Awaitable, Optional, List
 from loguru import logger
+from datetime import datetime
 
-from src.ultimate_marketing_team.core.settings import settings
+from src.core.settings import settings
 
 class RabbitMQClient:
     """Client for interacting with RabbitMQ."""

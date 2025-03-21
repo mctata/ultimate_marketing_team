@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useState, ReactNode } from 'react';
 import { useDispatch } from 'react-redux';
 import { loginSuccess, logout } from '../store/slices/authSlice';
-import { authService } from '../services/authService';
+import authService, { UserProfile } from '../services/authService';
 import jwt_decode from 'jwt-decode';
 
 interface AuthContextType {
@@ -23,10 +23,30 @@ interface RegisterData {
   lastName: string;
 }
 
+// This is the User type expected by the authSlice
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 interface JwtPayload {
   exp: number;
   user_id: string;
   email: string;
+}
+
+// Convert UserProfile from API to User for Redux store
+const mapUserProfileToUser = (profile: UserProfile): User => {
+  return {
+    id: profile.id,
+    email: profile.email,
+    firstName: profile.full_name?.split(' ')[0] || '',
+    lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
+    role: profile.is_superuser ? 'admin' : 'user'
+  };
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -68,18 +88,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       
       if (validateToken(token)) {
         try {
-          const user = await authService.getCurrentUser();
+          const userProfile = await authService.getUserProfile();
+          const user = mapUserProfileToUser(userProfile);
           dispatch(loginSuccess({ user, token: token! }));
           setIsAuthenticated(true);
         } catch (error) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('auth_token');
         }
       } else {
-        localStorage.removeItem('token');
+        localStorage.removeItem('auth_token');
       }
       
       setIsLoading(false);
@@ -93,8 +114,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      const { user, token } = await authService.login(email, password);
-      dispatch(loginSuccess({ user, token }));
+      const auth = await authService.login({ email, password });
+      const userProfile = await authService.getUserProfile();
+      const user = mapUserProfileToUser(userProfile);
+      dispatch(loginSuccess({ user, token: auth.access_token }));
       setIsAuthenticated(true);
     } catch (error: any) {
       setError(error.message || 'Login failed');
@@ -108,8 +131,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      const { user, token } = await authService.register(userData);
-      dispatch(loginSuccess({ user, token }));
+      await authService.register({
+        email: userData.email,
+        password: userData.password,
+        full_name: `${userData.firstName} ${userData.lastName}`
+      });
+      // After registration, login to get token
+      const auth = await authService.login({ email: userData.email, password: userData.password });
+      const userProfile = await authService.getUserProfile();
+      const user = mapUserProfileToUser(userProfile);
+      dispatch(loginSuccess({ user, token: auth.access_token }));
       setIsAuthenticated(true);
     } catch (error: any) {
       setError(error.message || 'Registration failed');
@@ -123,12 +154,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      const { user, token } = await authService.googleLogin();
-      dispatch(loginSuccess({ user, token }));
-      setIsAuthenticated(true);
+      // Initiate OAuth flow
+      const redirectUri = window.location.origin + '/auth/callback/google';
+      const authUrl = await authService.getOAuthUrl('google', redirectUri);
+      
+      // Redirect to Google OAuth
+      window.location.href = authUrl;
     } catch (error: any) {
       setError(error.message || 'Google login failed');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -138,12 +171,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      const { user, token } = await authService.facebookLogin();
-      dispatch(loginSuccess({ user, token }));
-      setIsAuthenticated(true);
+      // Initiate OAuth flow
+      const redirectUri = window.location.origin + '/auth/callback/facebook';
+      const authUrl = await authService.getOAuthUrl('facebook', redirectUri);
+      
+      // Redirect to Facebook OAuth
+      window.location.href = authUrl;
     } catch (error: any) {
       setError(error.message || 'Facebook login failed');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -153,12 +188,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      const { user, token } = await authService.linkedinLogin();
-      dispatch(loginSuccess({ user, token }));
-      setIsAuthenticated(true);
+      // Initiate OAuth flow
+      const redirectUri = window.location.origin + '/auth/callback/linkedin';
+      const authUrl = await authService.getOAuthUrl('linkedin', redirectUri);
+      
+      // Redirect to LinkedIn OAuth
+      window.location.href = authUrl;
     } catch (error: any) {
       setError(error.message || 'LinkedIn login failed');
-    } finally {
       setIsLoading(false);
     }
   };

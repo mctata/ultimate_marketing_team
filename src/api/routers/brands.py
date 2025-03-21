@@ -6,10 +6,10 @@ from datetime import datetime, date
 import json
 from urllib.parse import urlparse
 
-from src.ultimate_marketing_team.api.routers.auth import oauth2_scheme, get_current_user
-from src.ultimate_marketing_team.core.messaging import RabbitMQClient
-from src.ultimate_marketing_team.core.database import get_db
-from src.ultimate_marketing_team.models.project import Brand, Project, ProjectType
+from src.api.routers.auth import oauth2_scheme, get_current_user
+from src.core.messaging import RabbitMQClient
+from src.core.database import get_db
+from src.models.project import Brand, Project, ProjectType
 
 router = APIRouter()
 mq_client = RabbitMQClient()

@@ -5,13 +5,27 @@ import uuid
 import os
 from datetime import datetime
 import shutil
-from PIL import Image
 import io
 
-from core.security import get_current_user
-from models.content import ContentModel
-from models.integration import Integration
+from src.core.security import get_current_user
 import logging
+from pydantic import BaseModel, Field
+from typing import Dict, Optional as OptionalType
+
+# Define a Pydantic model for ContentModel
+class ContentModel(BaseModel):
+    id: OptionalType[str] = None
+    title: str
+    content: str
+    content_type: str = Field(..., description="Type of content (blog, social, ad, etc.)")
+    platform: OptionalType[str] = None
+    status: str = "draft"
+    metadata: OptionalType[Dict] = None
+    created_at: OptionalType[str] = None
+    updated_at: OptionalType[str] = None
+    
+    class Config:
+        from_attributes = True
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -154,22 +168,20 @@ async def upload_image(
     user=Depends(get_current_user),
     width: Optional[int] = Query(None, description="Resize image to this width"),
     height: Optional[int] = Query(None, description="Resize image to this height"),
-    quality: int = Query(85, description="JPEG quality (1-100)"),
     focal_point: Optional[str] = Form(None, description="Focal point coordinates (x,y) as JSON string")
 ) -> Dict[str, Any]:
     """
-    Upload an image file and optionally process it with focal point awareness.
+    Upload an image file with focal point information.
     
     Args:
         file: The image file to upload
         user: The authenticated user
         width: Optional width to resize the image to
         height: Optional height to resize the image to
-        quality: JPEG quality (1-100)
         focal_point: Optional JSON string with focal point coordinates {x: 50, y: 50} (percentages)
         
     Returns:
-        Image details including URL and variants
+        Image details including URL
     """
     try:
         # Validate file type
@@ -196,87 +208,21 @@ async def upload_image(
         # Create a unique filename with UUID to avoid collisions
         image_id = str(uuid.uuid4())
         unique_filename = f"{image_id}{file_ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
         
-        # Read the image into memory
+        # For demo purposes, we'll create an upload directory if it doesn't exist
+        upload_dir = "/tmp/uploads/images"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Save the uploaded file directly
         contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
+        with open(file_path, "wb") as f:
+            f.write(contents)
         
-        # Save the original file
-        image.save(file_path, optimize=True)
+        # Get file size
+        file_size = os.path.getsize(file_path)
         
-        # Generate standard variants for different platforms
-        variants = {}
-        sizes = {
-            "facebook": (1200, 628),  # Facebook/Instagram feed
-            "instagram_square": (1080, 1080),  # Instagram square
-            "story": (1080, 1920),  # Instagram/Facebook story
-            "twitter": (1200, 675),  # Twitter feed
-            "linkedin": (1200, 627),  # LinkedIn feed
-            "thumbnail": (400, 400),  # General thumbnail
-        }
-        
-        # If specific dimensions were requested, add them to the sizes
-        if width and height:
-            sizes["custom"] = (width, height)
-        
-        original_width, original_height = image.size
-        
-        for name, (target_width, target_height) in sizes.items():
-            variant_filename = f"{image_id}_{name}{file_ext}"
-            variant_path = os.path.join(UPLOAD_DIR, variant_filename)
-            
-            # Create a copy to avoid modifying the original
-            img_copy = image.copy()
-            
-            # Calculate target dimensions maintaining aspect ratio
-            original_aspect = original_width / original_height
-            target_aspect = target_width / target_height
-            
-            # Determine crop box based on focal point
-            # Convert focal point percentages to pixel coordinates
-            fx = (fp_data['x'] / 100) * original_width
-            fy = (fp_data['y'] / 100) * original_height
-            
-            if original_aspect > target_aspect:  # Original is wider
-                # Calculate height-based crop width
-                crop_height = original_height
-                crop_width = crop_height * target_aspect
-                
-                # Adjust left position based on focal point
-                left = max(0, min(fx - (crop_width / 2), original_width - crop_width))
-                top = 0
-            else:  # Original is taller
-                # Calculate width-based crop height
-                crop_width = original_width
-                crop_height = crop_width / target_aspect
-                
-                # Adjust top position based on focal point
-                top = max(0, min(fy - (crop_height / 2), original_height - crop_height))
-                left = 0
-                
-            # Crop the image based on calculated dimensions
-            right = left + crop_width
-            bottom = top + crop_height
-            img_copy = img_copy.crop((int(left), int(top), int(right), int(bottom)))
-            
-            # Resize to target dimensions
-            img_copy = img_copy.resize((target_width, target_height), Image.LANCZOS)
-            
-            # Optimize and save
-            if file_ext.lower() in ['.jpg', '.jpeg']:
-                img_copy.save(variant_path, "JPEG", quality=quality, optimize=True)
-            elif file_ext.lower() == '.png':
-                img_copy.save(variant_path, "PNG", optimize=True)
-            elif file_ext.lower() == '.gif':
-                img_copy.save(variant_path, "GIF")
-            elif file_ext.lower() == '.webp':
-                img_copy.save(variant_path, "WEBP", quality=quality)
-                
-            # Add to variants
-            variants[name] = f"/uploads/images/{variant_filename}"
-        
-        # In a production app, you'd return a URL to a cloud storage service
+        # Return simplified response
         image_url = f"/uploads/images/{unique_filename}"
         
         return {
@@ -286,11 +232,9 @@ async def upload_image(
             "filename": unique_filename,
             "original_filename": file.filename,
             "content_type": file.content_type,
-            "size": os.path.getsize(file_path),
-            "width": original_width,
-            "height": original_height,
+            "size": file_size,
             "focal_point": fp_data,
-            "variants": variants
+            "message": "Image uploaded successfully. Image processing is disabled in this demo version."
         }
     
     except Exception as e:
@@ -317,16 +261,21 @@ async def delete_image(
         if "/" in image_id or "\\" in image_id:
             raise HTTPException(status_code=400, detail="Invalid image ID")
         
+        # Define upload directory
+        upload_dir = "/tmp/uploads/images"
+        
         # Find all files matching the image_id pattern
         deleted_files = []
         
-        for filename in os.listdir(UPLOAD_DIR):
-            # Match both the original file and any variants (image_id_variant.ext)
-            if filename.startswith(image_id):
-                file_path = os.path.join(UPLOAD_DIR, filename)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                    deleted_files.append(filename)
+        # Check if directory exists
+        if os.path.exists(upload_dir):
+            for filename in os.listdir(upload_dir):
+                # Match both the original file and any variants (image_id_variant.ext)
+                if filename.startswith(image_id):
+                    file_path = os.path.join(upload_dir, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        deleted_files.append(filename)
         
         if not deleted_files:
             raise HTTPException(status_code=404, detail="Image not found")
