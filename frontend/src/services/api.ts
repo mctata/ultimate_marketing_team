@@ -10,10 +10,13 @@ const api = axios.create({
   },
 });
 
+// Constants
+const tokenKey = 'auth_token';
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(tokenKey);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,7 +40,13 @@ api.interceptors.response.use(
   }
 );
 
-// Generic API request function with typed response
+/**
+ * Generic API request function with typed response
+ * @template T The expected response data type
+ * @param config Axios request configuration
+ * @returns Promise resolving to the response data
+ * @throws Error with API error message
+ */
 export const apiRequest = async <T>(
   config: AxiosRequestConfig
 ): Promise<T> => {
