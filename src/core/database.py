@@ -19,6 +19,17 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for SQLAlchemy models
 Base = declarative_base()
 
+def get_engine():
+    """Get the SQLAlchemy engine.
+    
+    This function can be used to get the engine when needed outside of the 
+    standard pattern, such as for testing or migrations.
+    
+    Returns:
+        Engine: SQLAlchemy engine instance
+    """
+    return engine
+
 # Ensure all models are loaded and SQLAlchemy knows about all the relationships
 def configure_mappers():
     """
