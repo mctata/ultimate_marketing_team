@@ -13,9 +13,9 @@ import json
 import time
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime, timedelta, date
-from sqlalchemy import func, select, and_, desc, extract
+from sqlalchemy import func, select, and_, desc, extract, cast
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.expression import cast, Date
+from sqlalchemy.sql import expression
 from sqlalchemy.dialects.postgresql import insert
 
 from loguru import logger
