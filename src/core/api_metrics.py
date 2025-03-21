@@ -19,7 +19,7 @@ from sqlalchemy.sql import expression
 from sqlalchemy.dialects.postgresql import insert
 
 from loguru import logger
-from src.core.database import get_session
+from src.core.database import get_db
 from src.core.settings import settings
 from src.models.system import AIAPIUsage, DailyCostSummary
 
@@ -83,9 +83,9 @@ class MetricsService:
             )
             
             # Save to database
-            async with get_session() as session:
+            with get_db() as session:
                 session.add(usage)
-                await session.commit()
+                session.commit()
                 
             # Update daily summary (non-blocking)
             asyncio.create_task(
@@ -127,43 +127,42 @@ class MetricsService:
             today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             
             # Acquire lock to prevent race conditions during updates
-            async with SUMMARY_UPDATE_LOCK:
-                async with get_session() as session:
-                    # Check if an entry for today already exists
-                    stmt = select(DailyCostSummary).where(
-                        and_(
-                            DailyCostSummary.date == today,
-                            DailyCostSummary.provider == provider,
-                            DailyCostSummary.model == model
-                        )
+            with get_db() as session:
+                # Check if an entry for today already exists
+                stmt = select(DailyCostSummary).where(
+                    and_(
+                        DailyCostSummary.date == today,
+                        DailyCostSummary.provider == provider,
+                        DailyCostSummary.model == model
                     )
-                    result = await session.execute(stmt)
-                    summary = result.scalars().first()
+                )
+                result = session.execute(stmt)
+                summary = result.scalars().first()
                     
-                    if summary:
-                        # Update existing summary
-                        summary.total_requests += 1
-                        summary.cached_requests += 1 if cached else 0
-                        summary.failed_requests += 1 if not success else 0
-                        summary.total_tokens += tokens
-                        summary.cost_usd += cost_cents
-                        summary.updated_at = datetime.utcnow()
-                    else:
-                        # Create new summary
-                        summary = DailyCostSummary(
-                            date=today,
-                            provider=provider,
-                            model=model,
-                            total_requests=1,
-                            cached_requests=1 if cached else 0,
-                            failed_requests=1 if not success else 0,
-                            total_tokens=tokens,
-                            cost_usd=cost_cents,
-                            updated_at=datetime.utcnow()
-                        )
-                        session.add(summary)
-                    
-                    await session.commit()
+                if summary:
+                    # Update existing summary
+                    summary.total_requests += 1
+                    summary.cached_requests += 1 if cached else 0
+                    summary.failed_requests += 1 if not success else 0
+                    summary.total_tokens += tokens
+                    summary.cost_usd += cost_cents
+                    summary.updated_at = datetime.utcnow()
+                else:
+                    # Create new summary
+                    summary = DailyCostSummary(
+                        date=today,
+                        provider=provider,
+                        model=model,
+                        total_requests=1,
+                        cached_requests=1 if cached else 0,
+                        failed_requests=1 if not success else 0,
+                        total_tokens=tokens,
+                        cost_usd=cost_cents,
+                        updated_at=datetime.utcnow()
+                    )
+                    session.add(summary)
+                
+                session.commit()
                     
         except Exception as e:
             logger.error(f"Error updating daily summary: {str(e)}")
@@ -198,12 +197,12 @@ class MetricsService:
             filters.append(DailyCostSummary.provider == provider)
         
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 stmt = select(DailyCostSummary).where(
                     and_(*filters)
                 ).order_by(DailyCostSummary.date, DailyCostSummary.provider, DailyCostSummary.model)
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 summaries = result.scalars().all()
                 
                 # Convert to dictionaries with formatted costs
@@ -250,7 +249,7 @@ class MetricsService:
             end_date = datetime.utcnow().date()
             
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 stmt = select(
                     DailyCostSummary.provider,
                     func.sum(DailyCostSummary.cost_usd).label('total_cost')
@@ -261,7 +260,7 @@ class MetricsService:
                     )
                 ).group_by(DailyCostSummary.provider)
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 provider_costs = result.all()
                 
                 # Convert to dictionary and convert cents to dollars
@@ -305,7 +304,7 @@ class MetricsService:
             filters.append(DailyCostSummary.provider == provider)
             
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 stmt = select(
                     DailyCostSummary.provider,
                     DailyCostSummary.model,
@@ -322,7 +321,7 @@ class MetricsService:
                     desc('cost')
                 )
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 model_costs = result.all()
                 
                 # Convert to dictionaries with formatted values
@@ -425,7 +424,7 @@ class MetricsService:
             end_date = datetime.utcnow().date()
             
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 # Get total requests and cached requests
                 stmt = select(
                     func.sum(DailyCostSummary.total_requests).label('total'),
@@ -438,7 +437,7 @@ class MetricsService:
                     )
                 )
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 totals = result.one()
                 total_requests, cached_requests, total_cost = totals
                 
@@ -494,7 +493,7 @@ class MetricsService:
             end_date = datetime.utcnow().date()
             
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 # Get total requests and failed requests by provider
                 stmt = select(
                     DailyCostSummary.provider,
@@ -507,7 +506,7 @@ class MetricsService:
                     )
                 ).group_by(DailyCostSummary.provider)
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 provider_errors = result.all()
                 
                 # Calculate error rates by provider
@@ -544,7 +543,7 @@ class MetricsService:
             end_date = datetime.utcnow().date()
             
         try:
-            async with get_session() as session:
+            with get_db() as session:
                 # Get usage by agent type
                 stmt = select(
                     AIAPIUsage.agent_type,
@@ -559,7 +558,7 @@ class MetricsService:
                     )
                 ).group_by(AIAPIUsage.agent_type)
                 
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 agent_usage = result.all()
                 
                 # Format results
