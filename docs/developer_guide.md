@@ -216,7 +216,7 @@ End-to-end tests are in the `tests/integration/` directory.
 The application can be deployed using Docker Compose (run from project root directory):
 ```bash
 # Must be run from project root directory
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
 
 ### Environment Variables
