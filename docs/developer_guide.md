@@ -35,13 +35,16 @@ The application uses a settings-based configuration system:
 
 #### Using Docker
 
+Run the following command from the project root directory (NOT inside the frontend or any subdirectory):
+
 ```bash
+# Must be run from project root directory
 docker-compose up -d
 ```
 
 #### Running Components Separately
 
-1. Backend:
+1. Backend (run from project root):
 ```bash
 python -m src.api.main
 ```
@@ -210,8 +213,9 @@ End-to-end tests are in the `tests/integration/` directory.
 
 ### Docker Deployment
 
-The application can be deployed using Docker Compose:
+The application can be deployed using Docker Compose (run from project root directory):
 ```bash
+# Must be run from project root directory
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
