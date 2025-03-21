@@ -247,6 +247,14 @@ jobs:
           sleep 10
           docker-compose -f docker-compose.test.yml ps
           docker-compose -f docker-compose.test.yml logs migrations
+          
+          # Install requests for health check
+          pip install requests
+          
+          # Run health check
+          python scripts/check_api_health.py --url http://localhost:8000/api/health --retries 5 --delay 3
+          
+          # Shutdown containers
           docker-compose -f docker-compose.test.yml down
 
   deploy-staging:

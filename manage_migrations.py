@@ -20,17 +20,136 @@ import os
 import sys
 import argparse
 import subprocess
+import time
+import socket
+from datetime import datetime
 from pathlib import Path
+import re
 
 # Ensure the project root is in the Python path
 project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+    
+# Try to import database utilities
+try:
+    from src.core.database import SCHEMA_NAME, get_engine
+except ImportError:
+    # Default schema name if import fails
+    SCHEMA_NAME = "umt"
+    
+    def get_engine():
+        """Fallback method to get a database engine if the import fails."""
+        from sqlalchemy import create_engine
+        db_url = os.environ.get("DATABASE_URL")
+        if not db_url:
+            print("ERROR: DATABASE_URL environment variable not set")
+            sys.exit(1)
+        return create_engine(db_url)
+
+def log_migration_operation(version, status, description=None, error_message=None, duration_ms=None):
+    """Log migration operation to the migration_history table.
+    
+    Args:
+        version (str): Migration version
+        status (str): Migration status (OK, FAILED, IN_PROGRESS)
+        description (str, optional): Migration description
+        error_message (str, optional): Error message if failed
+        duration_ms (int, optional): Operation duration in milliseconds
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Check if the table exists before logging
+        engine = get_engine()
+        with engine.connect() as conn:
+            # Check if the migration_history table exists
+            result = conn.execute(text(
+                f"SELECT EXISTS ("
+                f"SELECT FROM information_schema.tables "
+                f"WHERE table_schema = '{SCHEMA_NAME}' AND table_name = 'migration_history'"
+                f")"
+            ))
+            table_exists = result.scalar()
+            
+            if not table_exists:
+                print("Migration history table does not exist, skipping logging")
+                return
+            
+            # Get current user and hostname
+            user = os.environ.get("USER", "unknown")
+            hostname = socket.gethostname()
+            environment = os.environ.get("ENVIRONMENT", "development")
+            
+            # Insert the record
+            conn.execute(text(
+                f"INSERT INTO {SCHEMA_NAME}.migration_history "
+                f"(version, applied_at, description, status, duration_ms, error_message, user, environment) "
+                f"VALUES (:version, :applied_at, :description, :status, :duration_ms, :error_message, :user, :environment)"
+            ), {
+                "version": version,
+                "applied_at": datetime.utcnow(),
+                "description": description,
+                "status": status,
+                "duration_ms": duration_ms,
+                "error_message": error_message,
+                "user": f"{user}@{hostname}",
+                "environment": environment
+            })
+            conn.commit()
+            print(f"Migration operation logged: {version} ({status})")
+    except Exception as e:
+        print(f"Error logging migration operation: {e}")
+
+
+def extract_revision_from_output(output):
+    """Extract revision ID from alembic command output.
+    
+    Args:
+        output (str): Command output
+        
+    Returns:
+        str: Revision ID or None if not found
+    """
+    if not output:
+        return None
+        
+    # For upgrade/downgrade commands
+    match = re.search(r"Upgrade|Downgrade to ([0-9a-f]+)", output)
+    if match:
+        return match.group(1)
+        
+    # For revision creation
+    match = re.search(r"Generating .*?/([0-9a-f]+)_", output)
+    if match:
+        return match.group(1)
+        
+    # For current command
+    match = re.search(r"Current revision\(s\): ([0-9a-f]+)", output)
+    if match:
+        return match.group(1)
+        
+    return None
+
 
 def run_alembic_command(command, check=True):
-    """Run an Alembic command and print its output"""
+    """Run an Alembic command and print its output
+    
+    Args:
+        command (str): Alembic command to run
+        check (bool): Whether to check return code
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
     full_command = f"alembic {command}"
     print(f"Running: {full_command}")
+    
+    start_time = time.time()
+    success = False
+    output = ""
+    error = ""
+    revision = None
     
     try:
         result = subprocess.run(
@@ -40,14 +159,39 @@ def run_alembic_command(command, check=True):
             capture_output=True,
             text=True
         )
-        print(result.stdout)
-        if result.stderr:
-            print(f"Errors:\n{result.stderr}", file=sys.stderr)
-        return result.returncode == 0
+        output = result.stdout
+        error = result.stderr
+        print(output)
+        
+        if error:
+            print(f"Errors:\n{error}", file=sys.stderr)
+        
+        success = result.returncode == 0
     except subprocess.CalledProcessError as e:
         print(f"Error executing command: {full_command}", file=sys.stderr)
-        print(e.stderr, file=sys.stderr)
-        return False
+        if hasattr(e, 'stderr'):
+            print(e.stderr, file=sys.stderr)
+            error = e.stderr
+        success = False
+    
+    # Calculate duration
+    duration_ms = int((time.time() - start_time) * 1000)
+    
+    # Extract revision from command output
+    revision = extract_revision_from_output(output)
+    
+    # Log the operation if it's an upgrade, downgrade, or revision command
+    if any(cmd in command for cmd in ["upgrade", "downgrade", "revision"]) and revision:
+        status = "OK" if success else "FAILED"
+        log_migration_operation(
+            version=revision,
+            status=status,
+            description=command,
+            error_message=error if not success else None,
+            duration_ms=duration_ms
+        )
+    
+    return success
 
 def create_migration(args):
     """Create a new migration"""

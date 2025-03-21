@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint format clean migrate-up migrate-down migrate-create docker-test docker-build docs
+.PHONY: setup dev test test-health lint format clean migrate-up migrate-down migrate-create docker-test docker-build docs help
 
 # Variables
 PYTHON := python
@@ -8,6 +8,29 @@ ALEMBIC := alembic
 PIP := pip
 NPM := npm
 DOCKER_COMPOSE := docker-compose
+
+# Help command
+help:
+	@echo "Ultimate Marketing Team - Development Commands"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  setup              - Create virtual environment and install dependencies"
+	@echo "  dev                - Start all development services with Docker Compose"
+	@echo "  test               - Run all tests"
+	@echo "  test-migrations    - Run migration tests only"
+	@echo "  test-with-coverage - Run tests with coverage report"
+	@echo "  test-health        - Check API health status"
+	@echo "  lint               - Run linting checks"
+	@echo "  format             - Format code with black and isort"
+	@echo "  migrate-up         - Apply all pending migrations"
+	@echo "  migrate-down       - Rollback the most recent migration"
+	@echo "  migrate-create     - Create a new migration"
+	@echo "  docker-test        - Run tests in Docker environment"
+	@echo "  docker-build       - Build all Docker images"
+	@echo "  docs               - Generate documentation"
+	@echo "  clean              - Remove build artifacts and caches"
+	@echo ""
+	@echo "For more information, see README.md and CLAUDE.md"
 
 # Python setup
 setup:
@@ -28,6 +51,9 @@ test-migrations:
 
 test-with-coverage:
 	$(PYTEST) --cov=src tests/
+	
+test-health:
+	$(PYTHON) scripts/check_api_health.py --url http://localhost:8000/api/health --retries 5 --delay 2
 
 # Linting and formatting
 lint:
