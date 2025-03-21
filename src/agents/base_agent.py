@@ -1,9 +1,16 @@
+# Standard library imports
+import queue
+import threading
+import uuid
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Callable, Union
+
+# Third-party imports
 from loguru import logger
 
-from src.ultimate_marketing_team.core.messaging import RabbitMQClient
-from src.ultimate_marketing_team.core.cache import RedisCache
+# Local imports
+from src.core.messaging import RabbitMQClient
+from src.core.cache import RedisCache
 
 class BaseAgent(ABC):
     """Base class for all agents in the system.
@@ -183,7 +190,6 @@ class BaseAgent(ABC):
         try:
             # Generate task ID if not provided
             if "task_id" not in task:
-                import uuid
                 task["task_id"] = str(uuid.uuid4())
             
             # Set sender information
@@ -191,7 +197,6 @@ class BaseAgent(ABC):
             
             # Create response queue if waiting for response
             if wait_for_response:
-                import uuid
                 response_queue = f"response_{self.agent_id}_{uuid.uuid4()}"
                 self.mq_client.declare_queue(response_queue)
                 task["response_queue"] = response_queue
@@ -199,10 +204,6 @@ class BaseAgent(ABC):
                 # Send task
                 target_queue = f"{target_agent_id}_queue"
                 self.mq_client.publish_direct(target_queue, task)
-                
-                # Wait for response with timeout
-                import queue
-                import threading
                 
                 result_queue = queue.Queue()
                 
@@ -241,7 +242,6 @@ class BaseAgent(ABC):
         try:
             # Generate event ID if not provided
             if "event_id" not in event:
-                import uuid
                 event["event_id"] = str(uuid.uuid4())
             
             # Set sender information

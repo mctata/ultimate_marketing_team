@@ -1,9 +1,14 @@
+# Standard library imports
+import uuid
+from typing import Dict, Any, List, Optional
+
+# Third-party imports
 from fastapi import APIRouter, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, EmailStr, Field
-import uuid
 
+# Local imports
+from src.agents.auth_integration_agent import AuthIntegrationAgent
 from src.core.security import create_access_token, verify_token
 
 router = APIRouter()
@@ -47,7 +52,14 @@ class OAuthCallback(BaseModel):
 # Endpoints
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Generate an access token for a user."""
+    """Generate an access token for a user.
+    
+    Args:
+        form_data: OAuth2 password request form data containing username and password
+        
+    Returns:
+        Dict containing access token and token type
+    """
     # TODO: Implement actual user authentication with database
     # For now, just generate a token for any credentials
     
@@ -63,7 +75,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @router.post("/login", response_model=Token)
 async def login(credentials: UserCredentials):
-    """Login with email and password."""
+    """Login with email and password.
+    
+    Args:
+        credentials: User credentials containing email and password
+        
+    Returns:
+        Dict containing access token and token type
+    """
     # TODO: Implement actual user authentication with database
     # For now, just generate a token for any credentials
     
@@ -76,7 +95,14 @@ async def login(credentials: UserCredentials):
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
-    """Register a new user."""
+    """Register a new user.
+    
+    Args:
+        user: User creation data containing email, password and optional full name
+        
+    Returns:
+        User object with generated ID and default settings
+    """
     # TODO: Implement actual user registration with database
     # For now, return a mock user
     
@@ -96,9 +122,14 @@ async def register(user: UserCreate):
 
 @router.post("/oauth", response_model=Dict[str, str])
 async def oauth_login(request: OAuthRequest):
-    """Initiate OAuth login flow."""
-    from src.agents.auth_integration_agent import AuthIntegrationAgent
+    """Initiate OAuth login flow.
     
+    Args:
+        request: OAuth request containing provider and redirect URI
+        
+    Returns:
+        Dict containing authentication URL for the OAuth provider
+    """
     # Create an instance of the agent
     auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
     
@@ -123,9 +154,14 @@ async def oauth_login(request: OAuthRequest):
 
 @router.post("/oauth/callback", response_model=Token)
 async def oauth_callback(callback: OAuthCallback):
-    """Handle OAuth callback and generate token."""
-    from src.agents.auth_integration_agent import AuthIntegrationAgent
+    """Handle OAuth callback and generate token.
     
+    Args:
+        callback: OAuth callback data containing provider, code and optional state
+        
+    Returns:
+        Dict containing access token and token type
+    """
     # Create an instance of the agent
     auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
     
@@ -165,7 +201,17 @@ async def oauth_callback(callback: OAuthCallback):
 
 @router.get("/me", response_model=User)
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Get the current authenticated user."""
+    """Get the current authenticated user.
+    
+    Args:
+        token: JWT authentication token from the request header
+        
+    Returns:
+        User object containing user details
+        
+    Raises:
+        HTTPException: If token is invalid or user not found
+    """
     # Verify token and get user ID
     user_id = verify_token(token)
     
