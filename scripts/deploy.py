@@ -171,6 +171,32 @@ def verify_migrations(environment, config):
         log_message(f"Migration pattern verification failed: {e}", "ERROR")
         log_message(f"Verification output: {e.stdout}", "ERROR")
         log_message(f"Verification errors: {e.stderr}", "ERROR")
+        
+        # Send notification about verification failure
+        try:
+            notify_cmd = [
+                "python", "scripts/notify_migration_status.py",
+                "--environment", environment,
+                "--status", "failure",
+                "--title", f"Migration Pattern Verification Failed ({environment})",
+                "--message", (
+                    f"Migration pattern verification failed during deployment to {environment}.\n\n"
+                    f"Please check and fix the issues before continuing with deployment.\n\n"
+                    f"Errors:\n{e.stdout[:500]}"
+                )
+            ]
+            
+            if config.get("slack_webhook"):
+                notify_cmd.extend(["--slack-webhook", config["slack_webhook"]])
+                
+            if config.get("notification_email"):
+                notify_cmd.extend(["--email-recipients", config["notification_email"]])
+                
+            subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
+            log_message("Migration verification failure notification sent")
+        except Exception as notify_err:
+            log_message(f"Failed to send notification: {notify_err}", "ERROR")
+            
         return False
     
     # Run pre-migration checks
@@ -188,6 +214,32 @@ def verify_migrations(environment, config):
         log_message(f"Pre-migration checks failed: {e}", "ERROR")
         log_message(f"Checks output: {e.stdout}", "ERROR")
         log_message(f"Checks errors: {e.stderr}", "ERROR")
+        
+        # Send notification about pre-migration check failure
+        try:
+            notify_cmd = [
+                "python", "scripts/notify_migration_status.py",
+                "--environment", environment,
+                "--status", "failure",
+                "--title", f"Pre-Migration Checks Failed ({environment})",
+                "--message", (
+                    f"Pre-migration checks failed during deployment to {environment}.\n\n"
+                    f"Please check and fix the issues before continuing with deployment.\n\n"
+                    f"Errors:\n{e.stdout[:500]}"
+                )
+            ]
+            
+            if config.get("slack_webhook"):
+                notify_cmd.extend(["--slack-webhook", config["slack_webhook"]])
+                
+            if config.get("notification_email"):
+                notify_cmd.extend(["--email-recipients", config["notification_email"]])
+                
+            subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
+            log_message("Pre-migration check failure notification sent")
+        except Exception as notify_err:
+            log_message(f"Failed to send notification: {notify_err}", "ERROR")
+            
         return False
 
 def run_migrations(environment, config):
