@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch } from '../../store';
 import {
   Box, 
   Typography, 
@@ -100,7 +101,7 @@ const TabPanel = (props: TabPanelProps) => {
 };
 
 const ApiMetrics = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
   const { aiMetrics } = useSelector((state: RootState) => state.analytics);
   
@@ -121,13 +122,14 @@ const ApiMetrics = () => {
   
   const loadData = () => {
     const dateParams = { startDate, endDate };
-    dispatch(fetchDailyCosts({ ...dateParams, provider: selectedProvider || undefined }));
-    dispatch(fetchProviderCosts(dateParams));
-    dispatch(fetchModelCosts({ ...dateParams, provider: selectedProvider || undefined }));
-    dispatch(fetchBudgetStatus());
-    dispatch(fetchCacheMetrics(dateParams));
-    dispatch(fetchErrorRates(dateParams));
-    dispatch(fetchAgentUsage(dateParams));
+    // Add type assertions to avoid TypeScript errors
+    dispatch(fetchDailyCosts({ ...dateParams, provider: selectedProvider || undefined }) as any);
+    dispatch(fetchProviderCosts(dateParams) as any);
+    dispatch(fetchModelCosts({ ...dateParams, provider: selectedProvider || undefined }) as any);
+    dispatch(fetchBudgetStatus() as any);
+    dispatch(fetchCacheMetrics(dateParams) as any);
+    dispatch(fetchErrorRates(dateParams) as any);
+    dispatch(fetchAgentUsage(dateParams) as any);
   };
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
