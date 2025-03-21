@@ -11,6 +11,7 @@ This migration adds tables for tracking AI API usage and costs:
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 from datetime import datetime
 
 # revision identifiers, used by Alembic
@@ -114,10 +115,12 @@ def upgrade():
     )
     
     # Insert record in migration_history for this migration
+    query = text("INSERT INTO :schema.migration_history (version, applied_at, description, status, environment) "
+                 "VALUES (:revision, :timestamp, :description, :status, :environment)")
+    
     op.execute(
-        text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-        f"VALUES (:revision, :timestamp, :description, :status, :environment)")
-        .bindparams(
+        query.bindparams(
+            schema=schema_name,
             revision=revision,
             timestamp=datetime.utcnow(),
             description='Add AI API usage monitoring tables',

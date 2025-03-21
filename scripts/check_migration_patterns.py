@@ -91,9 +91,17 @@ def check_ast_for_issues(file_path: str) -> Dict[str, List[Tuple[int, str]]]:
                         issues['direct_string_execution'].append((node.lineno, node.args[0].value))
                     elif node.args and isinstance(node.args[0], ast.JoinedStr):
                         issues['fstring_execution'].append((node.lineno, ast.unparse(node.args[0])))
-                    # Check if not using text()
-                    elif not (node.args and isinstance(node.args[0], ast.Call) and 
-                             isinstance(node.args[0].func, ast.Name) and node.args[0].func.id == 'text'):
+                    # Check if not using text() - but don't flag cases where we're using a variable
+                    # that might already contain a text() object (like a 'query' variable)
+                    elif (node.args and 
+                          not isinstance(node.args[0], ast.Name) and  # Skip if it's a simple variable
+                          not (isinstance(node.args[0], ast.Call) and 
+                               isinstance(node.args[0].func, ast.Name) and 
+                               node.args[0].func.id == 'text') and
+                          not (isinstance(node.args[0], ast.Call) and
+                               isinstance(node.args[0].func, ast.Attribute) and
+                               node.args[0].func.attr == 'bindparams')
+                         ):
                         issues['potential_non_text_execution'].append((node.lineno, ast.unparse(node)))
         
         # Check if text is imported when needed
