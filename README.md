@@ -234,9 +234,44 @@ The project includes a comprehensive migration verification system to prevent co
    python manage_migrations.py upgrade --skip-checks
    ```
 
-4. **Enhanced logging**: Migrations now log detailed execution information to `migrations/migration_execution.log`
+4. **Enhanced logging**: Migrations now log detailed execution information to `migration_validation.log`
 
 5. **Docker integration**: Migration container automatically runs verification before applying migrations
+   ```bash
+   # Run migrations with verification (default)
+   docker-compose up migrations
+
+   # Skip verification if needed
+   docker-compose run --rm migrations --skip-checks
+   ```
+
+6. **CI/CD Integration**: The verification system is integrated into the CI/CD pipeline:
+   - A dedicated job (`verify-migrations`) runs before migration tests
+   - Patterns are checked statically before database operations
+   - Migration sequence is validated for proper dependencies
+   - Migration logs are uploaded as artifacts for review
+   - Deployment operations include verification steps before production deployment
+
+7. **Deployment Integration**: The deployment process includes verification:
+   ```bash
+   # Deploy with verification (default)
+   python scripts/deploy.py --environment staging
+
+   # Skip verification if needed
+   python scripts/deploy.py --environment staging --skip-verification
+   ```
+
+8. **Troubleshooting**: If migration verification fails, review the logs:
+   ```bash
+   # Check verification results
+   cat migration_validation.log
+
+   # Get detailed pattern check information
+   python scripts/check_migration_patterns.py
+   
+   # Run only verification (no database changes)
+   python manage_migrations.py verify
+   ```
 
 ## License
 
