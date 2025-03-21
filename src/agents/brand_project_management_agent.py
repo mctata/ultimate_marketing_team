@@ -12,11 +12,11 @@ from pathlib import Path
 import base64
 from io import BytesIO
 
-from src.ultimate_marketing_team.agents.base_agent import BaseAgent
-from src.ultimate_marketing_team.core.database import get_db
-from src.ultimate_marketing_team.core.security import create_audit_log
-from src.ultimate_marketing_team.models.project import Brand, Project, ProjectType
-from src.ultimate_marketing_team.models.system import AuditLog, User
+from src.agents.base_agent import BaseAgent
+from src.core.database import get_db
+from src.core.security import create_audit_log
+from src.models.project import Brand, Project, ProjectType
+from src.models.system import AuditLog, User
 
 class BrandProjectManagementAgent(BaseAgent):
     """Agent responsible for brand and project management.

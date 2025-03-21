@@ -7,13 +7,13 @@ from src.agents.brand_project_management_agent import BrandProjectManagementAgen
 
 @pytest.fixture
 def mock_rabbitmq():
-    with patch('src.ultimate_marketing_team.core.messaging.RabbitMQClient') as mock:
+    with patch('src.core.messaging.RabbitMQClient') as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_redis():
-    with patch('src.ultimate_marketing_team.core.cache.RedisCache') as mock:
+    with patch('src.core.cache.RedisCache') as mock:
         yield mock
 
 

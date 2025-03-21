@@ -12,7 +12,7 @@ from typing import Dict, Any
 @pytest.fixture(autouse=True)
 def mock_settings():
     """Mock settings for all tests to avoid loading real configuration files."""
-    with patch('src.ultimate_marketing_team.core.settings.settings') as mock:
+    with patch('src.core.settings.settings') as mock:
         # Configure mock settings
         mock.RABBITMQ_URL = "amqp://localhost"
         mock.RABBITMQ_QUEUE_PREFIX = "test_"
@@ -25,7 +25,7 @@ def mock_settings():
 @pytest.fixture
 def mock_rabbitmq():
     """Mock RabbitMQ client for all tests to avoid actual message broker connections."""
-    with patch('src.ultimate_marketing_team.core.messaging.RabbitMQClient') as mock:
+    with patch('src.core.messaging.RabbitMQClient') as mock:
         # Configure standard methods to return sensible defaults
         mock_instance = MagicMock()
         mock.return_value = mock_instance
@@ -39,7 +39,7 @@ def mock_rabbitmq():
 @pytest.fixture
 def mock_redis():
     """Mock Redis cache for all tests to avoid actual Redis connections."""
-    with patch('src.ultimate_marketing_team.core.cache.RedisCache') as mock:
+    with patch('src.core.cache.RedisCache') as mock:
         # Configure standard methods to return sensible defaults
         mock_instance = MagicMock()
         mock.return_value = mock_instance
@@ -52,7 +52,7 @@ def mock_redis():
 @pytest.fixture
 def mock_logger():
     """Mock logger for all tests to avoid cluttering test output with log messages."""
-    with patch('src.ultimate_marketing_team.core.logging.logger') as mock:
+    with patch('src.core.logging.logger') as mock:
         yield mock
 
 
