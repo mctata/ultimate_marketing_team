@@ -9,13 +9,15 @@ import {
   Divider,
   FormControlLabel,
   Grid,
+  IconButton,
+  InputAdornment,
   Link,
   Paper,
   TextField,
   Typography,
   Alert,
 } from '@mui/material';
-import { LockOutlined, Google, Facebook, LinkedIn } from '@mui/icons-material';
+import { LockOutlined, Google, Facebook, LinkedIn, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,6 +34,11 @@ const validationSchema = Yup.object({
 const Login = () => {
   const { login, googleLogin, facebookLogin, linkedinLogin, error, isLoading } = useAuth();
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
   
   const formik = useFormik({
     initialValues: {
@@ -120,7 +127,7 @@ const Login = () => {
               fullWidth
               name="password"
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               id="password"
               autoComplete="current-password"
               value={formik.values.password}
@@ -129,6 +136,19 @@ const Login = () => {
               error={formik.touched.password && Boolean(formik.errors.password)}
               helperText={formik.touched.password && formik.errors.password}
               disabled={isLoading}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleClickShowPassword}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Box
               sx={{
