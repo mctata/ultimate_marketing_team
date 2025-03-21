@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    image: umt-api-gateway:test
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ultimatemarketing
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/%2F
+      - PYTHONPATH=/app
+      - TESTING=true
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - migrations
+    networks:
+      - umt-test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Migrations - runs first and exits
+  migrations:
+    image: umt-migrations:test
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ultimatemarketing
+      - PYTHONPATH=/app
+    depends_on:
+      - postgres
+    networks:
+      - umt-test-network
+
+  # Infrastructure Services
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ultimatemarketing
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
+    networks:
+      - umt-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-test-data:/data
+    networks:
+      - umt-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.9-alpine
+    ports:
+      - "5672:5672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-test-data:/var/lib/rabbitmq
+    networks:
+      - umt-test-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  umt-test-network:
+    driver: bridge
+
+volumes:
+  postgres-test-data:
+  redis-test-data:
+  rabbitmq-test-data:
