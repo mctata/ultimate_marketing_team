@@ -257,30 +257,333 @@ jobs:
           # Shutdown containers
           docker-compose -f docker-compose.test.yml down
 
+  build-and-push-ecr:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    needs: [test-python, test-js, test-migrations]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    outputs:
+      app_version: ${{ steps.version.outputs.version }}
+      
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+      
+      - name: Generate Version
+        id: version
+        run: |
+          # Generate semver version based on git commits and branch
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            BRANCH="prod"
+          else
+            BRANCH="dev"
+          fi
+          
+          # Get latest tag or use 0.0.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          
+          # Count commits since tag
+          COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
+          
+          # Get short commit hash
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          
+          # Build version string: {tag}+{commit_count}.{branch}.{commit_hash}
+          # Example: 1.2.3+42.dev.a1b2c3d
+          VERSION="${LATEST_TAG}+${COMMIT_COUNT}.${BRANCH}.${COMMIT_HASH}"
+          
+          echo "Generated version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'us-east-1' }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ECR_REPOSITORY=${{ steps.login-ecr.outputs.registry }}/umt-production" >> $GITHUB_ENV
+          else
+            echo "ECR_REPOSITORY=${{ steps.login-ecr.outputs.registry }}/umt-staging" >> $GITHUB_ENV
+          fi
+      
+      - name: Build, tag, and push API Gateway image to Amazon ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/api_gateway/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}/api-gateway:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REPOSITORY }}/api-gateway:latest
+      
+      - name: Build, tag, and push Frontend image to Amazon ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}/frontend:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REPOSITORY }}/frontend:latest
+      
+      - name: Build, tag, and push Agents image to Amazon ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/agents/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}/agents:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REPOSITORY }}/agents:latest
+      
+      - name: Build, tag, and push Migrations image to Amazon ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/migrations/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}/migrations:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REPOSITORY }}/migrations:latest
+
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [test-python, test-js, test-migrations, docker-build-test]
+    needs: [build-and-push-ecr]
     if: github.ref == 'refs/heads/develop' && github.event_name != 'pull_request'
     
-    # Add deployment steps here when ready
-    # This is a placeholder for future implementation
     steps:
       - uses: actions/checkout@v3
       
-      - name: Placeholder for staging deployment
-        run: echo "Staging deployment would happen here"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install boto3 requests
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Create .env.staging file
+        run: |
+          cat > .env.staging << EOL
+          # Generated by CI/CD pipeline
+          DATABASE_URL=postgresql://${{ secrets.STAGING_DB_USER }}:${{ secrets.STAGING_DB_PASSWORD }}@${{ secrets.STAGING_DB_HOST }}:5432/${{ secrets.STAGING_DB_NAME }}
+          POSTGRES_USER=${{ secrets.STAGING_DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.STAGING_DB_PASSWORD }}
+          POSTGRES_DB=${{ secrets.STAGING_DB_NAME }}
+          POSTGRES_HOST=${{ secrets.STAGING_DB_HOST }}
+          POSTGRES_PORT=5432
+          RABBITMQ_USER=${{ secrets.STAGING_RABBITMQ_USER }}
+          RABBITMQ_PASSWORD=${{ secrets.STAGING_RABBITMQ_PASSWORD }}
+          RABBITMQ_URL=amqp://${{ secrets.STAGING_RABBITMQ_USER }}:${{ secrets.STAGING_RABBITMQ_PASSWORD }}@${{ secrets.STAGING_RABBITMQ_HOST }}:5672/%2F
+          REDIS_URL=redis://${{ secrets.STAGING_REDIS_HOST }}:6379/0
+          VECTOR_DB_USER=${{ secrets.STAGING_VECTOR_DB_USER }}
+          VECTOR_DB_PASSWORD=${{ secrets.STAGING_VECTOR_DB_PASSWORD }}
+          VECTOR_DB_NAME=${{ secrets.STAGING_VECTOR_DB_NAME }}
+          S3_BACKUP_BUCKET=${{ secrets.STAGING_S3_BACKUP_BUCKET }}
+          APP_VERSION=${{ needs.build-and-push-ecr.outputs.app_version }}
+          ECR_REPOSITORY=${{ secrets.STAGING_ECR_REPOSITORY }}
+          ENVIRONMENT=staging
+          EOL
+      
+      - name: Backup Database
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/backup_database.py \
+            --db-name ${{ secrets.STAGING_DB_NAME }} \
+            --db-user ${{ secrets.STAGING_DB_USER }} \
+            --db-password ${{ secrets.STAGING_DB_PASSWORD }} \
+            --db-host ${{ secrets.STAGING_DB_HOST }} \
+            --db-port 5432 \
+            --environment staging \
+            --upload-to-s3 \
+            --s3-bucket ${{ secrets.STAGING_S3_BACKUP_BUCKET }}
+        continue-on-error: true  # Don't fail the whole workflow if backup fails
+      
+      - name: Run Database Migrations
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/deploy.py \
+            --environment staging \
+            --db-only
+        env:
+          DATABASE_URL: postgresql://${{ secrets.STAGING_DB_USER }}:${{ secrets.STAGING_DB_PASSWORD }}@${{ secrets.STAGING_DB_HOST }}:5432/${{ secrets.STAGING_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.STAGING_DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.STAGING_DB_NAME }}
+          POSTGRES_HOST: ${{ secrets.STAGING_DB_HOST }}
+          POSTGRES_PORT: 5432
+      
+      - name: Deploy Services
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/deploy.py \
+            --environment staging \
+            --skip-migrations \
+            --skip-backup
+        env:
+          DATABASE_URL: postgresql://${{ secrets.STAGING_DB_USER }}:${{ secrets.STAGING_DB_PASSWORD }}@${{ secrets.STAGING_DB_HOST }}:5432/${{ secrets.STAGING_DB_NAME }}
+          APP_VERSION: ${{ needs.build-and-push-ecr.outputs.app_version }}
+          ECR_REPOSITORY: ${{ secrets.STAGING_ECR_REPOSITORY }}
+      
+      - name: Notify Slack on Success
+        if: success()
+        run: |
+          python scripts/notify_deploy_status.py \
+            --environment staging \
+            --status success \
+            --title "Staging Deployment Successful" \
+            --message "Version ${{ needs.build-and-push-ecr.outputs.app_version }} deployed to staging environment" \
+            --slack-webhook ${{ secrets.SLACK_WEBHOOK }}
+      
+      - name: Notify Slack on Failure
+        if: failure()
+        run: |
+          python scripts/notify_deploy_status.py \
+            --environment staging \
+            --status failure \
+            --title "Staging Deployment Failed" \
+            --message "Deployment of version ${{ needs.build-and-push-ecr.outputs.app_version }} to staging environment failed" \
+            --slack-webhook ${{ secrets.SLACK_WEBHOOK }}
 
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [test-python, test-js, test-migrations, docker-build-test]
+    needs: [build-and-push-ecr]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment: production  # Requires manual approval in GitHub
     
-    # Add production deployment steps here when ready
-    # This is a placeholder for future implementation
     steps:
       - uses: actions/checkout@v3
       
-      - name: Placeholder for production deployment
-        run: echo "Production deployment would happen here"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install boto3 requests
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+      
+      - name: Create .env.production file
+        run: |
+          cat > .env.production << EOL
+          # Generated by CI/CD pipeline
+          DATABASE_URL=postgresql://${{ secrets.PROD_DB_USER }}:${{ secrets.PROD_DB_PASSWORD }}@${{ secrets.PROD_DB_HOST }}:5432/${{ secrets.PROD_DB_NAME }}
+          POSTGRES_USER=${{ secrets.PROD_DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+          POSTGRES_DB=${{ secrets.PROD_DB_NAME }}
+          POSTGRES_HOST=${{ secrets.PROD_DB_HOST }}
+          POSTGRES_PORT=5432
+          RABBITMQ_USER=${{ secrets.PROD_RABBITMQ_USER }}
+          RABBITMQ_PASSWORD=${{ secrets.PROD_RABBITMQ_PASSWORD }}
+          RABBITMQ_URL=amqp://${{ secrets.PROD_RABBITMQ_USER }}:${{ secrets.PROD_RABBITMQ_PASSWORD }}@${{ secrets.PROD_RABBITMQ_HOST }}:5672/%2F
+          REDIS_URL=redis://${{ secrets.PROD_REDIS_HOST }}:6379/0
+          VECTOR_DB_USER=${{ secrets.PROD_VECTOR_DB_USER }}
+          VECTOR_DB_PASSWORD=${{ secrets.PROD_VECTOR_DB_PASSWORD }}
+          VECTOR_DB_NAME=${{ secrets.PROD_VECTOR_DB_NAME }}
+          S3_BACKUP_BUCKET=${{ secrets.PROD_S3_BACKUP_BUCKET }}
+          APP_VERSION=${{ needs.build-and-push-ecr.outputs.app_version }}
+          ECR_REPOSITORY=${{ secrets.PROD_ECR_REPOSITORY }}
+          ENVIRONMENT=production
+          EOL
+      
+      - name: Notify Team of Pending Deployment
+        run: |
+          python scripts/notify_deploy_status.py \
+            --environment production \
+            --status info \
+            --title "Production Deployment Starting" \
+            --message "Starting deployment of version ${{ needs.build-and-push-ecr.outputs.app_version }} to production environment" \
+            --slack-webhook ${{ secrets.SLACK_WEBHOOK }} \
+            --email-recipients ${{ secrets.OPS_EMAIL }}
+      
+      - name: Backup Database
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/backup_database.py \
+            --db-name ${{ secrets.PROD_DB_NAME }} \
+            --db-user ${{ secrets.PROD_DB_USER }} \
+            --db-password ${{ secrets.PROD_DB_PASSWORD }} \
+            --db-host ${{ secrets.PROD_DB_HOST }} \
+            --db-port 5432 \
+            --environment production \
+            --upload-to-s3 \
+            --s3-bucket ${{ secrets.PROD_S3_BACKUP_BUCKET }}
+      
+      - name: Run Database Migrations
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/deploy.py \
+            --environment production \
+            --db-only
+        env:
+          DATABASE_URL: postgresql://${{ secrets.PROD_DB_USER }}:${{ secrets.PROD_DB_PASSWORD }}@${{ secrets.PROD_DB_HOST }}:5432/${{ secrets.PROD_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.PROD_DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.PROD_DB_NAME }}
+          POSTGRES_HOST: ${{ secrets.PROD_DB_HOST }}
+          POSTGRES_PORT: 5432
+      
+      - name: Deploy Services
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python scripts/deploy.py \
+            --environment production \
+            --skip-migrations \
+            --skip-backup
+        env:
+          DATABASE_URL: postgresql://${{ secrets.PROD_DB_USER }}:${{ secrets.PROD_DB_PASSWORD }}@${{ secrets.PROD_DB_HOST }}:5432/${{ secrets.PROD_DB_NAME }}
+          APP_VERSION: ${{ needs.build-and-push-ecr.outputs.app_version }}
+          ECR_REPOSITORY: ${{ secrets.PROD_ECR_REPOSITORY }}
+      
+      - name: Notify Slack on Success
+        if: success()
+        run: |
+          python scripts/notify_deploy_status.py \
+            --environment production \
+            --status success \
+            --title "Production Deployment Successful" \
+            --message "Version ${{ needs.build-and-push-ecr.outputs.app_version }} deployed to production environment" \
+            --slack-webhook ${{ secrets.SLACK_WEBHOOK }} \
+            --email-recipients ${{ secrets.OPS_EMAIL }}
+      
+      - name: Notify Slack on Failure
+        if: failure()
+        run: |
+          python scripts/notify_deploy_status.py \
+            --environment production \
+            --status failure \
+            --title "URGENT: Production Deployment Failed" \
+            --message "Deployment of version ${{ needs.build-and-push-ecr.outputs.app_version }} to production environment failed. Please check logs immediately." \
+            --slack-webhook ${{ secrets.SLACK_WEBHOOK }} \
+            --email-recipients ${{ secrets.OPS_EMAIL }}
