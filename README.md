@@ -211,6 +211,33 @@ The project uses Alembic for database migrations:
 - Migration history is tracked in the `migrations/versions` directory
 - For manual control, use the `manage_migrations.py` script
 
+### Migration Verification System
+
+The project includes a comprehensive migration verification system to prevent common issues:
+
+1. **Pre-migration checks**: Validate migrations before applying them
+   ```bash
+   python manage_migrations.py verify
+   ```
+
+2. **Migration pattern scanning**: Check for proper SQLAlchemy patterns
+   ```bash
+   python scripts/check_migration_patterns.py
+   ```
+
+3. **Automatic verification before migrations**: All upgrade operations run verification first
+   ```bash
+   # Run with checks (default)
+   python manage_migrations.py upgrade
+
+   # Skip checks if needed
+   python manage_migrations.py upgrade --skip-checks
+   ```
+
+4. **Enhanced logging**: Migrations now log detailed execution information to `migrations/migration_execution.log`
+
+5. **Docker integration**: Migration container automatically runs verification before applying migrations
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
