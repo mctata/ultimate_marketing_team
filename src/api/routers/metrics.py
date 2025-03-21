@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.api_metrics import metrics_service
-from src.core.database import get_session
+from src.core.database import get_db
 from src.core.security import get_current_user_with_permissions
 
 router = APIRouter(
