@@ -117,11 +117,33 @@ For more commands, check the Makefile or run `make help`.
 The project uses GitHub Actions for continuous integration and deployment:
 
 - **Lint**: Checks code quality with flake8, mypy, isort, and black
+- **Migration Verification**: Validates migration files for SQLAlchemy patterns and sequence integrity
 - **Tests**: Runs Python tests, frontend tests, and migration tests
 - **Docker Build**: Builds and tests Docker images
 - **Deployment**: Deploys to staging or production environments based on branch
 
 The pipeline runs automatically on pull requests and pushes to main/develop branches. You can also manually trigger workflows from the GitHub Actions tab.
+
+#### Migration CI/CD Flow
+
+The migration verification is integrated into the CI/CD pipeline as follows:
+
+1. **Static Analysis (verify-migrations job)**: 
+   - Runs after code linting
+   - Scans migration files for proper SQLAlchemy patterns using AST analysis
+   - Validates migration sequence and dependency chain
+   - Uploads verification logs as artifacts
+
+2. **Database Testing (test-migrations job)**:
+   - Runs after verification passes
+   - Creates test database and applies migrations
+   - Runs comprehensive integration tests for the migration system
+   - Verifies database schema matches models
+
+3. **Pre-Deployment Verification**:
+   - Runs migration verification before staging/production deployment
+   - Automatically performs database backups prior to migrations
+   - Provides detailed logs of migration execution
 
 ### Troubleshooting
 
