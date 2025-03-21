@@ -182,6 +182,90 @@ def has_permission(resource: str, action: str):
         return wrapper
     return decorator
 
+def get_current_user_with_permissions(required_permissions: List[str]):
+    """
+    Dependency that checks if the current user has the required permissions.
+    
+    Args:
+        required_permissions: List of permission strings in format "resource:action"
+        
+    Returns:
+        Dependency function that will raise an exception if the user doesn't have the required permissions
+    """
+    async def check_permissions(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+    ):
+        from src.models.system import User, Role, Permission
+        
+        # Verify the token and get the user
+        payload = decode_token(token)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get the user with their roles and permissions
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user",
+            )
+        
+        # Superusers can do anything
+        if user.is_superuser:
+            return user
+        
+        # Check if the user has any of the required permissions
+        for permission_string in required_permissions:
+            # Parse the permission string
+            try:
+                resource, action = permission_string.split(":")
+            except ValueError:
+                continue
+            
+            # Check if the user has this permission through any of their roles
+            for role in user.roles:
+                for permission in role.permissions:
+                    # Wildcard permission check
+                    if permission.resource == "*" and permission.action == "*":
+                        return user
+                    # Specific resource wildcard action
+                    if permission.resource == resource and permission.action == "*":
+                        return user
+                    # Wildcard resource specific action
+                    if permission.resource == "*" and permission.action == action:
+                        return user
+                    # Exact permission match
+                    if permission.resource == resource and permission.action == action:
+                        return user
+        
+        # User doesn't have any of the required permissions
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
+    
+    return check_permissions
+
 def create_audit_log(
     db: Session,
     user_id: int,
