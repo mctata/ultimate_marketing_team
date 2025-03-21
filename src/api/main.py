@@ -49,13 +49,14 @@ app.add_middleware(
 )
 
 # Import routers
-from src.api.routers import auth, brands, content, metrics
+from src.api.routers import auth, brands, content, metrics, content_generation
 
 # Add routers to app
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(brands.router, prefix=f"{settings.API_PREFIX}/brands", tags=["Brands"])
 app.include_router(content.router, prefix=f"{settings.API_PREFIX}/content", tags=["Content"])
 app.include_router(metrics.router, prefix=f"{settings.API_PREFIX}/metrics", tags=["Metrics"])
+app.include_router(content_generation.router, prefix=f"{settings.API_PREFIX}/content-generation", tags=["Content Generation"])
 
 # Add WebSocket endpoint
 app.add_api_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)
