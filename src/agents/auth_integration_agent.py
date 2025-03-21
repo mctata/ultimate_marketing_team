@@ -2363,17 +2363,17 @@ class AuthIntegrationAgent(BaseAgent):
                     social_accounts = []
                     
                 for account in social_accounts:
-                        if self.health_check_stop_event.is_set():
-                            break
-                        
-                        try:
-                            # Get credentials
-                            credentials = self._get_integration_credentials(account.id, account.platform)
-                            # Perform health check
-                            self._check_integration_health(account.platform, account.id, credentials)
-                            logger.debug(f"Checked health for social account: {account.id} ({account.platform})")
-                        except Exception as e:
-                            logger.error(f"Error checking health for social account {account.id}: {e}")
+                    if self.health_check_stop_event.is_set():
+                        break
+                    
+                    try:
+                        # Get credentials
+                        credentials = self._get_integration_credentials(account.id, account.platform)
+                        # Perform health check
+                        self._check_integration_health(account.platform, account.id, credentials)
+                        logger.debug(f"Checked health for social account: {account.id} ({account.platform})")
+                    except Exception as e:
+                        logger.error(f"Error checking health for social account {account.id}: {e}")
                     
                 try:
                     with agent_get_db() as db:
@@ -2384,17 +2384,17 @@ class AuthIntegrationAgent(BaseAgent):
                     cms_accounts = []
                     
                 for cms in cms_accounts:
-                        if self.health_check_stop_event.is_set():
-                            break
-                        
-                        try:
-                            # Get credentials
-                            credentials = self._get_integration_credentials(cms.id, cms.platform)
-                            # Perform health check
-                            self._check_integration_health(cms.platform, cms.id, credentials)
-                            logger.debug(f"Checked health for CMS account: {cms.id} ({cms.platform})")
-                        except Exception as e:
-                            logger.error(f"Error checking health for CMS account {cms.id}: {e}")
+                    if self.health_check_stop_event.is_set():
+                        break
+                    
+                    try:
+                        # Get credentials
+                        credentials = self._get_integration_credentials(cms.id, cms.platform)
+                        # Perform health check
+                        self._check_integration_health(cms.platform, cms.id, credentials)
+                        logger.debug(f"Checked health for CMS account: {cms.id} ({cms.platform})")
+                    except Exception as e:
+                        logger.error(f"Error checking health for CMS account {cms.id}: {e}")
                     
                 try:
                     with agent_get_db() as db:
@@ -2405,17 +2405,17 @@ class AuthIntegrationAgent(BaseAgent):
                     ad_accounts = []
                     
                 for ad in ad_accounts:
-                        if self.health_check_stop_event.is_set():
-                            break
-                        
-                        try:
-                            # Get credentials
-                            credentials = self._get_integration_credentials(ad.id, ad.platform)
-                            # Perform health check
-                            self._check_integration_health(ad.platform, ad.id, credentials)
-                            logger.debug(f"Checked health for ad account: {ad.id} ({ad.platform})")
-                        except Exception as e:
-                            logger.error(f"Error checking health for ad account {ad.id}: {e}")
+                    if self.health_check_stop_event.is_set():
+                        break
+                    
+                    try:
+                        # Get credentials
+                        credentials = self._get_integration_credentials(ad.id, ad.platform)
+                        # Perform health check
+                        self._check_integration_health(ad.platform, ad.id, credentials)
+                        logger.debug(f"Checked health for ad account: {ad.id} ({ad.platform})")
+                    except Exception as e:
+                        logger.error(f"Error checking health for ad account {ad.id}: {e}")
                 
                 logger.info("Scheduled health checks completed")
                 

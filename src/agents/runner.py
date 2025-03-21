@@ -8,6 +8,26 @@ import time
 from typing import Dict, Any, Optional
 from loguru import logger
 
+# Fix database connection for Docker containers
+os.environ["DATABASE_URL"] = "postgresql://postgres:postgres@postgres:5432/ultimatemarketing"
+os.environ["REDIS_URL"] = "redis://redis:6379/0"
+os.environ["RABBITMQ_URL"] = "amqp://guest:guest@rabbitmq:5672/"
+
+# Setup database connection
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+
+# Direct database connection
+engine = create_engine("postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+
+# Create schema if it doesn't exist
+with engine.connect() as conn:
+    conn.execute(text('CREATE SCHEMA IF NOT EXISTS umt;'))
+    conn.commit()
+
+# Import models
+import src.models
+
 # Agent imports
 from src.agents.auth_integration_agent import AuthIntegrationAgent
 from src.agents.brand_project_management_agent import BrandProjectManagementAgent
