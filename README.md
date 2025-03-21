@@ -64,7 +64,17 @@ VITE_WEBSOCKET_URL=ws://localhost:8000/ws
 docker-compose up -d
 ```
 
-6. Access the application:
+6. Run database migrations:
+
+```bash
+# Run migrations automatically with Docker
+docker-compose up migrations
+
+# Or manually using the helper script
+python manage_migrations.py upgrade
+```
+
+7. Access the application:
    - Frontend: http://localhost:3000
    - API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
@@ -104,14 +114,26 @@ If you encounter issues:
    docker-compose ps postgres
    ```
 
-3. **Frontend build errors**: Resolve TypeScript errors and ensure all dependencies are installed:
+3. **Database migration issues**: Check Alembic migration status and logs:
+   ```bash
+   # Check migration status
+   python manage_migrations.py current
+   
+   # View migration history
+   python manage_migrations.py history
+   
+   # Check migration logs
+   docker-compose logs migrations
+   ```
+
+4. **Frontend build errors**: Resolve TypeScript errors and ensure all dependencies are installed:
    ```bash
    cd frontend
    npm install
    npm run build
    ```
 
-4. **Agent services failing**: Check logs to identify specific issues:
+5. **Agent services failing**: Check logs to identify specific issues:
    ```bash
    docker-compose logs auth-agent
    ```

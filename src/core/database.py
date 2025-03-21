@@ -6,6 +6,9 @@ import os
 
 from src.core.settings import settings
 
+# Define schema name for all tables
+SCHEMA_NAME = "umt"
+
 # Override DATABASE_URL for Docker containers
 database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
 

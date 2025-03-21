@@ -165,6 +165,23 @@ services:
       - vector-db-data:/var/lib/postgresql/data
     networks:
       - umt-network
+      
+  # Database Migrations
+  migrations:
+    build:
+      context: .
+      dockerfile: docker/migrations/Dockerfile
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ultimatemarketing
+      - PYTHONPATH=/app
+    depends_on:
+      - postgres
+    volumes:
+      - .:/app
+    networks:
+      - umt-network
+    command: alembic upgrade head
 
 networks:
   umt-network:
