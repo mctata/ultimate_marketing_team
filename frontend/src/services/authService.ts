@@ -36,12 +36,7 @@ const tokenKey = 'auth_token';
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    // Use URLSearchParams for form data submission
-    const urlSearchParams = new URLSearchParams();
-    urlSearchParams.append('username', credentials.email);
-    urlSearchParams.append('password', credentials.password);
-    
-    const response = await api.post<AuthResponse>('/api/v1/auth/login', {
+    const response = await api.post<AuthResponse>('/auth/login', {
       email: credentials.email,
       password: credentials.password
     });
