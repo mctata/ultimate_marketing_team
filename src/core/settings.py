@@ -34,6 +34,12 @@ class Settings:
     
     # Database settings
     DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+    DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+    DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+    DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "300"))
+    DB_STATEMENT_TIMEOUT = int(os.getenv("DB_STATEMENT_TIMEOUT", "30000"))
+    DB_ENABLE_METRICS = os.getenv("DB_ENABLE_METRICS", "true").lower() == "true"
     
     # Redis settings
     REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
@@ -75,6 +81,18 @@ class Settings:
     # Test user for development
     TEST_USER_EMAIL = "test@example.com"
     TEST_USER_PASSWORD = "password123"
+    
+    # AI settings
+    ENABLE_MODEL_CACHING = os.getenv("ENABLE_MODEL_CACHING", "true").lower() == "true"
+    MODEL_CACHE_TTL = int(os.getenv("MODEL_CACHE_TTL", "3600"))
+    DEFAULT_CONTENT_MODEL = os.getenv("DEFAULT_CONTENT_MODEL", "gpt-4-turbo")
+    DEFAULT_STRATEGY_MODEL = os.getenv("DEFAULT_STRATEGY_MODEL", "claude-3-opus")
+    OPENAI_DAILY_BUDGET_USD = float(os.getenv("OPENAI_DAILY_BUDGET_USD", "100.0"))
+    ANTHROPIC_DAILY_BUDGET_USD = float(os.getenv("ANTHROPIC_DAILY_BUDGET_USD", "100.0"))
+    MAX_TOKENS_PER_REQUEST = int(os.getenv("MAX_TOKENS_PER_REQUEST", "8000"))
+    AI_RATE_LIMIT_TOKENS_PER_MINUTE = int(os.getenv("AI_RATE_LIMIT_TOKENS_PER_MINUTE", "100000"))
+    AI_FALLBACK_TO_SMALLER_MODEL = os.getenv("AI_FALLBACK_TO_SMALLER_MODEL", "true").lower() == "true"
+    AI_ENABLE_ADAPTIVE_RATE_LIMITING = os.getenv("AI_ENABLE_ADAPTIVE_RATE_LIMITING", "true").lower() == "true"
 
 
 settings = Settings()
