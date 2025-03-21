@@ -146,6 +146,50 @@ def run_backup(environment, config):
         return False
 
 
+def verify_migrations(environment, config):
+    """Verify migrations before applying them.
+    
+    Args:
+        environment (str): Environment name
+        config (dict): Configuration dictionary
+        
+    Returns:
+        bool: True if verification passed, False otherwise
+    """
+    log_message(f"Verifying migrations for {environment} environment")
+    
+    # Run static verification first
+    check_migration_cmd = [
+        "python", "scripts/check_migration_patterns.py"
+    ]
+    
+    try:
+        log_message("Running migration pattern verification")
+        process = subprocess.run(check_migration_cmd, check=True, capture_output=True, text=True)
+        log_message("Migration pattern verification passed")
+    except subprocess.CalledProcessError as e:
+        log_message(f"Migration pattern verification failed: {e}", "ERROR")
+        log_message(f"Verification output: {e.stdout}", "ERROR")
+        log_message(f"Verification errors: {e.stderr}", "ERROR")
+        return False
+    
+    # Run pre-migration checks
+    pre_check_cmd = [
+        "python", "scripts/pre_migration_check.py",
+        "--skip-simulation"  # Skip database simulation in production
+    ]
+    
+    try:
+        log_message("Running pre-migration checks")
+        process = subprocess.run(pre_check_cmd, check=True, capture_output=True, text=True)
+        log_message("Pre-migration checks passed")
+        return True
+    except subprocess.CalledProcessError as e:
+        log_message(f"Pre-migration checks failed: {e}", "ERROR")
+        log_message(f"Checks output: {e.stdout}", "ERROR")
+        log_message(f"Checks errors: {e.stderr}", "ERROR")
+        return False
+
 def run_migrations(environment, config):
     """Run database migrations.
     
@@ -160,7 +204,13 @@ def run_migrations(environment, config):
     """
     log_message(f"Starting database migrations for {environment} environment")
     
-    # First check current version
+    # First verify migrations if not in development mode
+    if environment != ENV_DEVELOPMENT and not config.get("skip_verification", False):
+        if not verify_migrations(environment, config):
+            log_message("Migration verification failed, cannot proceed with migrations", "ERROR")
+            return False, None
+    
+    # Check current version
     monitor_cmd = [
         "python", "scripts/monitor_migrations.py",
         "--output", "json",
@@ -372,7 +422,8 @@ def request_deployment_approval(environment, config):
     return True
 
 
-def deploy(environment, services=None, skip_migrations=False, skip_backup=False, db_only=False):
+def deploy(environment, services=None, skip_migrations=False, skip_backup=False, 
+         skip_verification=False, db_only=False):
     """Run the deployment process.
     
     Args:
@@ -380,6 +431,7 @@ def deploy(environment, services=None, skip_migrations=False, skip_backup=False,
         services (list): List of services to deploy, None for all
         skip_migrations (bool): Skip database migrations
         skip_backup (bool): Skip database backup
+        skip_verification (bool): Skip migration verification
         db_only (bool): Only run database migration
         
     Returns:
@@ -392,6 +444,9 @@ def deploy(environment, services=None, skip_migrations=False, skip_backup=False,
     
     if skip_backup:
         config["enable_backup"] = False
+        
+    if skip_verification:
+        config["skip_verification"] = True
     
     # Request approval for production deployment
     if not request_deployment_approval(environment, config):
@@ -495,6 +550,8 @@ def main():
                       help='Skip database migrations')
     parser.add_argument('--skip-backup', action='store_true',
                       help='Skip database backup')
+    parser.add_argument('--skip-verification', action='store_true',
+                      help='Skip migration verification')
     parser.add_argument('--db-only', action='store_true',
                       help='Only run database migrations, skip service deployment')
     
@@ -505,6 +562,7 @@ def main():
         args.services,
         args.skip_migrations,
         args.skip_backup,
+        args.skip_verification,
         args.db_only
     )
     
