@@ -36,20 +36,14 @@ const tokenKey = 'auth_token';
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    // Create form data for token request (FastAPI OAuth2PasswordRequestForm)
-    const formData = new FormData();
-    formData.append('username', credentials.email);
-    formData.append('password', credentials.password);
-    
     // Use URLSearchParams for form data submission
     const urlSearchParams = new URLSearchParams();
     urlSearchParams.append('username', credentials.email);
     urlSearchParams.append('password', credentials.password);
     
-    const response = await api.post<AuthResponse>('/auth/token', urlSearchParams, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+    const response = await api.post<AuthResponse>('/api/v1/auth/login', {
+      email: credentials.email,
+      password: credentials.password
     });
     
     // Store token in localStorage
