@@ -116,7 +116,7 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: postgres:14-alpine
+    image: ankane/pgvector:latest
     ports:
       - "5432:5432"
     environment:
@@ -152,19 +152,6 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - umt-network
-
-  vector-db:
-    image: ankane/pgvector:latest
-    ports:
-      - "5433:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=vectordb
-    volumes:
-      - vector-db-data:/var/lib/postgresql/data
-    networks:
-      - umt-network
       
   # Database Migrations
   migrations:
@@ -191,4 +178,3 @@ volumes:
   postgres-data:
   redis-data:
   rabbitmq-data:
-  vector-db-data:
