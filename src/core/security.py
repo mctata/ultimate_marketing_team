@@ -1,9 +1,11 @@
-from datetime import datetime, timedelta
-from typing import Optional, Union, Any, Dict, List
+# Standard library imports
 import base64
 import os
+from datetime import datetime, timedelta
 from functools import wraps
+from typing import Optional, Union, Any, Dict, List
 
+# Third-party imports
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
@@ -13,6 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from sqlalchemy.orm import Session
 
+# Local imports
 from src.core.settings import settings
 from src.core.database import get_db
 
@@ -23,11 +26,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash."""
+    """Verify a password against a hash.
+    
+    Args:
+        plain_password: The plain text password to verify
+        hashed_password: The hashed password to compare against
+        
+    Returns:
+        bool: True if password matches the hash, False otherwise
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Generate a password hash."""
+    """Generate a password hash.
+    
+    Args:
+        password: The plain text password to hash
+        
+    Returns:
+        str: The hashed password
+    """
     return pwd_context.hash(password)
 
 def create_access_token(
@@ -35,7 +53,16 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
     additional_data: Optional[Dict[str, Any]] = None
 ) -> str:
-    """Create a JWT access token with optional additional data."""
+    """Create a JWT access token with optional additional data.
+    
+    Args:
+        subject: The subject of the token, typically user ID or email
+        expires_delta: Optional custom expiration time
+        additional_data: Optional dictionary of additional claims to include in the token
+        
+    Returns:
+        str: The encoded JWT token
+    """
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
