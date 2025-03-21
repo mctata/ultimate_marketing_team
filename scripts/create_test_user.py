@@ -79,7 +79,10 @@ def get_current_user(token):
     }
     
     try:
+        logger.debug(f"Calling {url} with token: {token}")
         response = requests.get(url, headers=headers)
+        logger.debug(f"Response status: {response.status_code}")
+        logger.debug(f"Response headers: {response.headers}")
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
