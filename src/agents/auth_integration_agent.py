@@ -15,7 +15,55 @@ from threading import Thread, Event
 from src.agents.base_agent import BaseAgent
 from src.core.database import get_db
 from src.core.security import encrypt_sensitive_data, decrypt_sensitive_data
+# Import all models through the package to ensure all models are loaded
+import src.models
 from src.models.integration import SocialAccount, CMSAccount, AdAccount, IntegrationHealth
+from src.models.project import Brand
+
+# Manually override the database URL
+import os
+# Reset default database URL for the agent context
+os.environ["DATABASE_URL"] = "postgresql://postgres:postgres@postgres:5432/ultimatemarketing"
+
+# Create a custom db context for the agent
+from contextlib import contextmanager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Direct database connection
+engine = create_engine("postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Import models directly
+from src.models.integration import SocialAccount, CMSAccount, AdAccount, IntegrationHealth
+from sqlalchemy import text
+
+# Create schema if it doesn't exist
+with engine.connect() as conn:
+    conn.execute(text('CREATE SCHEMA IF NOT EXISTS umt;'))
+    conn.commit()
+
+# Create specific tables needed for this agent
+from src.core.database import Base
+# Create only our integration tables
+for table in [SocialAccount.__table__, CMSAccount.__table__, AdAccount.__table__, IntegrationHealth.__table__]:
+    try:
+        table.create(engine, checkfirst=True)
+    except Exception as e:
+        print(f"Error creating table {table.name}: {e}")
+
+@contextmanager
+def agent_get_db():
+    """Custom DB session for agent"""
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 class AuthIntegrationAgent(BaseAgent):
     """Agent responsible for authentication and platform integrations.
@@ -964,7 +1012,7 @@ class AuthIntegrationAgent(BaseAgent):
         
         integration_id = None
         
-        with get_db() as db:
+        with agent_get_db() as db:
             try:
                 if platform_category == "social_media":
                     # Store as SocialAccount with encrypted tokens
@@ -1155,7 +1203,7 @@ class AuthIntegrationAgent(BaseAgent):
                 health_status["error"] = health_result["error"]
             
             # Store health check result in both database and cache
-            with get_db() as db:
+            with agent_get_db() as db:
                 # 1. Update the health status in the appropriate account table
                 if db_id is not None:
                     now = datetime.datetime.now()
@@ -1221,7 +1269,7 @@ class AuthIntegrationAgent(BaseAgent):
             # Store error status in database if we have a valid ID
             if db_id is not None:
                 try:
-                    with get_db() as db:
+                    with agent_get_db() as db:
                         now = datetime.datetime.now()
                         
                         # Update the appropriate table
@@ -1849,7 +1897,7 @@ class AuthIntegrationAgent(BaseAgent):
                             continue
             
             # If still not determined, we'll need to check all tables
-            with get_db() as db:
+            with agent_get_db() as db:
                 credentials = {}
                 
                 if platform_category == "social_media" or not platform_category:
@@ -2306,10 +2354,15 @@ class AuthIntegrationAgent(BaseAgent):
                 # Perform health check on all integrations
                 logger.info("Running scheduled health checks on all integrations")
                 
-                with get_db() as db:
-                    # Check social media accounts
-                    social_accounts = db.query(SocialAccount).all()
-                    for account in social_accounts:
+                try:
+                    with agent_get_db() as db:
+                        # Check social media accounts
+                        social_accounts = db.query(SocialAccount).all()
+                except Exception as e:
+                    logger.error(f"Error querying social accounts: {e}")
+                    social_accounts = []
+                    
+                for account in social_accounts:
                         if self.health_check_stop_event.is_set():
                             break
                         
@@ -2322,9 +2375,15 @@ class AuthIntegrationAgent(BaseAgent):
                         except Exception as e:
                             logger.error(f"Error checking health for social account {account.id}: {e}")
                     
-                    # Check CMS accounts
-                    cms_accounts = db.query(CMSAccount).all()
-                    for cms in cms_accounts:
+                try:
+                    with agent_get_db() as db:
+                        # Check CMS accounts
+                        cms_accounts = db.query(CMSAccount).all()
+                except Exception as e:
+                    logger.error(f"Error querying CMS accounts: {e}")
+                    cms_accounts = []
+                    
+                for cms in cms_accounts:
                         if self.health_check_stop_event.is_set():
                             break
                         
@@ -2337,9 +2396,15 @@ class AuthIntegrationAgent(BaseAgent):
                         except Exception as e:
                             logger.error(f"Error checking health for CMS account {cms.id}: {e}")
                     
-                    # Check ad accounts
-                    ad_accounts = db.query(AdAccount).all()
-                    for ad in ad_accounts:
+                try:
+                    with agent_get_db() as db:
+                        # Check ad accounts
+                        ad_accounts = db.query(AdAccount).all()
+                except Exception as e:
+                    logger.error(f"Error querying Ad accounts: {e}")
+                    ad_accounts = []
+                    
+                for ad in ad_accounts:
                         if self.health_check_stop_event.is_set():
                             break
                         

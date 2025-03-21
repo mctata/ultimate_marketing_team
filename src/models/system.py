@@ -55,6 +55,8 @@ class User(Base):
     audit_logs = relationship("AuditLog", back_populates="user")
     projects = relationship("Project", foreign_keys="Project.created_by", back_populates="created_by_user")
     assigned_projects = relationship("Project", foreign_keys="Project.assigned_to", back_populates="assigned_to_user")
+    content_drafts = relationship("ContentDraft", back_populates="created_by_user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 class Role(Base):
     """Role model for RBAC"""
@@ -107,6 +109,25 @@ class AuditLog(Base):
     
     # Relationships
     user = relationship("User", back_populates="audit_logs")
+
+class Notification(Base):
+    """Notification model for user notifications."""
+    
+    __tablename__ = "notifications"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(100), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    notification_type = Column(String(50), nullable=False)  # e.g. "system", "task", "content", etc.
+    related_entity_type = Column(String(50), nullable=True)  # e.g. "project", "content", etc.
+    related_entity_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    user = relationship("User", back_populates="notifications")
 
 class SystemLog(Base):
     """System log model for tracking system events and errors."""

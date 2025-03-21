@@ -2,19 +2,37 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
+import os
 
 from src.core.settings import settings
 
+# Override DATABASE_URL for Docker containers
+database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+
 # Create SQLAlchemy engine
-engine = create_engine(str(settings.DATABASE_URL))
+engine = create_engine(str(database_url))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for SQLAlchemy models
 Base = declarative_base()
 
+# Ensure all models are loaded and SQLAlchemy knows about all the relationships
+def configure_mappers():
+    """
+    Import all models and configure SQLAlchemy mappers.
+    This function should be called before any database operation to ensure
+    all relationships are properly set up.
+    """
+    import src.models
+    from sqlalchemy.orm import configure_mappers
+    configure_mappers()
+
 @contextmanager
 def get_db():
     """Provides a transactional scope around a series of operations."""
+    # Ensure all mappers are configured before creating the session
+    configure_mappers()
+    
     db = SessionLocal()
     try:
         yield db

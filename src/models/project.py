@@ -28,6 +28,7 @@ class Brand(Base):
     social_accounts = relationship("SocialAccount", back_populates="brand", cascade="all, delete-orphan")
     cms_accounts = relationship("CMSAccount", back_populates="brand", cascade="all, delete-orphan")
     ad_accounts = relationship("AdAccount", back_populates="brand", cascade="all, delete-orphan")
+    ad_campaigns = relationship("AdCampaign", back_populates="brand", cascade="all, delete-orphan")
 
 class ProjectType(Base):
     """Project type model for categorizing projects (e.g., Email, Blog, Social Post)."""
