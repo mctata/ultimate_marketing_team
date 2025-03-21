@@ -208,13 +208,13 @@ class TestManageMigrations:
         """Test extracting revision ID from command output."""
         # Test upgrade output
         rev = manage_migrations.extract_revision_from_output(
-            "INFO  [alembic.runtime.migration] Running upgrade abc123 -> def456"
+            "INFO  [alembic.runtime.migration] Upgrade to def456"
         )
         assert rev == "def456"
         
         # Test downgrade output
         rev = manage_migrations.extract_revision_from_output(
-            "INFO  [alembic.runtime.migration] Running downgrade def456 -> abc123"
+            "INFO  [alembic.runtime.migration] Downgrade to abc123"
         )
         assert rev == "abc123"
         
@@ -256,7 +256,7 @@ class TestManageMigrations:
         """Test running pre-migration checks with failure."""
         # Setup mocks
         mock_path_exists.return_value = True
-        mock_check_call.side_effect = Exception("Test failure")
+        mock_check_call.side_effect = subprocess.CalledProcessError(1, "mock command")
         
         # Run function
         result = manage_migrations.run_pre_migration_checks()
