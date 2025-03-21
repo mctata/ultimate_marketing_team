@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Avatar,
@@ -8,13 +9,15 @@ import {
   Divider,
   FormControlLabel,
   Grid,
+  IconButton,
+  InputAdornment,
   Link,
   Paper,
   TextField,
   Typography,
   Alert,
 } from '@mui/material';
-import { PersonAddOutlined, Google, Facebook, LinkedIn } from '@mui/icons-material';
+import { PersonAddOutlined, Google, Facebook, LinkedIn, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,6 +38,16 @@ const validationSchema = Yup.object({
 
 const Register = () => {
   const { register, googleLogin, facebookLogin, linkedinLogin, error, isLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+  
+  const handleClickShowConfirmPassword = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
   
   const formik = useFormik({
     initialValues: {
@@ -169,7 +182,7 @@ const Register = () => {
                   fullWidth
                   name="password"
                   label="Password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   id="password"
                   autoComplete="new-password"
                   value={formik.values.password}
@@ -178,6 +191,19 @@ const Register = () => {
                   error={formik.touched.password && Boolean(formik.errors.password)}
                   helperText={formik.touched.password && formik.errors.password}
                   disabled={isLoading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowPassword}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -185,7 +211,7 @@ const Register = () => {
                   fullWidth
                   name="confirmPassword"
                   label="Confirm Password"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   id="confirmPassword"
                   autoComplete="new-password"
                   value={formik.values.confirmPassword}
@@ -194,6 +220,19 @@ const Register = () => {
                   error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)}
                   helperText={formik.touched.confirmPassword && formik.errors.confirmPassword}
                   disabled={isLoading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowConfirmPassword}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
