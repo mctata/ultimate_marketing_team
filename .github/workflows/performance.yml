@@ -1,0 +1,206 @@
+name: Performance Benchmarks
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run benchmarks against'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      baseline_version:
+        description: 'Baseline version to compare against'
+        required: false
+        type: string
+  
+  # Scheduled benchmark runs
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday at midnight UTC
+  
+  # Run on release candidate tags
+  push:
+    tags:
+      - 'v*-rc*'
+
+jobs:
+  setup:
+    name: Setup Benchmark Environment
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.version }}
+      target_host: ${{ steps.environment.outputs.target_host }}
+      
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+      
+      - name: Generate Version
+        id: version
+        run: |
+          # Get latest tag or use 0.0.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          
+          # Count commits since tag
+          COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
+          
+          # Get short commit hash
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          
+          # Get branch name
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$BRANCH" == "main" ]]; then
+            BRANCH="prod"
+          else
+            BRANCH="dev"
+          fi
+          
+          # Build version string: {tag}+{commit_count}.{branch}.{commit_hash}
+          VERSION="${LATEST_TAG}+${COMMIT_COUNT}.${BRANCH}.${COMMIT_HASH}"
+          
+          echo "Generated version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Set environment variables
+        id: environment
+        run: |
+          # Determine target host based on environment input
+          if [[ "${{ github.event.inputs.environment || 'staging' }}" == "production" ]]; then
+            TARGET_HOST="${{ secrets.PROD_BENCHMARK_HOST }}"
+          else
+            TARGET_HOST="${{ secrets.STAGING_BENCHMARK_HOST }}"
+          fi
+          
+          echo "target_host=$TARGET_HOST" >> $GITHUB_OUTPUT
+
+  run_benchmarks:
+    name: Run Performance Benchmarks
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust psutil requests boto3
+      
+      - name: Run API load tests
+        run: |
+          python benchmarks/runners/run_benchmark.py \
+            --test-script locustfile.py \
+            --host ${{ needs.setup.outputs.target_host }} \
+            --users 100 \
+            --spawn-rate 10 \
+            --run-time 5m \
+            --app-version ${{ needs.setup.outputs.app_version }} \
+            --test-type load \
+            ${{ github.event.inputs.baseline_version && format('--baseline-version {0}', github.event.inputs.baseline_version) || '' }} \
+            ${{ github.event.inputs.baseline_version && '--compare' || '' }}
+      
+      - name: Run content generation tests
+        run: |
+          python benchmarks/runners/run_benchmark.py \
+            --test-script content_generation_test.py \
+            --host ${{ needs.setup.outputs.target_host }} \
+            --users 50 \
+            --spawn-rate 5 \
+            --run-time 3m \
+            --app-version ${{ needs.setup.outputs.app_version }} \
+            --test-type load \
+            ${{ github.event.inputs.baseline_version && format('--baseline-version {0}', github.event.inputs.baseline_version) || '' }} \
+            ${{ github.event.inputs.baseline_version && '--compare' || '' }}
+      
+      - name: Run auth session tests
+        run: |
+          python benchmarks/runners/run_benchmark.py \
+            --test-script auth_session_test.py \
+            --host ${{ needs.setup.outputs.target_host }} \
+            --users 200 \
+            --spawn-rate 20 \
+            --run-time 3m \
+            --app-version ${{ needs.setup.outputs.app_version }} \
+            --test-type load \
+            ${{ github.event.inputs.baseline_version && format('--baseline-version {0}', github.event.inputs.baseline_version) || '' }} \
+            ${{ github.event.inputs.baseline_version && '--compare' || '' }}
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: results/
+          retention-days: 14
+      
+      - name: Notify Slack on completion
+        if: ${{ always() }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"Performance benchmarks for ${{ needs.setup.outputs.app_version }} completed with status: ${{ job.status }}"}' \
+          ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true
+
+  analyze_and_report:
+    name: Analyze and Report Results
+    needs: [setup, run_benchmarks]
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.run_benchmarks.result != 'cancelled' }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas matplotlib seaborn jupyter nbconvert boto3
+      
+      - name: Download benchmark results
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results
+          path: results/
+      
+      - name: Generate summary report
+        run: |
+          mkdir -p reports
+          python benchmarks/runners/generate_report.py \
+            --results-dir results/ \
+            --output-dir reports/ \
+            --app-version ${{ needs.setup.outputs.app_version }} \
+            ${{ github.event.inputs.baseline_version && format('--baseline-version {0}', github.event.inputs.baseline_version) || '' }}
+      
+      - name: Upload reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: reports/
+          retention-days: 30
+      
+      - name: Upload to S3 (if configured)
+        if: ${{ success() && env.AWS_S3_BUCKET != '' }}
+        run: |
+          aws s3 sync reports/ s3://${{ env.AWS_S3_BUCKET }}/performance-reports/${{ needs.setup.outputs.app_version }}/
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-west-2' }}
+          AWS_S3_BUCKET: ${{ secrets.PERFORMANCE_REPORTS_BUCKET || '' }}

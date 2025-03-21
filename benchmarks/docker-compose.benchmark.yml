@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  benchmark-runner:
+    build:
+      context: ..
+      dockerfile: benchmarks/Dockerfile
+    volumes:
+      - ../benchmarks:/app/benchmarks
+      - ../results:/app/results
+    environment:
+      - APP_VERSION=${APP_VERSION:-dev}
+      - TARGET_HOST=${TARGET_HOST:-http://api:8000}
+      - BASELINE_VERSION=${BASELINE_VERSION:-}
+      - USERS=${USERS:-100}
+      - SPAWN_RATE=${SPAWN_RATE:-10}
+      - RUN_TIME=${RUN_TIME:-5m}
+      - TEST_TYPE=${TEST_TYPE:-load}
+      - TEST_SCRIPT=${TEST_SCRIPT:-locustfile.py}
+      - FAIL_ON_REGRESSION=${FAIL_ON_REGRESSION:-false}
+      - SLACK_WEBHOOK=${SLACK_WEBHOOK:-}
+      - NOTIFY_SLACK=${NOTIFY_SLACK:-false}
+      - API_TOKEN=${API_TOKEN:-}
+    command: >
+      python benchmarks/runners/run_benchmark.py
+      --test-script ${TEST_SCRIPT}
+      --host ${TARGET_HOST}
+      --users ${USERS}
+      --spawn-rate ${SPAWN_RATE}
+      --run-time ${RUN_TIME}
+      --app-version ${APP_VERSION}
+      --test-type ${TEST_TYPE}
+      ${BASELINE_VERSION:+--baseline-version ${BASELINE_VERSION}}
+      ${BASELINE_VERSION:+--compare}
+      ${FAIL_ON_REGRESSION:+--fail-on-regression}
+    depends_on:
+      - grafana
+      - postgres
+    networks:
+      - benchmark-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../benchmarks/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - benchmark-network
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-benchmarks}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./schema:/docker-entrypoint-initdb.d
+    networks:
+      - benchmark-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - benchmark-network
+
+networks:
+  benchmark-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:
+  postgres-data:
+  prometheus-data:

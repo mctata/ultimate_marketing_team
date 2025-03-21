@@ -1,0 +1,1047 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": "PostgreSQL",
+        "enable": true,
+        "iconColor": "rgba(255, 96, 96, 1)",
+        "name": "Version Changes",
+        "rawQuery": "SELECT\n  start_time as time,\n  app_version as text,\n  'version' as tags\nFROM umt.benchmark_runs\nWHERE $__timeFilter(start_time)\nORDER BY start_time ASC",
+        "showIn": 0,
+        "tags": [
+          "version"
+        ],
+        "type": "tags"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 2,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 12,
+      "panels": [],
+      "title": "Performance Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "Average response time comparison by endpoint",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH summary AS (\n  SELECT\n    br.app_version,\n    bam.endpoint,\n    AVG(bam.avg_response_time_ms) as avg_response_ms\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version IN($version1, $version2)\n  GROUP BY br.app_version, bam.endpoint\n)\n\nSELECT\n  endpoint as time,\n  app_version as metric,\n  avg_response_ms as value\nFROM summary\nORDER BY endpoint, app_version",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Response Time by Endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "95th percentile response time comparison",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH summary AS (\n  SELECT\n    br.app_version,\n    bam.endpoint,\n    AVG(bam.p95_response_time_ms) as p95_response_ms\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version IN($version1, $version2)\n  GROUP BY br.app_version, bam.endpoint\n)\n\nSELECT\n  endpoint as time,\n  app_version as metric,\n  p95_response_ms as value\nFROM summary\nORDER BY endpoint, app_version",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "95th Percentile Response Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "Error rate comparison by endpoint",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH summary AS (\n  SELECT\n    br.app_version,\n    bam.endpoint,\n    SUM(bam.error_count)::float / NULLIF(SUM(bam.request_count), 0) as error_rate\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version IN($version1, $version2)\n  GROUP BY br.app_version, bam.endpoint\n)\n\nSELECT\n  endpoint as time,\n  app_version as metric,\n  COALESCE(error_rate, 0) as value\nFROM summary\nORDER BY endpoint, app_version",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Error Rate by Endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "Summary of resource usage differences between versions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": null,
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_cpu_v1"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg CPU % ($version1)"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_cpu_v2"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg CPU % ($version2)"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_memory_v1"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Memory ($version1)"
+              },
+              {
+                "id": "unit",
+                "value": "megabytes"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_memory_v2"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Memory ($version2)"
+              },
+              {
+                "id": "unit",
+                "value": "megabytes"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cpu_change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "CPU % Change"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "memory_change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Memory Change"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 8,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "CPU % Change"
+          }
+        ]
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v1_stats AS (\n  SELECT\n    brm.service,\n    AVG(brm.cpu_usage_percent) as avg_cpu,\n    AVG(brm.memory_usage_mb) as avg_memory\n  FROM umt.benchmark_resource_metrics brm\n  JOIN umt.benchmark_runs br ON brm.benchmark_run_id = br.id\n  WHERE br.app_version = $version1\n  GROUP BY brm.service\n),\nv2_stats AS (\n  SELECT\n    brm.service,\n    AVG(brm.cpu_usage_percent) as avg_cpu,\n    AVG(brm.memory_usage_mb) as avg_memory\n  FROM umt.benchmark_resource_metrics brm\n  JOIN umt.benchmark_runs br ON brm.benchmark_run_id = br.id\n  WHERE br.app_version = $version2\n  GROUP BY brm.service\n)\n\nSELECT\n  COALESCE(v1.service, v2.service) as service,\n  v1.avg_cpu as avg_cpu_v1,\n  v2.avg_cpu as avg_cpu_v2,\n  v1.avg_memory as avg_memory_v1,\n  v2.avg_memory as avg_memory_v2,\n  CASE\n    WHEN v1.avg_cpu > 0 THEN ((v2.avg_cpu - v1.avg_cpu) / v1.avg_cpu) * 100\n    ELSE 0\n  END as cpu_change,\n  CASE\n    WHEN v1.avg_memory > 0 THEN ((v2.avg_memory - v1.avg_memory) / v1.avg_memory) * 100\n    ELSE 0\n  END as memory_change\nFROM v1_stats v1\nFULL OUTER JOIN v2_stats v2 ON v1.service = v2.service\nORDER BY ABS(COALESCE(cpu_change, 0)) DESC",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Resource Usage Comparison",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 10,
+      "panels": [],
+      "title": "Regression Detection",
+      "type": "row"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "Endpoints with response time regressions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": null,
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "endpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "v1_response_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "$version1 Response Time"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "v2_response_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "$version2 Response Time"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "absolute_change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Absolute Change"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "percent_change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Percent Change"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 14,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Percent Change"
+          }
+        ]
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v1_stats AS (\n  SELECT\n    bam.endpoint,\n    bam.method,\n    AVG(bam.avg_response_time_ms) as avg_response_time\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version = $version1\n  GROUP BY bam.endpoint, bam.method\n),\nv2_stats AS (\n  SELECT\n    bam.endpoint,\n    bam.method,\n    AVG(bam.avg_response_time_ms) as avg_response_time\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version = $version2\n  GROUP BY bam.endpoint, bam.method\n)\n\nSELECT\n  CONCAT(v1.method, ' ', v1.endpoint) as endpoint,\n  v1.avg_response_time as v1_response_time,\n  v2.avg_response_time as v2_response_time,\n  (v2.avg_response_time - v1.avg_response_time) as absolute_change,\n  CASE\n    WHEN v1.avg_response_time > 0 THEN ((v2.avg_response_time - v1.avg_response_time) / v1.avg_response_time) * 100\n    ELSE 0\n  END as percent_change\nFROM v1_stats v1\nJOIN v2_stats v2 ON v1.endpoint = v2.endpoint AND v1.method = v2.method\nWHERE v2.avg_response_time > v1.avg_response_time\nORDER BY percent_change DESC",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Response Time Regressions",
+      "type": "table"
+    },
+    {
+      "datasource": "PostgreSQL",
+      "description": "Error rate regressions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": null,
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.02
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "endpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "v1_error_rate"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "$version1 Error Rate"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "v2_error_rate"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "$version2 Error Rate"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "absolute_change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Absolute Change"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 16,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Absolute Change"
+          }
+        ]
+      },
+      "pluginVersion": "7.5.5",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v1_stats AS (\n  SELECT\n    bam.endpoint,\n    bam.method,\n    SUM(bam.error_count)::float / NULLIF(SUM(bam.request_count), 0) as error_rate\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version = $version1\n  GROUP BY bam.endpoint, bam.method\n),\nv2_stats AS (\n  SELECT\n    bam.endpoint,\n    bam.method,\n    SUM(bam.error_count)::float / NULLIF(SUM(bam.request_count), 0) as error_rate\n  FROM umt.benchmark_api_metrics bam\n  JOIN umt.benchmark_runs br ON bam.benchmark_run_id = br.id\n  WHERE br.app_version = $version2\n  GROUP BY bam.endpoint, bam.method\n)\n\nSELECT\n  CONCAT(v1.method, ' ', v1.endpoint) as endpoint,\n  COALESCE(v1.error_rate, 0) as v1_error_rate,\n  COALESCE(v2.error_rate, 0) as v2_error_rate,\n  COALESCE(v2.error_rate, 0) - COALESCE(v1.error_rate, 0) as absolute_change\nFROM v1_stats v1\nJOIN v2_stats v2 ON v1.endpoint = v2.endpoint AND v1.method = v2.method\nWHERE COALESCE(v2.error_rate, 0) > COALESCE(v1.error_rate, 0)\nORDER BY absolute_change DESC",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Error Rate Regressions",
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [
+    "performance",
+    "comparison",
+    "benchmark"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "1.0.0+41.dev.a1b2c3d",
+          "value": "1.0.0+41.dev.a1b2c3d"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT DISTINCT app_version FROM umt.benchmark_runs ORDER BY app_version DESC",
+        "description": "First version for comparison",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Version 1",
+        "multi": false,
+        "name": "version1",
+        "options": [],
+        "query": "SELECT DISTINCT app_version FROM umt.benchmark_runs ORDER BY app_version DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "1.0.0+42.prod.a1b2c3d",
+          "value": "1.0.0+42.prod.a1b2c3d"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT DISTINCT app_version FROM umt.benchmark_runs ORDER BY app_version DESC",
+        "description": "Second version for comparison",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Version 2",
+        "multi": false,
+        "name": "version2",
+        "options": [],
+        "query": "SELECT DISTINCT app_version FROM umt.benchmark_runs ORDER BY app_version DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Version Comparison Dashboard",
+  "uid": "version_comparison",
+  "version": 1
+}

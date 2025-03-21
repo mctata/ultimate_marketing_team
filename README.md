@@ -119,10 +119,18 @@ The project uses GitHub Actions for continuous integration and deployment:
 - **Lint**: Checks code quality with flake8, mypy, isort, and black
 - **Migration Verification**: Validates migration files for SQLAlchemy patterns and sequence integrity
 - **Tests**: Runs Python tests, frontend tests, and migration tests
+- **Performance Benchmarks**: Runs load tests and compares against baselines
 - **Docker Build**: Builds and tests Docker images
 - **Deployment**: Deploys to staging or production environments based on branch
 
 The pipeline runs automatically on pull requests and pushes to main/develop branches. You can also manually trigger workflows from the GitHub Actions tab.
+
+Performance benchmarks can be triggered manually or automatically on release candidates:
+
+```bash
+# Trigger performance benchmarks
+gh workflow run performance.yml -f environment=staging -f baseline_version=v1.0.0
+```
 
 #### Migration CI/CD Flow
 
@@ -185,6 +193,40 @@ If you encounter issues:
    ```
 
 6. **CI/CD failures**: Check the GitHub Actions logs for detailed information about failures.
+
+## Performance Benchmarking
+
+The project includes a comprehensive performance benchmarking suite:
+
+### Running Benchmarks
+
+```bash
+# Run a benchmark
+python benchmarks/runners/run_benchmark.py \
+  --test-script locustfile.py \
+  --host http://localhost:8000 \
+  --users 100 \
+  --spawn-rate 10 \
+  --run-time 5m \
+  --app-version dev
+
+# Run benchmarks with Docker Compose
+docker-compose -f benchmarks/docker-compose.benchmark.yml up -d
+
+# Access Grafana dashboards
+open http://localhost:3000
+```
+
+### CI Integration
+
+Performance benchmarks are integrated into the CI/CD pipeline:
+
+```bash
+# Manually trigger benchmark workflow
+gh workflow run performance.yml -f environment=staging
+```
+
+For more details, see the [Benchmarking README](benchmarks/README.md).
 
 ## API Documentation
 
