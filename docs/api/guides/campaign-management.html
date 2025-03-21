@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Management Guide - Ultimate Marketing Team API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow: auto;
+        }
+        
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .badge.get {
+            background-color: #61affe;
+            color: white;
+        }
+        
+        .badge.post {
+            background-color: #49cc90;
+            color: white;
+        }
+        
+        .badge.put {
+            background-color: #fca130;
+            color: white;
+        }
+        
+        .badge.delete {
+            background-color: #f93e3e;
+            color: white;
+        }
+
+        .workflow-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .workflow-container::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #e0e0e0;
+            z-index: -1;
+        }
+
+        .workflow-step {
+            background-color: #fff;
+            border: 2px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #3498db;
+            position: relative;
+        }
+
+        .workflow-step::after {
+            content: attr(data-label);
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.9rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Campaign Management Guide</h1>
+        <p>Learn how to create and manage marketing campaigns using the Ultimate Marketing Team API.</p>
+        <p><a href="../index.html">Back to Documentation Home</a></p>
+    </header>
+    
+    <main>
+        <h2>Overview</h2>
+        <p>The Campaign API allows you to create, manage, and analyze marketing campaigns across multiple channels. This guide covers common campaign management workflows and best practices.</p>
+        
+        <div class="note">
+            <strong>Note:</strong> All campaign endpoints require authentication. Make sure to include your JWT token in the Authorization header.
+        </div>
+        
+        <h2>Campaign Workflow</h2>
+        
+        <div class="workflow-container">
+            <div class="workflow-step" data-label="Create Campaign">1</div>
+            <div class="workflow-step" data-label="Create Ad Sets">2</div>
+            <div class="workflow-step" data-label="Add Creative Assets">3</div>
+            <div class="workflow-step" data-label="Review & Launch">4</div>
+            <div class="workflow-step" data-label="Monitor Performance">5</div>
+        </div>
+        
+        <h3>1. Create a Campaign</h3>
+        <p>Start by creating a new campaign:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/campaigns</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "name": "Summer Product Launch",
+  "description": "Campaign for new product launch in summer 2025",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "budget": 5000.00,
+  "currency": "USD",
+  "start_date": "2025-06-01T00:00:00Z",
+  "end_date": "2025-08-31T23:59:59Z",
+  "objective": "awareness",
+  "status": "draft",
+  "tags": ["summer", "product_launch", "awareness"]
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "description": "Campaign for new product launch in summer 2025",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "brand": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Brand Name"
+  },
+  "budget": 5000.00,
+  "currency": "USD",
+  "start_date": "2025-06-01T00:00:00Z",
+  "end_date": "2025-08-31T23:59:59Z",
+  "objective": "awareness",
+  "status": "draft",
+  "tags": ["summer", "product_launch", "awareness"],
+  "created_at": "2023-10-15T14:30:45Z",
+  "updated_at": "2023-10-15T14:30:45Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "ad_sets": []
+}</code></pre>
+        
+        <h3>2. Create Ad Sets</h3>
+        <p>Add ad sets to your campaign:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/campaigns/{campaign_id}/ad-sets</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "name": "Primary Target Audience",
+  "description": "Core demographic for product launch",
+  "budget": 3000.00,
+  "platforms": ["instagram", "facebook"],
+  "targeting": {
+    "age_min": 25,
+    "age_max": 45,
+    "genders": ["female", "male"],
+    "locations": [
+      {
+        "country": "US",
+        "states": ["CA", "NY", "TX"]
+      }
+    ],
+    "interests": ["technology", "innovation"],
+    "excluded_interests": ["gaming"]
+  },
+  "bid_strategy": "lowest_cost",
+  "status": "active"
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174002",
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Primary Target Audience",
+  "description": "Core demographic for product launch",
+  "budget": 3000.00,
+  "platforms": ["instagram", "facebook"],
+  "targeting": {
+    "age_min": 25,
+    "age_max": 45,
+    "genders": ["female", "male"],
+    "locations": [
+      {
+        "country": "US",
+        "states": ["CA", "NY", "TX"]
+      }
+    ],
+    "interests": ["technology", "innovation"],
+    "excluded_interests": ["gaming"]
+  },
+  "bid_strategy": "lowest_cost",
+  "status": "active",
+  "created_at": "2023-10-15T15:45:30Z",
+  "updated_at": "2023-10-15T15:45:30Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "ads": []
+}</code></pre>
+        
+        <h3>3. Create Ads</h3>
+        <p>Create individual ads within your ad set:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/campaigns/{campaign_id}/ad-sets/{ad_set_id}/ads</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "name": "Product Showcase Ad",
+  "format": "image",
+  "headline": "Introducing Our New Product",
+  "description": "Experience innovation like never before",
+  "call_to_action": "Learn More",
+  "destination_url": "https://example.com/product",
+  "content_id": "123e4567-e89b-12d3-a456-426614174003",
+  "image_id": "123e4567-e89b-12d3-a456-426614174004",
+  "status": "active",
+  "platform_specific": {
+    "facebook": {
+      "placement": ["feed", "stories"],
+      "tracking_specs": {
+        "pixel_id": "123456789"
+      }
+    },
+    "instagram": {
+      "placement": ["feed", "stories", "explore"]
+    }
+  }
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174005",
+  "ad_set_id": "123e4567-e89b-12d3-a456-426614174002",
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Product Showcase Ad",
+  "format": "image",
+  "headline": "Introducing Our New Product",
+  "description": "Experience innovation like never before",
+  "call_to_action": "Learn More",
+  "destination_url": "https://example.com/product",
+  "content_id": "123e4567-e89b-12d3-a456-426614174003",
+  "image_id": "123e4567-e89b-12d3-a456-426614174004",
+  "status": "active",
+  "platform_specific": {
+    "facebook": {
+      "placement": ["feed", "stories"],
+      "tracking_specs": {
+        "pixel_id": "123456789"
+      }
+    },
+    "instagram": {
+      "placement": ["feed", "stories", "explore"]
+    }
+  },
+  "created_at": "2023-10-15T16:20:15Z",
+  "updated_at": "2023-10-15T16:20:15Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "preview_url": "https://example.com/ad-previews/123"
+}</code></pre>
+        
+        <h3>4. Launch Campaign</h3>
+        <p>Update the campaign status to launch it:</p>
+        
+        <p>Endpoint: <code>PUT /api/v1/campaigns/{campaign_id}</code> <span class="badge put">PUT</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "status": "active"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "status": "active",
+  "updated_at": "2023-10-16T09:30:00Z",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000"
+  // other fields omitted for brevity
+}</code></pre>
+        
+        <h3>5. Monitor Campaign Performance</h3>
+        <p>Track campaign performance metrics:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/campaigns/{campaign_id}/metrics</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "date_range": {
+    "start": "2025-06-01T00:00:00Z",
+    "end": "2025-06-15T23:59:59Z"
+  },
+  "summary": {
+    "impressions": 450000,
+    "clicks": 22500,
+    "ctr": 0.05,
+    "spend": 1250.75,
+    "cpc": 0.056,
+    "cpm": 2.78,
+    "conversions": 750,
+    "cost_per_conversion": 1.67,
+    "conversion_rate": 0.033
+  },
+  "by_platform": [
+    {
+      "platform": "facebook",
+      "impressions": 250000,
+      "clicks": 12500,
+      "ctr": 0.05,
+      "spend": 700.25,
+      "conversions": 450
+    },
+    {
+      "platform": "instagram",
+      "impressions": 200000,
+      "clicks": 10000,
+      "ctr": 0.05,
+      "spend": 550.50,
+      "conversions": 300
+    }
+  ],
+  "by_ad_set": [
+    {
+      "ad_set_id": "123e4567-e89b-12d3-a456-426614174002",
+      "ad_set_name": "Primary Target Audience",
+      "impressions": 450000,
+      "clicks": 22500,
+      "spend": 1250.75,
+      "conversions": 750
+    }
+  ],
+  "by_ad": [
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174005",
+      "ad_name": "Product Showcase Ad",
+      "impressions": 450000,
+      "clicks": 22500,
+      "spend": 1250.75,
+      "conversions": 750
+    }
+  ],
+  "by_date": [
+    {
+      "date": "2025-06-01",
+      "impressions": 30000,
+      "clicks": 1500,
+      "spend": 83.25,
+      "conversions": 50
+    },
+    // Additional dates omitted for brevity
+  ]
+}</code></pre>
+        
+        <div class="note">
+            <strong>Note:</strong> Metric endpoints support date range filtering with <code>start_date</code> and <code>end_date</code> query parameters.
+        </div>
+        
+        <h2>Campaign Management</h2>
+        
+        <h3>List Campaigns</h3>
+        <p>Retrieve a list of campaigns with optional filtering:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/campaigns</code> <span class="badge get">GET</span></p>
+        
+        <p>Query Parameters:</p>
+        <ul>
+            <li><code>brand_id</code>: Filter by brand ID</li>
+            <li><code>status</code>: Filter by status (draft, scheduled, active, paused, ended, archived)</li>
+            <li><code>start_date</code>: Filter campaigns starting on or after this date</li>
+            <li><code>end_date</code>: Filter campaigns ending on or before this date</li>
+            <li><code>page</code>: Page number (default: 1)</li>
+            <li><code>limit</code>: Results per page (default: 20, max: 100)</li>
+        </ul>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "items": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "name": "Summer Product Launch",
+      "description": "Campaign for new product launch in summer 2025",
+      "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+      "brand": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Brand Name"
+      },
+      "budget": 5000.00,
+      "start_date": "2025-06-01T00:00:00Z",
+      "end_date": "2025-08-31T23:59:59Z",
+      "status": "active",
+      "created_at": "2023-10-15T14:30:45Z",
+      "updated_at": "2023-10-16T09:30:00Z"
+    },
+    // Additional campaigns omitted for brevity
+  ],
+  "pagination": {
+    "total": 5,
+    "page": 1,
+    "limit": 20,
+    "pages": 1
+  }
+}</code></pre>
+        
+        <h3>Get Campaign Details</h3>
+        <p>Retrieve detailed information about a specific campaign:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/campaigns/{campaign_id}</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "description": "Campaign for new product launch in summer 2025",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "brand": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Brand Name"
+  },
+  "budget": 5000.00,
+  "currency": "USD",
+  "spent": 1250.75,
+  "remaining_budget": 3749.25,
+  "start_date": "2025-06-01T00:00:00Z",
+  "end_date": "2025-08-31T23:59:59Z",
+  "objective": "awareness",
+  "status": "active",
+  "tags": ["summer", "product_launch", "awareness"],
+  "created_at": "2023-10-15T14:30:45Z",
+  "updated_at": "2023-10-16T09:30:00Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "ad_sets": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "name": "Primary Target Audience",
+      "budget": 3000.00,
+      "status": "active",
+      "platforms": ["instagram", "facebook"],
+      "ad_count": 1
+    }
+  ],
+  "metrics_summary": {
+    "impressions": 450000,
+    "clicks": 22500,
+    "conversions": 750,
+    "spend": 1250.75
+  }
+}</code></pre>
+        
+        <h3>Pause or Resume Campaign</h3>
+        <p>Change a campaign's status to pause or resume it:</p>
+        
+        <p>Endpoint: <code>PUT /api/v1/campaigns/{campaign_id}/status</code> <span class="badge put">PUT</span></p>
+        
+        <p>Request (Pause):</p>
+        <pre><code class="language-json">{
+  "status": "paused",
+  "reason": "Budget review"
+}</code></pre>
+        
+        <p>Request (Resume):</p>
+        <pre><code class="language-json">{
+  "status": "active"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "status": "paused",
+  "updated_at": "2023-10-20T11:15:30Z",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000"
+}</code></pre>
+        
+        <h3>Update Campaign Budget</h3>
+        <p>Adjust a campaign's budget:</p>
+        
+        <p>Endpoint: <code>PUT /api/v1/campaigns/{campaign_id}/budget</code> <span class="badge put">PUT</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "budget": 6000.00,
+  "currency": "USD",
+  "reason": "Increased demand"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "budget": 6000.00,
+  "currency": "USD",
+  "spent": 1250.75,
+  "remaining_budget": 4749.25,
+  "updated_at": "2023-10-22T09:45:15Z",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000"
+}</code></pre>
+        
+        <h2>Ad A/B Testing</h2>
+        
+        <h3>Create A/B Test</h3>
+        <p>Set up an A/B test for ads within a campaign:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/campaigns/{campaign_id}/ab-tests</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "name": "Headline Variations Test",
+  "description": "Testing different headline variations",
+  "ad_set_id": "123e4567-e89b-12d3-a456-426614174002",
+  "variants": [
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174005",
+      "name": "Variant A",
+      "weight": 50
+    },
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174006",
+      "name": "Variant B",
+      "weight": 50
+    }
+  ],
+  "success_metric": "click_through_rate",
+  "duration_days": 7,
+  "minimum_confidence": 95
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174007",
+  "name": "Headline Variations Test",
+  "description": "Testing different headline variations",
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "ad_set_id": "123e4567-e89b-12d3-a456-426614174002",
+  "variants": [
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174005",
+      "name": "Variant A",
+      "weight": 50
+    },
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174006",
+      "name": "Variant B",
+      "weight": 50
+    }
+  ],
+  "success_metric": "click_through_rate",
+  "start_date": "2023-10-22T12:00:00Z",
+  "end_date": "2023-10-29T12:00:00Z",
+  "status": "scheduled",
+  "minimum_confidence": 95,
+  "created_at": "2023-10-22T10:30:45Z",
+  "updated_at": "2023-10-22T10:30:45Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000"
+}</code></pre>
+        
+        <h3>Get A/B Test Results</h3>
+        <p>Retrieve the results of an A/B test:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/campaigns/{campaign_id}/ab-tests/{test_id}/results</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "test_id": "123e4567-e89b-12d3-a456-426614174007",
+  "name": "Headline Variations Test",
+  "status": "completed",
+  "start_date": "2023-10-22T12:00:00Z",
+  "end_date": "2023-10-29T12:00:00Z",
+  "success_metric": "click_through_rate",
+  "results": {
+    "winner": {
+      "variant_name": "Variant B",
+      "ad_id": "123e4567-e89b-12d3-a456-426614174006",
+      "improvement": 22.5,
+      "confidence": 98.2
+    },
+    "variants": [
+      {
+        "name": "Variant A",
+        "ad_id": "123e4567-e89b-12d3-a456-426614174005",
+        "impressions": 125000,
+        "clicks": 5625,
+        "click_through_rate": 0.045,
+        "conversions": 225,
+        "conversion_rate": 0.04
+      },
+      {
+        "name": "Variant B",
+        "ad_id": "123e4567-e89b-12d3-a456-426614174006",
+        "impressions": 125000,
+        "clicks": 6875,
+        "click_through_rate": 0.055,
+        "conversions": 275,
+        "conversion_rate": 0.04
+      }
+    ],
+    "statistical_significance": {
+      "confidence_level": 98.2,
+      "p_value": 0.018,
+      "is_significant": true
+    }
+  },
+  "recommendation": "Apply Variant B as the winner. Its click-through rate is 22.5% higher than Variant A, with 98.2% confidence."
+}</code></pre>
+        
+        <h2>Integration with Content</h2>
+        
+        <h3>Link Content to Campaign</h3>
+        <p>Associate content items with a campaign:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/campaigns/{campaign_id}/content</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "content_ids": [
+    "123e4567-e89b-12d3-a456-426614174010",
+    "123e4567-e89b-12d3-a456-426614174011",
+    "123e4567-e89b-12d3-a456-426614174012"
+  ],
+  "relationship_type": "campaign_content"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "linked_content": [
+    {
+      "content_id": "123e4567-e89b-12d3-a456-426614174010",
+      "title": "Product Launch Announcement",
+      "content_type": "article",
+      "relationship_type": "campaign_content"
+    },
+    {
+      "content_id": "123e4567-e89b-12d3-a456-426614174011",
+      "title": "Product Features Overview",
+      "content_type": "article",
+      "relationship_type": "campaign_content"
+    },
+    {
+      "content_id": "123e4567-e89b-12d3-a456-426614174012",
+      "title": "Social Media Announcement",
+      "content_type": "social_post",
+      "relationship_type": "campaign_content"
+    }
+  ]
+}</code></pre>
+        
+        <h2>Campaign Analytics</h2>
+        
+        <h3>Campaign Performance Dashboard</h3>
+        <p>Get comprehensive performance analytics for a campaign:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/campaigns/{campaign_id}/dashboard</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "name": "Summer Product Launch",
+  "date_range": {
+    "start": "2025-06-01T00:00:00Z",
+    "end": "2025-06-30T23:59:59Z"
+  },
+  "performance_summary": {
+    "spent": 2500.75,
+    "budget": 6000.00,
+    "budget_utilization": 41.7,
+    "impressions": 900000,
+    "clicks": 45000,
+    "conversions": 1500,
+    "click_through_rate": 0.05,
+    "conversion_rate": 0.033,
+    "cost_per_click": 0.056,
+    "cost_per_conversion": 1.67,
+    "roi": 350
+  },
+  "platform_breakdown": [
+    {
+      "platform": "facebook",
+      "spent": 1400.50,
+      "impressions": 500000,
+      "clicks": 25000,
+      "conversions": 900,
+      "ctr": 0.05
+    },
+    {
+      "platform": "instagram",
+      "spent": 1100.25,
+      "impressions": 400000,
+      "clicks": 20000,
+      "conversions": 600,
+      "ctr": 0.05
+    }
+  ],
+  "demographic_insights": {
+    "age_groups": [
+      {
+        "range": "18-24",
+        "impressions": 180000,
+        "clicks": 9000,
+        "conversions": 300,
+        "ctr": 0.05
+      },
+      {
+        "range": "25-34",
+        "impressions": 360000,
+        "clicks": 18000,
+        "conversions": 600,
+        "ctr": 0.05
+      },
+      {
+        "range": "35-44",
+        "impressions": 270000,
+        "clicks": 13500,
+        "conversions": 450,
+        "ctr": 0.05
+      },
+      {
+        "range": "45+",
+        "impressions": 90000,
+        "clicks": 4500,
+        "conversions": 150,
+        "ctr": 0.05
+      }
+    ],
+    "genders": [
+      {
+        "gender": "female",
+        "impressions": 495000,
+        "clicks": 24750,
+        "conversions": 825,
+        "ctr": 0.05
+      },
+      {
+        "gender": "male",
+        "impressions": 405000,
+        "clicks": 20250,
+        "conversions": 675,
+        "ctr": 0.05
+      }
+    ],
+    "locations": [
+      {
+        "region": "CA",
+        "impressions": 270000,
+        "clicks": 13500,
+        "conversions": 450,
+        "ctr": 0.05
+      },
+      {
+        "region": "NY",
+        "impressions": 180000,
+        "clicks": 9000,
+        "conversions": 300,
+        "ctr": 0.05
+      },
+      {
+        "region": "TX",
+        "impressions": 135000,
+        "clicks": 6750,
+        "conversions": 225,
+        "ctr": 0.05
+      },
+      {
+        "region": "Other",
+        "impressions": 315000,
+        "clicks": 15750,
+        "conversions": 525,
+        "ctr": 0.05
+      }
+    ]
+  },
+  "time_series": {
+    "daily": [
+      {
+        "date": "2025-06-01",
+        "impressions": 30000,
+        "clicks": 1500,
+        "conversions": 50,
+        "spent": 83.36,
+        "ctr": 0.05
+      }
+      // Additional dates omitted for brevity
+    ]
+  },
+  "top_performing_ads": [
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174006",
+      "name": "Product Showcase Ad - Variant B",
+      "impressions": 500000,
+      "clicks": 27500,
+      "conversions": 850,
+      "ctr": 0.055,
+      "cvr": 0.031,
+      "spent": 1375.25
+    },
+    {
+      "ad_id": "123e4567-e89b-12d3-a456-426614174005",
+      "name": "Product Showcase Ad - Variant A",
+      "impressions": 400000,
+      "clicks": 17500,
+      "conversions": 650,
+      "ctr": 0.044,
+      "cvr": 0.037,
+      "spent": 1125.50
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "budget_allocation",
+      "message": "Increase budget allocation to Instagram by 20% to maximize ROI",
+      "impact_estimate": "15% increase in conversions"
+    },
+    {
+      "type": "audience_targeting",
+      "message": "Expand age range to include 45-54 demographic based on current performance",
+      "impact_estimate": "10% increase in audience reach"
+    }
+  ]
+}</code></pre>
+        
+        <h2>Code Examples</h2>
+        
+        <h3>Python - Create Campaign and Track Performance</h3>
+        <pre><code class="language-python">import requests
+import json
+from datetime import datetime, timedelta
+
+# Authentication (replace with your token)
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json"
+}
+base_url = "https://api.ultimatemarketingteam.com/api/v1"
+
+# Step 1: Create a campaign
+campaign_data = {
+    "name": "Winter Holiday Campaign",
+    "description": "Promoting winter product line during holiday season",
+    "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+    "budget": 10000.00,
+    "currency": "USD",
+    "start_date": "2025-11-15T00:00:00Z",
+    "end_date": "2025-12-31T23:59:59Z",
+    "objective": "conversions",
+    "status": "draft",
+    "tags": ["winter", "holiday", "sales"]
+}
+
+campaign_response = requests.post(
+    f"{base_url}/campaigns",
+    headers=headers,
+    json=campaign_data
+)
+
+campaign = campaign_response.json()
+campaign_id = campaign["id"]
+print(f"Created campaign with ID: {campaign_id}")
+
+# Step 2: Create an ad set
+ad_set_data = {
+    "name": "Holiday Shoppers",
+    "description": "Targeting holiday gift shoppers",
+    "budget": 7000.00,
+    "platforms": ["facebook", "instagram", "google"],
+    "targeting": {
+        "age_min": 25,
+        "age_max": 55,
+        "genders": ["female", "male"],
+        "locations": [
+            {
+                "country": "US",
+                "states": ["CA", "NY", "IL", "TX", "FL"]
+            }
+        ],
+        "interests": ["shopping", "gifts", "winter", "holidays"]
+    },
+    "bid_strategy": "lowest_cost",
+    "status": "active"
+}
+
+ad_set_response = requests.post(
+    f"{base_url}/campaigns/{campaign_id}/ad-sets",
+    headers=headers,
+    json=ad_set_data
+)
+
+ad_set = ad_set_response.json()
+ad_set_id = ad_set["id"]
+print(f"Created ad set with ID: {ad_set_id}")
+
+# Step 3: Create an ad
+ad_data = {
+    "name": "Holiday Special Ad",
+    "format": "video",
+    "headline": "Special Holiday Offers Inside",
+    "description": "Find the perfect gifts with our holiday collection",
+    "call_to_action": "Shop Now",
+    "destination_url": "https://example.com/holiday-special",
+    "content_id": "123e4567-e89b-12d3-a456-426614174020",
+    "video_id": "123e4567-e89b-12d3-a456-426614174021",
+    "status": "active",
+    "platform_specific": {
+        "facebook": {
+            "placement": ["feed", "stories", "marketplace"]
+        },
+        "instagram": {
+            "placement": ["feed", "stories", "reels"]
+        },
+        "google": {
+            "placement": ["search", "display"]
+        }
+    }
+}
+
+ad_response = requests.post(
+    f"{base_url}/campaigns/{campaign_id}/ad-sets/{ad_set_id}/ads",
+    headers=headers,
+    json=ad_data
+)
+
+ad = ad_response.json()
+ad_id = ad["id"]
+print(f"Created ad with ID: {ad_id}")
+
+# Step 4: Activate the campaign
+activate_data = {
+    "status": "active"
+}
+
+activate_response = requests.put(
+    f"{base_url}/campaigns/{campaign_id}",
+    headers=headers,
+    json=activate_data
+)
+
+print(f"Campaign activated: {activate_response.status_code == 200}")
+
+# Function to check campaign performance
+def check_campaign_performance(campaign_id, days=7):
+    # Calculate date range
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    
+    # Get campaign metrics
+    metrics_response = requests.get(
+        f"{base_url}/campaigns/{campaign_id}/metrics",
+        headers=headers,
+        params={"start_date": start_date, "end_date": end_date}
+    )
+    
+    if metrics_response.status_code == 200:
+        metrics = metrics_response.json()
+        
+        # Print summary
+        summary = metrics["summary"]
+        print(f"\nCampaign Performance Summary ({days} days):")
+        print(f"Impressions: {summary['impressions']:,}")
+        print(f"Clicks: {summary['clicks']:,}")
+        print(f"CTR: {summary['ctr']:.2%}")
+        print(f"Spend: ${summary['spend']:.2f}")
+        print(f"Conversions: {summary['conversions']:,}")
+        print(f"Cost per conversion: ${summary['cost_per_conversion']:.2f}")
+        print(f"Conversion rate: {summary['conversion_rate']:.2%}")
+        
+        # Print platform breakdown
+        print("\nPerformance by Platform:")
+        for platform in metrics["by_platform"]:
+            print(f"- {platform['platform'].capitalize()}: {platform['impressions']:,} impressions, {platform['clicks']:,} clicks, ${platform['spend']:.2f} spend")
+        
+        return metrics
+    else:
+        print(f"Error retrieving metrics: {metrics_response.status_code}")
+        return None
+
+# Note: In a real application, you would call check_campaign_performance()
+# after the campaign has been running for some time
+# check_campaign_performance(campaign_id)</code></pre>
+        
+        <h3>JavaScript - Create and Monitor A/B Test</h3>
+        <pre><code class="language-javascript">// Authentication (replace with your token)
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const headers = {
+  "Authorization": `Bearer ${token}`,
+  "Content-Type": "application/json"
+};
+const baseUrl = "https://api.ultimatemarketingteam.com/api/v1";
+
+// Function to create an A/B test
+async function createAbTest(campaignId, adSetId, variantAId, variantBId) {
+  try {
+    const testData = {
+      name: "CTA Button A/B Test",
+      description: "Testing different call-to-action buttons",
+      ad_set_id: adSetId,
+      variants: [
+        {
+          ad_id: variantAId,
+          name: "Shop Now",
+          weight: 50
+        },
+        {
+          ad_id: variantBId,
+          name: "Learn More",
+          weight: 50
+        }
+      ],
+      success_metric: "conversion_rate",
+      duration_days: 14,
+      minimum_confidence: 95
+    };
+    
+    const response = await fetch(`${baseUrl}/campaigns/${campaignId}/ab-tests`, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(testData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const abTest = await response.json();
+    console.log(`Created A/B test: ${abTest.id}`);
+    return abTest;
+  } catch (error) {
+    console.error("Error creating A/B test:", error);
+    return null;
+  }
+}
+
+// Function to check A/B test results
+async function checkAbTestResults(campaignId, testId) {
+  try {
+    const response = await fetch(`${baseUrl}/campaigns/${campaignId}/ab-tests/${testId}/results`, {
+      method: "GET",
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const results = await response.json();
+    
+    // Output results
+    console.log(`\nA/B Test Results: ${results.name}`);
+    console.log(`Status: ${results.status}`);
+    
+    if (results.status === "completed") {
+      const winner = results.results.winner;
+      
+      console.log(`\nWinner: ${winner.variant_name}`);
+      console.log(`Improvement: ${winner.improvement.toFixed(1)}%`);
+      console.log(`Confidence: ${winner.confidence.toFixed(1)}%`);
+      
+      console.log("\nVariant Results:");
+      results.results.variants.forEach(variant => {
+        console.log(`- ${variant.name}:`);
+        console.log(`  Impressions: ${variant.impressions.toLocaleString()}`);
+        console.log(`  Clicks: ${variant.clicks.toLocaleString()}`);
+        console.log(`  CTR: ${(variant.click_through_rate * 100).toFixed(2)}%`);
+        console.log(`  Conversions: ${variant.conversions.toLocaleString()}`);
+        console.log(`  Conversion Rate: ${(variant.conversion_rate * 100).toFixed(2)}%`);
+      });
+      
+      console.log(`\nRecommendation: ${results.recommendation}`);
+    } else {
+      console.log("Test is still running or hasn't collected enough data.");
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("Error checking A/B test results:", error);
+    return null;
+  }
+}
+
+// Function to apply A/B test winner
+async function applyAbTestWinner(campaignId, testId) {
+  try {
+    const response = await fetch(`${baseUrl}/campaigns/${campaignId}/ab-tests/${testId}/apply-winner`, {
+      method: "POST",
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log(`Applied winning variant: ${result.winner_variant}`);
+    console.log(`Updated ad: ${result.updated_ad_id}`);
+    return result;
+  } catch (error) {
+    console.error("Error applying A/B test winner:", error);
+    return null;
+  }
+}
+
+// Example usage
+// Note: In a real application, you would need to have the actual IDs
+async function runAbTestWorkflow() {
+  const campaignId = "123e4567-e89b-12d3-a456-426614174001";
+  const adSetId = "123e4567-e89b-12d3-a456-426614174002";
+  const variantAId = "123e4567-e89b-12d3-a456-426614174005";
+  const variantBId = "123e4567-e89b-12d3-a456-426614174006";
+  
+  // Create A/B test
+  const abTest = await createAbTest(campaignId, adSetId, variantAId, variantBId);
+  
+  if (abTest) {
+    console.log("A/B Test created successfully!");
+    console.log(`Test will run from ${abTest.start_date} to ${abTest.end_date}`);
+    
+    // In a real application, you would check results after the test has been running
+    // For demonstration, we'll check results for an existing test
+    const testId = abTest.id;
+    
+    // Normally you would wait for the test to complete
+    // For demonstration, we're checking immediately
+    const results = await checkAbTestResults(campaignId, testId);
+    
+    // If test is complete and has a winner, apply it
+    if (results && results.status === "completed" && results.results.winner) {
+      await applyAbTestWinner(campaignId, testId);
+    }
+  }
+}
+
+// runAbTestWorkflow();</code></pre>
+        
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Always clearly define campaign objectives before creating campaigns.</li>
+            <li>Set appropriate budget constraints to avoid overspending.</li>
+            <li>Use A/B testing to optimize ad creative and messaging.</li>
+            <li>Segment audiences carefully for better targeting precision.</li>
+            <li>Monitor campaign performance regularly and make adjustments as needed.</li>
+            <li>Use campaign analytics to inform future marketing strategies.</li>
+            <li>Create specific ad sets for different audience segments or platforms.</li>
+            <li>Link relevant content to campaigns for consistent messaging.</li>
+            <li>Take advantage of platform-specific features for each ad platform.</li>
+            <li>Test different ad formats (image, video, carousel) to determine what works best for your audience.</li>
+        </ul>
+        
+        <div class="note">
+            <strong>Tip:</strong> For optimal performance, create multiple ad variations and use A/B testing to determine which ones resonate most with your audience. Then allocate more budget to the top-performing ads.
+        </div>
+    </main>
+    
+    <div class="navigation">
+        <div>
+            <a href="content-management.html">← Content Management Guide</a>
+        </div>
+        <div>
+            <a href="analytics.html">Analytics Data Retrieval →</a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

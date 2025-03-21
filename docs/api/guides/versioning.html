@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Versioning and Migration Guide - Ultimate Marketing Team API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow: auto;
+        }
+        
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .deprecated {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .badge.get {
+            background-color: #61affe;
+            color: white;
+        }
+        
+        .badge.post {
+            background-color: #49cc90;
+            color: white;
+        }
+        
+        .badge.put {
+            background-color: #fca130;
+            color: white;
+        }
+        
+        .badge.delete {
+            background-color: #f93e3e;
+            color: white;
+        }
+        
+        .timeline {
+            position: relative;
+            margin: 2rem 0;
+            padding-left: 2rem;
+        }
+        
+        .timeline::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 7px;
+            width: 2px;
+            background-color: #e0e0e0;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -2rem;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #3498db;
+            top: 0.3rem;
+        }
+        
+        .timeline-date {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .timeline-content {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .version-badge.current {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .version-badge.deprecated {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .version-badge.upcoming {
+            background-color: #17a2b8;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>API Versioning and Migration Guide</h1>
+        <p>Learn about the Ultimate Marketing Team API versioning strategy and how to handle API migrations.</p>
+        <p><a href="../index.html">Back to Documentation Home</a></p>
+    </header>
+    
+    <main>
+        <h2>API Versioning Strategy</h2>
+        <p>The Ultimate Marketing Team API uses a clear versioning approach to ensure compatibility and smooth transitions as the API evolves.</p>
+        
+        <h3>Versioning Approach</h3>
+        <p>We use URI path versioning, where the API version is specified as part of the URL path:</p>
+        
+        <pre><code>https://api.ultimatemarketingteam.com/api/v1/content</code></pre>
+        
+        <p>This approach has several benefits:</p>
+        <ul>
+            <li>Clear and explicit versioning that's visible in every request</li>
+            <li>Easy to browse different versions of the API</li>
+            <li>Compatibility with all HTTP clients, without requiring custom headers</li>
+            <li>Support for multiple concurrent versions</li>
+        </ul>
+        
+        <h3>Current and Supported Versions</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Release Date</th>
+                    <th>End of Support</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>v1</td>
+                    <td><span class="version-badge current">Current</span></td>
+                    <td>January 15, 2023</td>
+                    <td>TBD</td>
+                    <td>Stable production version</td>
+                </tr>
+                <tr>
+                    <td>v2</td>
+                    <td><span class="version-badge upcoming">Upcoming</span></td>
+                    <td>Q2 2025</td>
+                    <td>N/A</td>
+                    <td>In development, preview available by request</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="note">
+            <strong>Note:</strong> The Ultimate Marketing Team API guarantees a minimum of 12 months of support for each API version after the release of its successor.
+        </div>
+        
+        <h2>Versioning Lifecycle</h2>
+        
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">Initial Release</div>
+                <div class="timeline-content">
+                    <p>A new API version is released as "current" and is considered stable for production use.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">Maintenance Period</div>
+                <div class="timeline-content">
+                    <p>During the maintenance period, we may make backwards-compatible changes:</p>
+                    <ul>
+                        <li>Adding new endpoints</li>
+                        <li>Adding optional parameters to existing endpoints</li>
+                        <li>Adding properties to response objects</li>
+                        <li>Bug fixes that maintain behavior</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">Next Version Preview</div>
+                <div class="timeline-content">
+                    <p>A preview of the next version becomes available for testing and feedback. The current version remains fully supported.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">Next Version Release</div>
+                <div class="timeline-content">
+                    <p>The new version is officially released. The previous version enters the deprecation phase but remains fully functional.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">Deprecation Period (12+ months)</div>
+                <div class="timeline-content">
+                    <p>The deprecated version remains available for at least 12 months. During this period:</p>
+                    <ul>
+                        <li>No new features are added to the deprecated version</li>
+                        <li>Critical security fixes are still applied</li>
+                        <li>Error handling and performance improvements are maintained</li>
+                        <li>Deprecation notices are returned in API responses</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-date">End of Life</div>
+                <div class="timeline-content">
+                    <p>After the deprecation period, the version is phased out:</p>
+                    <ul>
+                        <li>Endpoints may return 410 Gone responses</li>
+                        <li>Requests are eventually redirected to newer versions</li>
+                        <li>Finally, the version is fully decommissioned</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <h2>Breaking vs. Non-Breaking Changes</h2>
+        
+        <h3>Breaking Changes (Require Version Increment)</h3>
+        <ul>
+            <li>Removing or renaming endpoints</li>
+            <li>Removing or renaming required parameters</li>
+            <li>Removing or renaming response properties</li>
+            <li>Changing the format or type of existing parameters or properties</li>
+            <li>Changing the behavior of existing endpoints</li>
+            <li>Adding new required parameters without defaults</li>
+            <li>Changing error codes or response status codes</li>
+            <li>Changes to authentication mechanisms</li>
+        </ul>
+        
+        <h3>Non-Breaking Changes (Same Version)</h3>
+        <ul>
+            <li>Adding new endpoints</li>
+            <li>Adding optional parameters to existing endpoints</li>
+            <li>Adding new properties to response objects</li>
+            <li>Bug fixes that maintain behavior</li>
+            <li>Improvement to performance or security</li>
+            <li>Adding new optional fields to request bodies</li>
+            <li>Adding new error types for conditions that weren't previously reported</li>
+            <li>Expanding accepted values for a parameter (e.g., adding a new enum value)</li>
+        </ul>
+        
+        <h2>Migration Guidelines</h2>
+        
+        <h3>Migrating from v1 to v2</h3>
+        <p>When v2 becomes available, follow these steps to migrate your application:</p>
+        
+        <ol>
+            <li>Review the v2 documentation to understand the new features and breaking changes</li>
+            <li>Update client libraries to the latest versions supporting v2</li>
+            <li>Create a test environment that points to the v2 API</li>
+            <li>Update your API endpoint URLs from <code>/api/v1/</code> to <code>/api/v2/</code></li>
+            <li>Update request and response handling for modified endpoints</li>
+            <li>Take advantage of new features available in v2</li>
+            <li>Run comprehensive tests to ensure functionality</li>
+            <li>Deploy to production after thorough testing</li>
+        </ol>
+        
+        <div class="note">
+            <strong>Tip:</strong> Consider implementing a feature flag system that allows you to switch between API versions quickly if issues are encountered during migration.
+        </div>
+        
+        <h3>Major Changes in v2 (Upcoming)</h3>
+        <p>Here are the key changes planned for v2:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Change</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Migration Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Consistent Pagination</td>
+                    <td>Breaking</td>
+                    <td>All list endpoints will use cursor-based pagination instead of page/limit</td>
+                    <td>Update pagination handling to use <code>cursor</code> and <code>limit</code> parameters</td>
+                </tr>
+                <tr>
+                    <td>Consolidated Authentication</td>
+                    <td>Breaking</td>
+                    <td>Authentication endpoints moved to <code>/auth</code> instead of <code>/api/v2/auth</code></td>
+                    <td>Update authentication endpoint URLs</td>
+                </tr>
+                <tr>
+                    <td>Enhanced Error Responses</td>
+                    <td>Breaking</td>
+                    <td>More detailed error information with error codes and troubleshooting help</td>
+                    <td>Update error handling to parse new error response format</td>
+                </tr>
+                <tr>
+                    <td>ISO8601 Dates</td>
+                    <td>Breaking</td>
+                    <td>All dates standardized to ISO8601 format with UTC timezone</td>
+                    <td>Ensure date handling supports ISO8601 format</td>
+                </tr>
+                <tr>
+                    <td>GraphQL Support</td>
+                    <td>Non-breaking</td>
+                    <td>Added GraphQL endpoint for more flexible data querying</td>
+                    <td>Optional: Implement GraphQL queries for more efficient data retrieval</td>
+                </tr>
+                <tr>
+                    <td>Webhooks</td>
+                    <td>Non-breaking</td>
+                    <td>New webhook system for event notifications</td>
+                    <td>Optional: Implement webhook support for real-time updates</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="note">
+            <strong>Note:</strong> A more detailed migration guide for v2 will be provided closer to the release date.
+        </div>
+        
+        <h2>Determining API Version</h2>
+        
+        <h3>Checking Current Version</h3>
+        <p>You can verify the API version you're using by checking:</p>
+        
+        <ol>
+            <li>The URL path (e.g., <code>/api/v1/</code>)</li>
+            <li>The response headers, which include:
+                <pre><code>X-API-Version: 1.0</code></pre>
+            </li>
+            <li>The root endpoint response, which includes version information:
+                <pre><code class="language-json">{
+  "name": "Ultimate Marketing Team API",
+  "version": "1.0",
+  "status": "online"
+}</code></pre>
+            </li>
+        </ol>
+        
+        <h3>Available Versions</h3>
+        <p>To see all available API versions, you can use the versions endpoint:</p>
+        
+        <p>Endpoint: <code>GET /api/versions</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "versions": [
+    {
+      "version": "v1",
+      "status": "current",
+      "url": "https://api.ultimatemarketingteam.com/api/v1",
+      "release_date": "2023-01-15",
+      "end_of_support": null
+    },
+    {
+      "version": "v2",
+      "status": "preview",
+      "url": "https://api.ultimatemarketingteam.com/api/v2",
+      "release_date": null,
+      "end_of_support": null
+    }
+  ],
+  "current_version": "v1",
+  "latest_version": "v1"
+}</code></pre>
+        
+        <h2>Versioning in Client Libraries</h2>
+        
+        <h3>Python Client</h3>
+        <p>The Python client library supports multiple API versions:</p>
+        
+        <pre><code class="language-python">from umt_client import UltimateMarketingTeamClient
+
+# Default to current version
+client = UltimateMarketingTeamClient(
+    api_key="your_api_key",
+    base_url="https://api.ultimatemarketingteam.com"
+)
+
+# Explicitly specify version
+client_v1 = UltimateMarketingTeamClient(
+    api_key="your_api_key",
+    base_url="https://api.ultimatemarketingteam.com",
+    api_version="v1"
+)
+</code></pre>
+        
+        <h3>JavaScript Client</h3>
+        <p>The JavaScript client also provides version support:</p>
+        
+        <pre><code class="language-javascript">import { UltimateMarketingTeamClient } from '@umt/client';
+
+// Default to current version
+const client = new UltimateMarketingTeamClient({
+  apiKey: 'your_api_key',
+  baseUrl: 'https://api.ultimatemarketingteam.com'
+});
+
+// Explicitly specify version
+const clientV1 = new UltimateMarketingTeamClient({
+  apiKey: 'your_api_key',
+  baseUrl: 'https://api.ultimatemarketingteam.com',
+  apiVersion: 'v1'
+});
+</code></pre>
+        
+        <div class="note">
+            <strong>Note:</strong> Client library versions follow semantic versioning (MAJOR.MINOR.PATCH) independently of the API version. A client library may support multiple API versions within the same client version.
+        </div>
+        
+        <h2>Deprecation Notices</h2>
+        
+        <h3>Response Headers</h3>
+        <p>When using a deprecated API version, you'll receive deprecation notices in response headers:</p>
+        
+        <pre><code>X-API-Deprecated: true
+X-API-Deprecation-Date: 2023-01-15
+X-API-Sunset-Date: 2024-01-15
+X-API-Successor-Version: v2</code></pre>
+        
+        <h3>API Responses</h3>
+        <p>Deprecated endpoints will also include deprecation information in response bodies:</p>
+        
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "Sample Content",
+  "description": "Content description",
+  // ... other response properties
+  
+  "_meta": {
+    "deprecated": true,
+    "deprecation_date": "2023-01-15",
+    "sunset_date": "2024-01-15",
+    "successor_version": "v2",
+    "migration_guide": "https://api.ultimatemarketingteam.com/docs/api/guides/migration-v1-v2.html"
+  }
+}</code></pre>
+        
+        <div class="warning">
+            <strong>Warning:</strong> It's important to monitor these deprecation notices and migrate to newer API versions before the sunset date to ensure uninterrupted service.
+        </div>
+        
+        <h2>Testing Pre-Release Versions</h2>
+        
+        <h3>Accessing the Preview Environment</h3>
+        <p>You can test upcoming API versions in our preview environment:</p>
+        
+        <pre><code>https://preview.api.ultimatemarketingteam.com/api/v2</code></pre>
+        
+        <p>To access the preview environment:</p>
+        <ol>
+            <li>Contact support to request preview access</li>
+            <li>Use your existing API credentials with the preview base URL</li>
+            <li>Note that the preview environment uses a separate database with test data</li>
+        </ol>
+        
+        <h3>Preview Limitations</h3>
+        <ul>
+            <li>Preview environments may have limited availability and performance</li>
+            <li>Some features may be incomplete or subject to change</li>
+            <li>Data in preview environments is not persistent and may be reset periodically</li>
+            <li>Rate limits are lower than in production</li>
+        </ul>
+        
+        <h2>Version-Specific Documentation</h2>
+        <p>Documentation for specific API versions is available at:</p>
+        
+        <ul>
+            <li><a href="../v1/index.html">API v1 Documentation</a> (Current)</li>
+            <li><a href="../v2/index.html">API v2 Documentation</a> (Preview)</li>
+        </ul>
+        
+        <p>Each version's documentation includes:</p>
+        <ul>
+            <li>Complete OpenAPI specification</li>
+            <li>Endpoint reference</li>
+            <li>Code examples</li>
+            <li>Version-specific release notes</li>
+        </ul>
+        
+        <h2>Code Examples</h2>
+        
+        <h3>Python - Handling Multiple API Versions</h3>
+        <pre><code class="language-python">import requests
+import json
+from enum import Enum
+
+class ApiVersion(Enum):
+    V1 = "v1"
+    V2 = "v2"
+
+class UmtApiClient:
+    def __init__(self, api_key, version=ApiVersion.V1, base_url="https://api.ultimatemarketingteam.com"):
+        self.api_key = api_key
+        self.version = version
+        self.base_url = base_url
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    
+    def get_api_url(self, endpoint):
+        """Construct the full API URL with version."""
+        return f"{self.base_url}/api/{self.version.value}/{endpoint.lstrip('/')}"
+    
+    def get_content(self, content_id=None, **params):
+        """Get content with version-specific handling."""
+        # Common parameters
+        url = self.get_api_url("content")
+        
+        # Version-specific handling
+        if content_id:
+            if self.version == ApiVersion.V1:
+                url = f"{url}/{content_id}"
+            elif self.version == ApiVersion.V2:
+                # In v2, we use a query parameter instead of path parameter
+                params["id"] = content_id
+        
+        # Make the request
+        response = requests.get(url, headers=self.headers, params=params)
+        
+        # Handle response
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Check for deprecation notice
+            if "_meta" in data and data["_meta"].get("deprecated", False):
+                sunset_date = data["_meta"].get("sunset_date")
+                successor = data["_meta"].get("successor_version")
+                print(f"WARNING: Using deprecated API version. Sunset date: {sunset_date}. Please migrate to {successor}.")
+            
+            return data
+        else:
+            # Handle errors
+            try:
+                error = response.json()
+                print(f"Error {response.status_code}: {error.get('detail', 'Unknown error')}")
+            except json.JSONDecodeError:
+                print(f"Error {response.status_code}: {response.text}")
+            
+            response.raise_for_status()
+    
+    def list_campaigns(self, **params):
+        """List campaigns with version-specific pagination."""
+        url = self.get_api_url("campaigns")
+        
+        # Version-specific pagination handling
+        if self.version == ApiVersion.V1:
+            # V1 uses page/limit pagination
+            all_results = []
+            page = params.get("page", 1)
+            limit = params.get("limit", 20)
+            
+            while True:
+                params["page"] = page
+                params["limit"] = limit
+                
+                response = requests.get(url, headers=self.headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                all_results.extend(data["items"])
+                
+                # Check if we need to fetch more pages
+                if data["pagination"]["page"] >= data["pagination"]["pages"]:
+                    break
+                
+                page += 1
+            
+            return all_results
+        
+        elif self.version == ApiVersion.V2:
+            # V2 uses cursor-based pagination
+            all_results = []
+            cursor = params.get("cursor", None)
+            limit = params.get("limit", 20)
+            
+            while True:
+                if cursor:
+                    params["cursor"] = cursor
+                
+                params["limit"] = limit
+                
+                response = requests.get(url, headers=self.headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                all_results.extend(data["items"])
+                
+                # Check if we need to fetch more results
+                if "pagination" in data and "next_cursor" in data["pagination"]:
+                    cursor = data["pagination"]["next_cursor"]
+                    if not cursor:
+                        break
+                else:
+                    break
+            
+            return all_results
+
+# Example usage:
+# Client using current version (v1)
+client_v1 = UmtApiClient(api_key="your_api_key")
+content = client_v1.get_content("123e4567-e89b-12d3-a456-426614174000")
+
+# Client using preview version (v2)
+client_v2 = UmtApiClient(api_key="your_api_key", version=ApiVersion.V2, 
+                         base_url="https://preview.api.ultimatemarketingteam.com")
+campaigns = client_v2.list_campaigns(limit=50)</code></pre>
+        
+        <h3>JavaScript - Version Migration Strategy</h3>
+        <pre><code class="language-javascript">// API client with version support and graceful migration
+class UltimateMarketingTeamClient {
+  constructor(options) {
+    this.apiKey = options.apiKey;
+    this.baseUrl = options.baseUrl || 'https://api.ultimatemarketingteam.com';
+    this.apiVersion = options.apiVersion || 'v1';
+    this.fallbackToV1 = options.fallbackToV1 || false;
+    this.deprecationWarningShown = false;
+  }
+  
+  // Build URL with appropriate version
+  buildUrl(endpoint) {
+    return `${this.baseUrl}/api/${this.apiVersion}/${endpoint.replace(/^\//, '')}`;
+  }
+  
+  // Get default headers
+  getHeaders() {
+    return {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+  }
+  
+  // Check for deprecation notices
+  checkDeprecation(response) {
+    if (!this.deprecationWarningShown) {
+      const isDeprecated = response.headers.get('X-API-Deprecated') === 'true';
+      
+      if (isDeprecated) {
+        const sunsetDate = response.headers.get('X-API-Sunset-Date');
+        const successorVersion = response.headers.get('X-API-Successor-Version');
+        
+        console.warn(
+          `WARNING: Using deprecated API version (${this.apiVersion}). ` +
+          `This version will be sunset on ${sunsetDate}. ` +
+          `Please migrate to ${successorVersion}.`
+        );
+        
+        // Only show once per client instance
+        this.deprecationWarningShown = true;
+      }
+    }
+  }
+  
+  // Handle API errors with version fallback if enabled
+  async handleApiError(response, endpoint, options, isRetry = false) {
+    // If we got a 404 or 410 and fallback is enabled, retry with v1
+    if ((response.status === 404 || response.status === 410) && 
+        this.fallbackToV1 && 
+        this.apiVersion !== 'v1' && 
+        !isRetry) {
+      
+      console.warn(
+        `Endpoint not found in ${this.apiVersion}, falling back to v1. ` +
+        `Please update your code to use v1 endpoints directly.`
+      );
+      
+      // Store original version
+      const originalVersion = this.apiVersion;
+      
+      // Temporarily switch to v1
+      this.apiVersion = 'v1';
+      
+      try {
+        // Retry the request with v1
+        const result = await this.request(endpoint, options, true);
+        
+        // Restore original version
+        this.apiVersion = originalVersion;
+        
+        return result;
+      } catch (fallbackError) {
+        // Restore original version
+        this.apiVersion = originalVersion;
+        
+        // Re-throw the original error if fallback also failed
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+    }
+    
+    // Regular error handling if no fallback or fallback not applicable
+    let errorMessage = `API error: ${response.status} ${response.statusText}`;
+    
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage = `API error: ${errorData.detail}`;
+      }
+    } catch (e) {
+      // Failed to parse error as JSON, use default message
+    }
+    
+    throw new Error(errorMessage);
+  }
+  
+  // Generic request method
+  async request(endpoint, options = {}, isRetry = false) {
+    const url = this.buildUrl(endpoint);
+    const headers = this.getHeaders();
+    
+    const requestOptions = {
+      method: options.method || 'GET',
+      headers,
+      ...options
+    };
+    
+    // Add body if provided
+    if (options.body) {
+      requestOptions.body = JSON.stringify(options.body);
+    }
+    
+    const response = await fetch(url, requestOptions);
+    
+    // Check for deprecation notices
+    this.checkDeprecation(response);
+    
+    // Handle successful response
+    if (response.ok) {
+      return await response.json();
+    }
+    
+    // Handle errors (with potential version fallback)
+    return this.handleApiError(response, endpoint, options, isRetry);
+  }
+  
+  // Specific API methods with version-aware implementation
+  async getContent(contentId) {
+    if (this.apiVersion === 'v1') {
+      return this.request(`content/${contentId}`);
+    } else {
+      // v2 uses a query parameter instead of path parameter
+      return this.request('content', { params: { id: contentId } });
+    }
+  }
+  
+  // List endpoint with version-specific pagination
+  async listCampaigns(options = {}) {
+    if (this.apiVersion === 'v1') {
+      // V1 uses page/limit pagination
+      const page = options.page || 1;
+      const limit = options.limit || 20;
+      
+      const params = new URLSearchParams({
+        page,
+        limit,
+        ...options.params
+      });
+      
+      const url = `campaigns?${params.toString()}`;
+      const result = await this.request(url);
+      
+      return result;
+    } else {
+      // V2 uses cursor-based pagination
+      const cursor = options.cursor;
+      const limit = options.limit || 20;
+      
+      const params = new URLSearchParams({
+        limit,
+        ...options.params
+      });
+      
+      if (cursor) {
+        params.append('cursor', cursor);
+      }
+      
+      const url = `campaigns?${params.toString()}`;
+      const result = await this.request(url);
+      
+      return result;
+    }
+  }
+  
+  // Method to get all pages of results (handles both pagination styles)
+  async getAllPages(endpoint, options = {}) {
+    const allResults = [];
+    
+    if (this.apiVersion === 'v1') {
+      // V1 page/limit pagination
+      let page = options.page || 1;
+      const limit = options.limit || 20;
+      let hasMorePages = true;
+      
+      while (hasMorePages) {
+        const params = new URLSearchParams({
+          page,
+          limit,
+          ...options.params
+        });
+        
+        const url = `${endpoint}?${params.toString()}`;
+        const result = await this.request(url);
+        
+        allResults.push(...result.items);
+        
+        hasMorePages = result.pagination.page < result.pagination.pages;
+        if (hasMorePages) {
+          page++;
+        }
+      }
+    } else {
+      // V2 cursor-based pagination
+      let cursor = options.cursor;
+      const limit = options.limit || 20;
+      let hasMoreResults = true;
+      
+      while (hasMoreResults) {
+        const params = new URLSearchParams({
+          limit,
+          ...options.params
+        });
+        
+        if (cursor) {
+          params.append('cursor', cursor);
+        }
+        
+        const url = `${endpoint}?${params.toString()}`;
+        const result = await this.request(url);
+        
+        allResults.push(...result.items);
+        
+        cursor = result.pagination?.next_cursor;
+        hasMoreResults = !!cursor;
+      }
+    }
+    
+    return allResults;
+  }
+}
+
+// Example usage
+const client = new UltimateMarketingTeamClient({
+  apiKey: 'your_api_key',
+  apiVersion: 'v2',  // Using v2
+  fallbackToV1: true // Enable fallback to v1 for backward compatibility
+});
+
+// Using the client
+async function fetchData() {
+  try {
+    // This will use v2 if available, otherwise fall back to v1
+    const content = await client.getContent('123e4567-e89b-12d3-a456-426614174000');
+    console.log('Content:', content);
+    
+    // Get all campaigns across all pages
+    const allCampaigns = await client.getAllPages('campaigns', { limit: 50 });
+    console.log(`Retrieved ${allCampaigns.length} campaigns`);
+  } catch (error) {
+    console.error('API Error:', error.message);
+  }
+}
+
+// fetchData();</code></pre>
+        
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Always specify the API version explicitly in your code to avoid unexpected changes.</li>
+            <li>Monitor deprecation notices in API responses and headers.</li>
+            <li>Test your integration against new API versions in the preview environment before migrating.</li>
+            <li>Create a version migration strategy that allows for gradual adoption of new versions.</li>
+            <li>Use client libraries that support multiple API versions for easier migration.</li>
+            <li>Implement feature flags in your application to quickly revert to previous versions if needed.</li>
+            <li>Consider implementing a "version adapter" pattern to abstract version-specific differences.</li>
+            <li>Subscribe to the API changelog and announcements to stay informed about upcoming changes.</li>
+            <li>Automate testing against multiple API versions to ensure compatibility.</li>
+            <li>Plan for API migrations well in advance of sunset dates to avoid disruption.</li>
+        </ul>
+        
+        <div class="note">
+            <strong>Tip:</strong> When possible, migrate to new API versions soon after they're released rather than waiting until the last minute. This gives you more time to address any issues and take advantage of new features.
+        </div>
+    </main>
+    
+    <div class="navigation">
+        <div>
+            <a href="analytics.html">← Analytics Data Retrieval Guide</a>
+        </div>
+        <div>
+            <a href="../index.html">Back to Documentation Home</a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

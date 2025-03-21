@@ -1,0 +1,2299 @@
+openapi: 3.0.3
+info:
+  title: Ultimate Marketing Team API
+  description: |
+    The Ultimate Marketing Team API provides a comprehensive set of endpoints for managing marketing content, brands, campaigns, and analytics.
+    
+    ## Authentication
+    
+    This API uses JWT bearer token authentication. Most endpoints require an `Authorization` header with a JWT token.
+    
+    ```
+    Authorization: Bearer your_token_here
+    ```
+    
+    ## Rate Limiting
+    
+    API requests are limited to 100 requests per minute by default. Rate limit information is provided in response headers:
+    - `X-RateLimit-Limit`: Maximum requests per minute
+    - `X-RateLimit-Remaining`: Remaining requests in the current window
+    - `X-RateLimit-Reset`: Time until the rate limit resets (in seconds)
+    
+    ## Pagination
+    
+    List endpoints support pagination with the following query parameters:
+    - `page`: Page number (default: 1)
+    - `limit`: Items per page (default: 20, max: 100)
+    
+    Pagination metadata is included in list responses:
+    ```json
+    {
+      "items": [...],
+      "pagination": {
+        "total": 50,
+        "page": 1,
+        "limit": 20,
+        "pages": 3
+      }
+    }
+    ```
+    
+    ## Error Responses
+    
+    Error responses follow a standard format:
+    ```json
+    {
+      "detail": "Error message description"
+    }
+    ```
+    
+    For validation errors, a more detailed structure is provided:
+    ```json
+    {
+      "detail": [
+        {
+          "loc": ["body", "field_name"],
+          "msg": "field required",
+          "type": "value_error.missing"
+        }
+      ]
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@ultimatemarketingteam.com
+  license:
+    name: Proprietary
+    
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Development server
+  - url: https://api.ultimatemarketingteam.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization operations
+  - name: Brands
+    description: Brand and project management
+  - name: Content
+    description: Content creation and management
+  - name: Metrics
+    description: Platform usage analytics and metrics
+  - name: Utility
+    description: General utility endpoints
+
+paths:
+  /:
+    get:
+      summary: API root
+      description: Returns basic API information
+      operationId: getRootInfo
+      tags:
+        - Utility
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Ultimate Marketing Team API
+                  version:
+                    type: string
+                    example: 1.0.0
+                  status:
+                    type: string
+                    example: online
+  
+  /api/health:
+    get:
+      summary: Health check
+      description: Check API service health status
+      operationId: healthCheck
+      tags:
+        - Utility
+      responses:
+        '200':
+          description: Health check response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: number
+                    format: double
+                    example: 1634567890.123456
+                  version:
+                    type: string
+                    example: 1.0.0
+                  environment:
+                    type: string
+                    example: production
+
+  /auth/register:
+    post:
+      summary: Register new user
+      description: Create a new user account
+      operationId: registerUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /auth/login:
+    post:
+      summary: User login
+      description: Login with email and password to obtain a JWT token
+      operationId: loginUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/token:
+    post:
+      summary: Get OAuth2 token
+      description: Standard OAuth2 token endpoint using form data
+      operationId: getToken
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: User email
+                  example: user@example.com
+                password:
+                  type: string
+                  description: User password
+                  example: securepassword
+      responses:
+        '200':
+          description: Token generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /auth/me:
+    get:
+      summary: Get current user
+      description: Get information about the currently authenticated user
+      operationId: getCurrentUser
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /auth/oauth:
+    post:
+      summary: Initiate OAuth flow
+      description: Start OAuth authentication with a third-party provider
+      operationId: initiateOauth
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - redirect_uri
+              properties:
+                provider:
+                  type: string
+                  description: OAuth provider
+                  enum: [google, facebook, microsoft]
+                  example: google
+                redirect_uri:
+                  type: string
+                  description: Redirect URI for OAuth callback
+                  example: http://localhost:3000/oauth/callback
+      responses:
+        '200':
+          description: OAuth initialization successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url:
+                    type: string
+                    example: https://accounts.google.com/o/oauth2/auth?...
+        '400':
+          description: Invalid provider or redirect URI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+  
+  /auth/oauth/callback:
+    post:
+      summary: OAuth callback
+      description: Handle OAuth callback and generate JWT token
+      operationId: oauthCallback
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - code
+              properties:
+                provider:
+                  type: string
+                  description: OAuth provider
+                  enum: [google, facebook, microsoft]
+                  example: google
+                code:
+                  type: string
+                  description: Authorization code from provider
+                  example: 4/0AY0e-g6...
+                state:
+                  type: string
+                  description: State from OAuth request
+                  example: xyz123
+      responses:
+        '200':
+          description: OAuth authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          description: Invalid OAuth data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: OAuth authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /brands:
+    get:
+      summary: List brands
+      description: Get a list of all brands
+      operationId: listBrands
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: List of brands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Brand'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    post:
+      summary: Create brand
+      description: Create a new brand
+      operationId: createBrand
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreate'
+      responses:
+        '201':
+          description: Brand created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/{brand_id}:
+    parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get brand
+      description: Get a specific brand by ID
+      operationId: getBrand
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Brand details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    put:
+      summary: Update brand
+      description: Update a specific brand by ID
+      operationId: updateBrand
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandUpdate'
+      responses:
+        '200':
+          description: Brand updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/{brand_id}/guidelines:
+    parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Update brand guidelines
+      description: Update the guidelines for a specific brand
+      operationId: updateBrandGuidelines
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandGuidelinesUpdate'
+      responses:
+        '200':
+          description: Brand guidelines updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/project-types:
+    get:
+      summary: List project types
+      description: Get a list of available project types
+      operationId: listProjectTypes
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of project types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectType'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    post:
+      summary: Create project type
+      description: Create a new project type
+      operationId: createProjectType
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectTypeCreate'
+      responses:
+        '201':
+          description: Project type created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectType'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/{brand_id}/projects:
+    parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: List brand projects
+      description: Get a list of projects for a specific brand
+      operationId: listBrandProjects
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          description: Filter by project status
+          required: false
+          schema:
+            type: string
+            enum: [active, completed, archived]
+      responses:
+        '200':
+          description: List of brand projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    post:
+      summary: Create project
+      description: Create a new project for a specific brand
+      operationId: createProject
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/{brand_id}/projects/{project_id}:
+    parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: project_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get project
+      description: Get a specific project by ID
+      operationId: getProject
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand or project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    put:
+      summary: Update project
+      description: Update a specific project by ID
+      operationId: updateProject
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand or project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /brands/{brand_id}/projects/{project_id}/assign:
+    parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: project_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Assign project
+      description: Assign users to a specific project
+      operationId: assignProject
+      tags:
+        - Brands
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_ids
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: ["123e4567-e89b-12d3-a456-426614174000"]
+      responses:
+        '200':
+          description: Project assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Brand, project, or user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /content:
+    get:
+      summary: List content
+      description: Get a list of content items
+      operationId: listContent
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          description: Filter by content status
+          required: false
+          schema:
+            type: string
+            enum: [draft, review, approved, published, archived]
+        - name: content_type
+          in: query
+          description: Filter by content type
+          required: false
+          schema:
+            type: string
+            enum: [article, social_post, email, ad, landing_page]
+        - name: brand_id
+          in: query
+          description: Filter by brand ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of content items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Content'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    post:
+      summary: Create content
+      description: Create a new content item
+      operationId: createContent
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentCreate'
+      responses:
+        '201':
+          description: Content created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /content/{content_id}:
+    parameters:
+      - name: content_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get content
+      description: Get a specific content item by ID
+      operationId: getContent
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+    put:
+      summary: Update content
+      description: Update a specific content item by ID
+      operationId: updateContent
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentUpdate'
+      responses:
+        '200':
+          description: Content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      summary: Delete content
+      description: Delete a specific content item by ID
+      operationId: deleteContent
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Content deleted successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /content/upload-image:
+    post:
+      summary: Upload image
+      description: Upload an image for content
+      operationId: uploadImage
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload
+                content_id:
+                  type: string
+                  format: uuid
+                  description: Associated content ID (optional)
+                brand_id:
+                  type: string
+                  format: uuid
+                  description: Associated brand ID (optional)
+              required:
+                - file
+      responses:
+        '201':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+        '400':
+          description: Invalid file format or size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /content/images/{image_id}:
+    parameters:
+      - name: image_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      summary: Delete image
+      description: Delete a specific image by ID
+      operationId: deleteImage
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Image deleted successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /content/images/{image_id}/focal-point:
+    parameters:
+      - name: image_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Update image focal point
+      description: Update the focal point coordinates for an image
+      operationId: updateImageFocalPoint
+      tags:
+        - Content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: number
+                  format: float
+                  minimum: 0
+                  maximum: 1
+                  description: X coordinate (0-1)
+                  example: 0.5
+                y:
+                  type: number
+                  format: float
+                  minimum: 0
+                  maximum: 1
+                  description: Y coordinate (0-1)
+                  example: 0.5
+      responses:
+        '200':
+          description: Image focal point updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /metrics/ai/daily-costs:
+    get:
+      summary: Get daily AI costs
+      description: Get AI API costs aggregated by day
+      operationId: getDailyAICosts
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Daily AI costs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    date:
+                      type: string
+                      format: date
+                      example: "2023-10-15"
+                    cost:
+                      type: number
+                      format: float
+                      example: 12.34
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+  
+  /metrics/ai/provider-costs:
+    get:
+      summary: Get provider costs
+      description: Get AI API costs aggregated by provider
+      operationId: getProviderCosts
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Provider costs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                      example: "OpenAI"
+                    cost:
+                      type: number
+                      format: float
+                      example: 45.67
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /metrics/ai/model-costs:
+    get:
+      summary: Get model costs
+      description: Get AI API costs aggregated by model
+      operationId: getModelCosts
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Model costs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    model:
+                      type: string
+                      example: "gpt-4"
+                    cost:
+                      type: number
+                      format: float
+                      example: 23.45
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /metrics/ai/budget-status:
+    get:
+      summary: Get budget status
+      description: Get current budget usage status
+      operationId: getBudgetStatus
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Budget status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  budget_total:
+                    type: number
+                    format: float
+                    example: 1000.00
+                  budget_used:
+                    type: number
+                    format: float
+                    example: 450.00
+                  budget_remaining:
+                    type: number
+                    format: float
+                    example: 550.00
+                  percentage_used:
+                    type: number
+                    format: float
+                    example: 45.0
+                  current_month:
+                    type: string
+                    example: "October 2023"
+                  days_remaining:
+                    type: integer
+                    example: 15
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /metrics/ai/cache-metrics:
+    get:
+      summary: Get cache metrics
+      description: Get AI request cache performance metrics
+      operationId: getCacheMetrics
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cache metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hit_rate:
+                    type: number
+                    format: float
+                    example: 0.75
+                  hit_count:
+                    type: integer
+                    example: 750
+                  miss_count:
+                    type: integer
+                    example: 250
+                  total_requests:
+                    type: integer
+                    example: 1000
+                  estimated_savings:
+                    type: number
+                    format: float
+                    example: 45.50
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /metrics/ai/error-rates:
+    get:
+      summary: Get error rates
+      description: Get AI API error rates
+      operationId: getErrorRates
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Error rates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_requests:
+                    type: integer
+                    example: 5000
+                  total_errors:
+                    type: integer
+                    example: 125
+                  error_rate:
+                    type: number
+                    format: float
+                    example: 0.025
+                  errors_by_type:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    example:
+                      rate_limit: 50
+                      server_error: 25
+                      context_length: 30
+                      other: 20
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /metrics/ai/agent-usage:
+    get:
+      summary: Get agent usage
+      description: Get usage metrics for AI agents
+      operationId: getAgentUsage
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Agent usage metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    agent_name:
+                      type: string
+                      example: "content_creation_testing_agent"
+                    request_count:
+                      type: integer
+                      example: 1250
+                    total_tokens:
+                      type: integer
+                      example: 2500000
+                    cost:
+                      type: number
+                      format: float
+                      example: 25.50
+                    average_latency:
+                      type: number
+                      format: float
+                      example: 2.5
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication
+  
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    
+    LimitParam:
+      name: limit
+      in: query
+      description: Items per page
+      required: false
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+  
+  schemas:
+    HTTPError:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Error message"
+    
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+                example: ["body", "email"]
+              msg:
+                type: string
+                example: "field required"
+              type:
+                type: string
+                example: "value_error.missing"
+    
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 50
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        pages:
+          type: integer
+          example: 3
+    
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          example: "bearer"
+    
+    UserCreate:
+      type: object
+      required:
+        - email
+        - password
+        - full_name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securepassword"
+        full_name:
+          type: string
+          example: "John Doe"
+    
+    UserLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securepassword"
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        full_name:
+          type: string
+          example: "John Doe"
+        is_active:
+          type: boolean
+          example: true
+        is_superuser:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+    
+    BrandCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Brand Name"
+        description:
+          type: string
+          example: "Brand description"
+        logo_url:
+          type: string
+          format: uri
+          example: "https://example.com/logo.png"
+        website:
+          type: string
+          format: uri
+          example: "https://example.com"
+        color_primary:
+          type: string
+          example: "#FF5733"
+        color_secondary:
+          type: string
+          example: "#33FF57"
+    
+    BrandUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Updated Brand Name"
+        description:
+          type: string
+          example: "Updated brand description"
+        logo_url:
+          type: string
+          format: uri
+          example: "https://example.com/updated-logo.png"
+        website:
+          type: string
+          format: uri
+          example: "https://updated-example.com"
+        color_primary:
+          type: string
+          example: "#FF5733"
+        color_secondary:
+          type: string
+          example: "#33FF57"
+    
+    BrandGuidelinesUpdate:
+      type: object
+      properties:
+        tone_of_voice:
+          type: string
+          example: "Friendly and professional"
+        target_audience:
+          type: string
+          example: "Professionals aged 25-45"
+        messaging_framework:
+          type: string
+          example: "Focus on problem-solving benefits"
+        content_guidelines:
+          type: string
+          example: "Detailed guidelines for content creation"
+    
+    Brand:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Brand Name"
+        description:
+          type: string
+          example: "Brand description"
+        logo_url:
+          type: string
+          format: uri
+          example: "https://example.com/logo.png"
+        website:
+          type: string
+          format: uri
+          example: "https://example.com"
+        color_primary:
+          type: string
+          example: "#FF5733"
+        color_secondary:
+          type: string
+          example: "#33FF57"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        guidelines:
+          type: object
+          properties:
+            tone_of_voice:
+              type: string
+              example: "Friendly and professional"
+            target_audience:
+              type: string
+              example: "Professionals aged 25-45"
+            messaging_framework:
+              type: string
+              example: "Focus on problem-solving benefits"
+            content_guidelines:
+              type: string
+              example: "Detailed guidelines for content creation"
+    
+    ProjectTypeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Social Media Campaign"
+        description:
+          type: string
+          example: "Project for social media content and ads"
+    
+    ProjectType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Social Media Campaign"
+        description:
+          type: string
+          example: "Project for social media content and ads"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+    
+    ProjectCreate:
+      type: object
+      required:
+        - name
+        - project_type_id
+      properties:
+        name:
+          type: string
+          example: "Q4 Marketing Campaign"
+        description:
+          type: string
+          example: "Campaign for Q4 product launches"
+        project_type_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        start_date:
+          type: string
+          format: date
+          example: "2023-10-01"
+        end_date:
+          type: string
+          format: date
+          example: "2023-12-31"
+        status:
+          type: string
+          enum: [active, completed, archived]
+          default: active
+          example: "active"
+    
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Updated Q4 Marketing Campaign"
+        description:
+          type: string
+          example: "Updated campaign description"
+        start_date:
+          type: string
+          format: date
+          example: "2023-10-15"
+        end_date:
+          type: string
+          format: date
+          example: "2024-01-15"
+        status:
+          type: string
+          enum: [active, completed, archived]
+          example: "active"
+    
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Q4 Marketing Campaign"
+        description:
+          type: string
+          example: "Campaign for Q4 product launches"
+        brand_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        project_type_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        project_type:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            name:
+              type: string
+              example: "Social Media Campaign"
+        start_date:
+          type: string
+          format: date
+          example: "2023-10-01"
+        end_date:
+          type: string
+          format: date
+          example: "2023-12-31"
+        status:
+          type: string
+          enum: [active, completed, archived]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        assigned_users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    
+    ContentCreate:
+      type: object
+      required:
+        - title
+        - content_type
+        - brand_id
+      properties:
+        title:
+          type: string
+          example: "How to Use Our Product"
+        description:
+          type: string
+          example: "Guide for using the new product features"
+        content_type:
+          type: string
+          enum: [article, social_post, email, ad, landing_page]
+          example: "article"
+        body:
+          type: string
+          example: "Detailed content body with markdown formatting"
+        status:
+          type: string
+          enum: [draft, review, approved, published, archived]
+          default: draft
+          example: "draft"
+        brand_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        project_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        publish_date:
+          type: string
+          format: date-time
+          example: "2023-11-15T09:00:00Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            target_audience: "New customers"
+            platforms: ["instagram", "facebook"]
+    
+    ContentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Updated: How to Use Our Product"
+        description:
+          type: string
+          example: "Updated guide for using the new product features"
+        body:
+          type: string
+          example: "Updated content body with markdown formatting"
+        status:
+          type: string
+          enum: [draft, review, approved, published, archived]
+          example: "review"
+        project_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        publish_date:
+          type: string
+          format: date-time
+          example: "2023-11-20T09:00:00Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            target_audience: "Existing customers"
+            platforms: ["instagram", "facebook", "twitter"]
+    
+    Content:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          example: "How to Use Our Product"
+        description:
+          type: string
+          example: "Guide for using the new product features"
+        content_type:
+          type: string
+          enum: [article, social_post, email, ad, landing_page]
+          example: "article"
+        body:
+          type: string
+          example: "Detailed content body with markdown formatting"
+        status:
+          type: string
+          enum: [draft, review, approved, published, archived]
+          example: "draft"
+        brand_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        brand:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            name:
+              type: string
+              example: "Brand Name"
+        project_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            name:
+              type: string
+              example: "Q4 Marketing Campaign"
+        publish_date:
+          type: string
+          format: date-time
+          example: "2023-11-15T09:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        created_by:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        updated_by:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            target_audience: "New customers"
+            platforms: ["instagram", "facebook"]
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+    
+    Image:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        filename:
+          type: string
+          example: "product-image.jpg"
+        url:
+          type: string
+          format: uri
+          example: "https://example.com/images/product-image.jpg"
+        content_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        brand_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        mime_type:
+          type: string
+          example: "image/jpeg"
+        size:
+          type: integer
+          example: 102400
+        width:
+          type: integer
+          example: 1200
+        height:
+          type: integer
+          example: 800
+        focal_point_x:
+          type: number
+          format: float
+          example: 0.5
+        focal_point_y:
+          type: number
+          format: float
+          example: 0.5
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        created_by:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"

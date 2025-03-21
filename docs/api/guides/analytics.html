@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Data Retrieval Guide - Ultimate Marketing Team API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow: auto;
+        }
+        
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .badge.get {
+            background-color: #61affe;
+            color: white;
+        }
+        
+        .badge.post {
+            background-color: #49cc90;
+            color: white;
+        }
+        
+        .badge.put {
+            background-color: #fca130;
+            color: white;
+        }
+        
+        .badge.delete {
+            background-color: #f93e3e;
+            color: white;
+        }
+        
+        .chart-container {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        
+        .chart-placeholder {
+            height: 200px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Analytics Data Retrieval Guide</h1>
+        <p>Learn how to retrieve and analyze marketing performance data using the Ultimate Marketing Team API.</p>
+        <p><a href="../index.html">Back to Documentation Home</a></p>
+    </header>
+    
+    <main>
+        <h2>Overview</h2>
+        <p>The Analytics API provides access to comprehensive marketing performance data, including content engagement, campaign performance, AI usage metrics, and more. This guide covers the various analytics endpoints and how to use them effectively.</p>
+        
+        <div class="note">
+            <strong>Note:</strong> All analytics endpoints require authentication with appropriate permissions. The <code>metrics:view</code> permission is required for basic metrics, while more detailed analytics may require additional permissions.
+        </div>
+        
+        <h2>Types of Analytics Data</h2>
+        
+        <p>The API provides several categories of analytics data:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Common Use Cases</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Content Analytics</td>
+                    <td>Engagement and performance data for content</td>
+                    <td>Content optimization, audience understanding</td>
+                </tr>
+                <tr>
+                    <td>Campaign Analytics</td>
+                    <td>Performance data for ad campaigns</td>
+                    <td>ROI analysis, campaign optimization</td>
+                </tr>
+                <tr>
+                    <td>AI Usage Analytics</td>
+                    <td>Metrics on AI agent usage and costs</td>
+                    <td>Budget tracking, efficiency analysis</td>
+                </tr>
+                <tr>
+                    <td>User Analytics</td>
+                    <td>User behavior and engagement data</td>
+                    <td>Feature adoption, user journey analysis</td>
+                </tr>
+                <tr>
+                    <td>Conversion Analytics</td>
+                    <td>Conversion funnel and attribution data</td>
+                    <td>Conversion optimization, attribution modeling</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>Common Query Parameters</h2>
+        
+        <p>Most analytics endpoints support these common query parameters:</p>
+        
+        <ul>
+            <li><code>start_date</code>: Start date for the data range (format: YYYY-MM-DD)</li>
+            <li><code>end_date</code>: End date for the data range (format: YYYY-MM-DD)</li>
+            <li><code>granularity</code>: Data aggregation level (hourly, daily, weekly, monthly)</li>
+            <li><code>brand_id</code>: Filter by specific brand</li>
+            <li><code>campaign_id</code>: Filter by specific campaign</li>
+            <li><code>limit</code>: Maximum number of results to return</li>
+            <li><code>offset</code>: Number of results to skip (for pagination)</li>
+            <li><code>sort_by</code>: Field to sort results by</li>
+            <li><code>sort_order</code>: Order direction (asc or desc)</li>
+        </ul>
+        
+        <h2>Content Analytics</h2>
+        
+        <h3>Content Performance Overview</h3>
+        <p>Get an overview of content performance metrics:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/content/performance</code> <span class="badge get">GET</span></p>
+        
+        <p>Parameters:</p>
+        <ul>
+            <li><code>content_type</code>: Filter by content type (article, social_post, etc.)</li>
+            <li><code>status</code>: Filter by content status (published, draft, etc.)</li>
+        </ul>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "total_content_items": 45,
+  "total_views": 250000,
+  "total_engagement": 15000,
+  "average_time_on_page": 127,
+  "engagement_rate": 0.06,
+  "top_performing_content": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "title": "10 Tips for Marketing Success",
+      "content_type": "article",
+      "views": 32500,
+      "engagement": 2150,
+      "engagement_rate": 0.066,
+      "avg_time_on_page": 195,
+      "social_shares": 850
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "title": "Product Launch Announcement",
+      "content_type": "article",
+      "views": 28700,
+      "engagement": 1980,
+      "engagement_rate": 0.069,
+      "avg_time_on_page": 165,
+      "social_shares": 720
+    }
+  ],
+  "content_type_breakdown": [
+    {
+      "content_type": "article",
+      "count": 20,
+      "total_views": 180000,
+      "avg_engagement_rate": 0.058
+    },
+    {
+      "content_type": "social_post",
+      "count": 15,
+      "total_views": 45000,
+      "avg_engagement_rate": 0.072
+    },
+    {
+      "content_type": "email",
+      "count": 10,
+      "total_views": 25000,
+      "avg_engagement_rate": 0.045
+    }
+  ],
+  "performance_trend": {
+    "daily": [
+      {
+        "date": "2023-09-01",
+        "views": 8200,
+        "engagement": 492,
+        "engagement_rate": 0.06
+      }
+      // Additional days omitted for brevity
+    ]
+  }
+}</code></pre>
+        
+        <div class="chart-container">
+            <h4>Sample Content Performance Visualization</h4>
+            <div class="chart-placeholder">
+                [Content Views & Engagement by Date Chart]
+            </div>
+        </div>
+        
+        <h3>Content Item Analytics</h3>
+        <p>Get detailed analytics for a specific content item:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/content/{content_id}</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "content_id": "123e4567-e89b-12d3-a456-426614174000",
+  "title": "10 Tips for Marketing Success",
+  "content_type": "article",
+  "published_date": "2023-09-05T10:00:00Z",
+  "date_range": {
+    "start": "2023-09-05",
+    "end": "2023-09-30"
+  },
+  "performance_summary": {
+    "total_views": 32500,
+    "unique_viewers": 28300,
+    "total_engagement": 2150,
+    "engagement_rate": 0.066,
+    "avg_time_on_page": 195,
+    "bounce_rate": 0.28,
+    "social_shares": 850,
+    "comments": 145,
+    "likes": 1750
+  },
+  "traffic_sources": [
+    {
+      "source": "organic_search",
+      "views": 12500,
+      "percentage": 38.5
+    },
+    {
+      "source": "social_media",
+      "views": 8700,
+      "percentage": 26.8
+    },
+    {
+      "source": "direct",
+      "views": 5200,
+      "percentage": 16.0
+    },
+    {
+      "source": "email",
+      "views": 3800,
+      "percentage": 11.7
+    },
+    {
+      "source": "referral",
+      "views": 2300,
+      "percentage": 7.0
+    }
+  ],
+  "device_breakdown": {
+    "desktop": 14625,
+    "mobile": 14950,
+    "tablet": 2925
+  },
+  "geographical_distribution": [
+    {
+      "country": "United States",
+      "views": 18850,
+      "percentage": 58.0
+    },
+    {
+      "country": "United Kingdom",
+      "views": 3900,
+      "percentage": 12.0
+    },
+    {
+      "country": "Canada",
+      "views": 2925,
+      "percentage": 9.0
+    },
+    {
+      "country": "Australia",
+      "views": 1950,
+      "percentage": 6.0
+    },
+    {
+      "country": "Other",
+      "views": 4875,
+      "percentage": 15.0
+    }
+  ],
+  "engagement_trends": {
+    "daily": [
+      {
+        "date": "2023-09-05",
+        "views": 5200,
+        "engagement": 338,
+        "avg_time_on_page": 210
+      }
+      // Additional days omitted for brevity
+    ]
+  },
+  "scroll_depth": {
+    "25_percent": 0.92,
+    "50_percent": 0.78,
+    "75_percent": 0.65,
+    "100_percent": 0.48
+  },
+  "conversion_impact": {
+    "total_conversions": 325,
+    "conversion_rate": 0.01,
+    "total_revenue_attribution": 8125.50,
+    "average_order_value": 25.00
+  }
+}</code></pre>
+        
+        <h3>Content Comparison</h3>
+        <p>Compare performance metrics for multiple content items:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/content/compare</code> <span class="badge get">GET</span></p>
+        
+        <p>Parameters:</p>
+        <ul>
+            <li><code>content_ids</code>: Comma-separated list of content IDs to compare</li>
+        </ul>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "metrics": ["views", "engagement_rate", "avg_time_on_page", "conversion_rate"],
+  "content_items": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "title": "10 Tips for Marketing Success",
+      "content_type": "article",
+      "published_date": "2023-09-05T10:00:00Z",
+      "metrics": {
+        "views": 32500,
+        "engagement_rate": 0.066,
+        "avg_time_on_page": 195,
+        "conversion_rate": 0.01
+      }
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "title": "Product Launch Announcement",
+      "content_type": "article",
+      "published_date": "2023-09-10T14:30:00Z",
+      "metrics": {
+        "views": 28700,
+        "engagement_rate": 0.069,
+        "avg_time_on_page": 165,
+        "conversion_rate": 0.015
+      }
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "title": "Industry Trends Report",
+      "content_type": "article",
+      "published_date": "2023-09-18T09:15:00Z",
+      "metrics": {
+        "views": 18500,
+        "engagement_rate": 0.075,
+        "avg_time_on_page": 230,
+        "conversion_rate": 0.008
+      }
+    }
+  ],
+  "percentile_data": {
+    "views": {
+      "25th": 12000,
+      "50th": 22000,
+      "75th": 30000,
+      "90th": 35000
+    },
+    "engagement_rate": {
+      "25th": 0.040,
+      "50th": 0.055,
+      "75th": 0.070,
+      "90th": 0.085
+    },
+    "avg_time_on_page": {
+      "25th": 90,
+      "50th": 120,
+      "75th": 180,
+      "90th": 220
+    },
+    "conversion_rate": {
+      "25th": 0.005,
+      "50th": 0.010,
+      "75th": 0.015,
+      "90th": 0.020
+    }
+  }
+}</code></pre>
+        
+        <h2>Campaign Analytics</h2>
+        
+        <h3>Campaign Performance Overview</h3>
+        <p>Get an overview of campaign performance metrics:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/campaigns/performance</code> <span class="badge get">GET</span></p>
+        
+        <p>Parameters:</p>
+        <ul>
+            <li><code>status</code>: Filter by campaign status (active, paused, completed, etc.)</li>
+            <li><code>objective</code>: Filter by campaign objective (awareness, conversion, etc.)</li>
+        </ul>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "active_campaigns": 5,
+  "total_spend": 25000.50,
+  "total_impressions": 4500000,
+  "total_clicks": 180000,
+  "overall_ctr": 0.04,
+  "overall_cpc": 0.139,
+  "overall_cpm": 5.56,
+  "total_conversions": 9000,
+  "overall_conversion_rate": 0.05,
+  "overall_cost_per_conversion": 2.78,
+  "top_performing_campaigns": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "name": "Summer Product Launch",
+      "status": "active",
+      "spend": 12500.75,
+      "impressions": 2250000,
+      "clicks": 108000,
+      "ctr": 0.048,
+      "conversions": 5400,
+      "conversion_rate": 0.05,
+      "roi": 3.6
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174003",
+      "name": "Back to School Promotion",
+      "status": "active",
+      "spend": 7800.25,
+      "impressions": 1350000,
+      "clicks": 47250,
+      "ctr": 0.035,
+      "conversions": 2363,
+      "conversion_rate": 0.05,
+      "roi": 3.1
+    }
+  ],
+  "performance_by_objective": [
+    {
+      "objective": "awareness",
+      "campaigns": 2,
+      "spend": 5000.50,
+      "impressions": 1200000,
+      "cpm": 4.17
+    },
+    {
+      "objective": "conversion",
+      "campaigns": 3,
+      "spend": 20000.00,
+      "conversions": 7500,
+      "cost_per_conversion": 2.67
+    }
+  ],
+  "performance_by_platform": [
+    {
+      "platform": "facebook",
+      "spend": 10000.20,
+      "impressions": 1800000,
+      "clicks": 72000,
+      "ctr": 0.04,
+      "cpc": 0.139
+    },
+    {
+      "platform": "instagram",
+      "spend": 8500.15,
+      "impressions": 1500000,
+      "clicks": 67500,
+      "ctr": 0.045,
+      "cpc": 0.126
+    },
+    {
+      "platform": "google",
+      "spend": 6500.15,
+      "impressions": 1200000,
+      "clicks": 40500,
+      "ctr": 0.034,
+      "cpc": 0.160
+    }
+  ],
+  "daily_performance_trend": [
+    {
+      "date": "2023-09-01",
+      "spend": 833.35,
+      "impressions": 150000,
+      "clicks": 6000,
+      "conversions": 300
+    }
+    // Additional days omitted for brevity
+  ]
+}</code></pre>
+        
+        <div class="chart-container">
+            <h4>Sample Campaign Performance Visualization</h4>
+            <div class="chart-placeholder">
+                [Campaign Performance by Platform Chart]
+            </div>
+        </div>
+        
+        <h3>Campaign ROI Analysis</h3>
+        <p>Get detailed ROI analysis for campaigns:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/campaigns/roi</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "overall_metrics": {
+    "total_spend": 25000.50,
+    "total_revenue": 87500.75,
+    "total_roi": 2.50,
+    "average_customer_value": 97.22,
+    "customer_acquisition_cost": 2.78
+  },
+  "campaign_breakdown": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "name": "Summer Product Launch",
+      "spend": 12500.75,
+      "revenue": 45000.00,
+      "roi": 2.60,
+      "conversions": 5400,
+      "cost_per_conversion": 2.31,
+      "revenue_per_conversion": 8.33
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174003",
+      "name": "Back to School Promotion",
+      "spend": 7800.25,
+      "revenue": 28000.50,
+      "roi": 2.59,
+      "conversions": 2363,
+      "cost_per_conversion": 3.30,
+      "revenue_per_conversion": 11.85
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174005",
+      "name": "Fall Collection Preview",
+      "spend": 4699.50,
+      "revenue": 14500.25,
+      "roi": 2.09,
+      "conversions": 1237,
+      "cost_per_conversion": 3.80,
+      "revenue_per_conversion": 11.72
+    }
+  ],
+  "platform_roi": [
+    {
+      "platform": "facebook",
+      "spend": 10000.20,
+      "revenue": 37500.50,
+      "roi": 2.75,
+      "conversions": 3750,
+      "cost_per_conversion": 2.67
+    },
+    {
+      "platform": "instagram",
+      "spend": 8500.15,
+      "revenue": 32000.25,
+      "roi": 2.76,
+      "conversions": 3200,
+      "cost_per_conversion": 2.66
+    },
+    {
+      "platform": "google",
+      "spend": 6500.15,
+      "revenue": 18000.00,
+      "roi": 1.77,
+      "conversions": 2050,
+      "cost_per_conversion": 3.17
+    }
+  ],
+  "trends": {
+    "weekly": [
+      {
+        "week": "2023-09-04",
+        "spend": 6250.13,
+        "revenue": 21875.19,
+        "roi": 2.50
+      }
+      // Additional weeks omitted for brevity
+    ]
+  },
+  "roi_by_audience_segment": [
+    {
+      "segment": "25-34, Female",
+      "spend": 8750.18,
+      "revenue": 35000.30,
+      "roi": 3.00,
+      "conversions": 3150,
+      "conversion_rate": 0.063
+    },
+    {
+      "segment": "35-44, Female",
+      "spend": 6250.12,
+      "revenue": 21875.25,
+      "roi": 2.50,
+      "conversions": 2250,
+      "conversion_rate": 0.050
+    },
+    {
+      "segment": "25-34, Male",
+      "spend": 5000.10,
+      "revenue": 17500.15,
+      "roi": 2.50,
+      "conversions": 1800,
+      "conversion_rate": 0.045
+    },
+    {
+      "segment": "35-44, Male",
+      "spend": 5000.10,
+      "revenue": 13125.05,
+      "roi": 1.63,
+      "conversions": 1800,
+      "conversion_rate": 0.036
+    }
+  ]
+}</code></pre>
+        
+        <h3>Ad Set Performance</h3>
+        <p>Get performance metrics for ad sets within a campaign:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/campaigns/{campaign_id}/ad-sets</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "campaign_id": "123e4567-e89b-12d3-a456-426614174001",
+  "campaign_name": "Summer Product Launch",
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "ad_sets": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "name": "Primary Target Audience",
+      "status": "active",
+      "budget": 9000.00,
+      "spend": 8750.53,
+      "impressions": 1575000,
+      "clicks": 75600,
+      "ctr": 0.048,
+      "cpc": 0.116,
+      "cpm": 5.56,
+      "conversions": 3780,
+      "conversion_rate": 0.05,
+      "cost_per_conversion": 2.32,
+      "platforms": ["facebook", "instagram"],
+      "daily_trend": [
+        {
+          "date": "2023-09-01",
+          "impressions": 52500,
+          "clicks": 2520,
+          "spend": 291.68
+        }
+        // Additional days omitted for brevity
+      ]
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174003",
+      "name": "Secondary Target Audience",
+      "status": "active",
+      "budget": 4000.00,
+      "spend": 3750.22,
+      "impressions": 675000,
+      "clicks": 32400,
+      "ctr": 0.048,
+      "cpc": 0.116,
+      "cpm": 5.56,
+      "conversions": 1620,
+      "conversion_rate": 0.05,
+      "cost_per_conversion": 2.32,
+      "platforms": ["facebook", "instagram"],
+      "daily_trend": [
+        {
+          "date": "2023-09-01",
+          "impressions": 22500,
+          "clicks": 1080,
+          "spend": 125.01
+        }
+        // Additional days omitted for brevity
+      ]
+    }
+  ],
+  "performance_comparison": {
+    "percentage_of_campaign_spend": {
+      "Primary Target Audience": 70.0,
+      "Secondary Target Audience": 30.0
+    },
+    "percentage_of_campaign_conversions": {
+      "Primary Target Audience": 70.0,
+      "Secondary Target Audience": 30.0
+    }
+  }
+}</code></pre>
+        
+        <h2>AI Analytics</h2>
+        
+        <h3>AI Usage Metrics</h3>
+        <p>Get metrics on AI agent usage:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/ai/usage</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "total_requests": 125000,
+  "total_tokens": 25000000,
+  "total_cost": 2500.00,
+  "usage_by_agent": [
+    {
+      "agent": "content_creation_testing_agent",
+      "requests": 40000,
+      "tokens": 10000000,
+      "cost": 1000.00,
+      "average_tokens_per_request": 250,
+      "average_cost_per_request": 0.025
+    },
+    {
+      "agent": "content_strategy_research_agent",
+      "requests": 35000,
+      "tokens": 8750000,
+      "cost": 875.00,
+      "average_tokens_per_request": 250,
+      "average_cost_per_request": 0.025
+    },
+    {
+      "agent": "content_ad_management_agent",
+      "requests": 30000,
+      "tokens": 3750000,
+      "cost": 375.00,
+      "average_tokens_per_request": 125,
+      "average_cost_per_request": 0.0125
+    },
+    {
+      "agent": "brand_project_management_agent",
+      "requests": 15000,
+      "tokens": 1875000,
+      "cost": 187.50,
+      "average_tokens_per_request": 125,
+      "average_cost_per_request": 0.0125
+    },
+    {
+      "agent": "auth_integration_agent",
+      "requests": 5000,
+      "tokens": 625000,
+      "cost": 62.50,
+      "average_tokens_per_request": 125,
+      "average_cost_per_request": 0.0125
+    }
+  ],
+  "usage_by_model": [
+    {
+      "model": "gpt-4",
+      "requests": 75000,
+      "tokens": 18750000,
+      "cost": 1875.00
+    },
+    {
+      "model": "gpt-3.5-turbo",
+      "requests": 50000,
+      "tokens": 6250000,
+      "cost": 625.00
+    }
+  ],
+  "usage_trend": {
+    "daily": [
+      {
+        "date": "2023-09-01",
+        "requests": 4167,
+        "tokens": 833333,
+        "cost": 83.33
+      }
+      // Additional days omitted for brevity
+    ]
+  },
+  "usage_by_operation": [
+    {
+      "operation": "content_generation",
+      "requests": 45000,
+      "tokens": 11250000,
+      "cost": 1125.00
+    },
+    {
+      "operation": "content_optimization",
+      "requests": 35000,
+      "tokens": 8750000,
+      "cost": 875.00
+    },
+    {
+      "operation": "campaign_analysis",
+      "requests": 25000,
+      "tokens": 3125000,
+      "cost": 312.50
+    },
+    {
+      "operation": "audience_targeting",
+      "requests": 20000,
+      "tokens": 1875000,
+      "cost": 187.50
+    }
+  ],
+  "cache_performance": {
+    "cache_hit_rate": 0.35,
+    "estimated_savings": 1346.15,
+    "tokens_saved": 13461500
+  }
+}</code></pre>
+        
+        <div class="chart-container">
+            <h4>Sample AI Usage Visualization</h4>
+            <div class="chart-placeholder">
+                [AI Cost by Agent Pie Chart]
+            </div>
+        </div>
+        
+        <h3>AI Budget Status</h3>
+        <p>Get AI budget and usage information:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/ai/budget</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "current_month": "September 2023",
+  "budget_total": 10000.00,
+  "budget_used": 2500.00,
+  "budget_remaining": 7500.00,
+  "percentage_used": 25.0,
+  "days_in_month": 30,
+  "days_remaining": 15,
+  "projected_usage": 5000.00,
+  "projected_end_of_month_percentage": 50.0,
+  "budget_status": "on_track",
+  "monthly_trend": [
+    {
+      "month": "July 2023",
+      "budget": 8000.00,
+      "actual_spend": 6800.00,
+      "percentage_used": 85.0
+    },
+    {
+      "month": "August 2023",
+      "budget": 9000.00,
+      "actual_spend": 8100.00,
+      "percentage_used": 90.0
+    },
+    {
+      "month": "September 2023",
+      "budget": 10000.00,
+      "actual_spend": 2500.00,
+      "percentage_used": 25.0,
+      "projected_spend": 5000.00,
+      "is_current": true
+    }
+  ],
+  "daily_spending": [
+    {
+      "date": "2023-09-01",
+      "spend": 83.33,
+      "budget_daily": 333.33,
+      "percentage_of_daily": 25.0
+    }
+    // Additional days omitted for brevity
+  ],
+  "budget_recommendations": [
+    {
+      "type": "reallocation",
+      "message": "Consider allocating more budget to content creation agent as it provides highest ROI",
+      "estimated_impact": "+15% efficiency"
+    },
+    {
+      "type": "optimization",
+      "message": "Increase cache TTL for audience targeting operations to improve cache hit rate",
+      "estimated_impact": "+10% cost savings"
+    }
+  ]
+}</code></pre>
+        
+        <h2>Advanced Analytics</h2>
+        
+        <h3>Audience Insights</h3>
+        <p>Get insights about your audience:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/audience/insights</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "total_audience": 450000,
+  "audience_growth": 0.05,
+  "audience_demographics": {
+    "age_distribution": [
+      {
+        "range": "18-24",
+        "percentage": 15.0,
+        "count": 67500
+      },
+      {
+        "range": "25-34",
+        "percentage": 30.0,
+        "count": 135000
+      },
+      {
+        "range": "35-44",
+        "percentage": 25.0,
+        "count": 112500
+      },
+      {
+        "range": "45-54",
+        "percentage": 15.0,
+        "count": 67500
+      },
+      {
+        "range": "55+",
+        "percentage": 15.0,
+        "count": 67500
+      }
+    ],
+    "gender_distribution": [
+      {
+        "gender": "female",
+        "percentage": 55.0,
+        "count": 247500
+      },
+      {
+        "gender": "male",
+        "percentage": 45.0,
+        "count": 202500
+      }
+    ],
+    "location_distribution": [
+      {
+        "country": "United States",
+        "percentage": 60.0,
+        "count": 270000
+      },
+      {
+        "country": "United Kingdom",
+        "percentage": 10.0,
+        "count": 45000
+      },
+      {
+        "country": "Canada",
+        "percentage": 8.0,
+        "count": 36000
+      },
+      {
+        "country": "Australia",
+        "percentage": 6.0,
+        "count": 27000
+      },
+      {
+        "country": "Other",
+        "percentage": 16.0,
+        "count": 72000
+      }
+    ]
+  },
+  "audience_interests": [
+    {
+      "interest": "Technology",
+      "percentage": 35.0,
+      "affinity_score": 2.5
+    },
+    {
+      "interest": "Fashion",
+      "percentage": 30.0,
+      "affinity_score": 2.2
+    },
+    {
+      "interest": "Travel",
+      "percentage": 28.0,
+      "affinity_score": 1.8
+    },
+    {
+      "interest": "Fitness",
+      "percentage": 25.0,
+      "affinity_score": 1.5
+    },
+    {
+      "interest": "Food",
+      "percentage": 22.0,
+      "affinity_score": 1.2
+    }
+  ],
+  "engagement_patterns": {
+    "time_of_day": [
+      {
+        "hour": 8,
+        "engagement_rate": 0.032
+      },
+      {
+        "hour": 12,
+        "engagement_rate": 0.065
+      },
+      {
+        "hour": 16,
+        "engagement_rate": 0.072
+      },
+      {
+        "hour": 20,
+        "engagement_rate": 0.080
+      }
+      // Additional hours omitted for brevity
+    ],
+    "day_of_week": [
+      {
+        "day": "Monday",
+        "engagement_rate": 0.052
+      },
+      {
+        "day": "Tuesday",
+        "engagement_rate": 0.055
+      },
+      {
+        "day": "Wednesday",
+        "engagement_rate": 0.057
+      },
+      {
+        "day": "Thursday",
+        "engagement_rate": 0.062
+      },
+      {
+        "day": "Friday",
+        "engagement_rate": 0.068
+      },
+      {
+        "day": "Saturday",
+        "engagement_rate": 0.072
+      },
+      {
+        "day": "Sunday",
+        "engagement_rate": 0.058
+      }
+    ]
+  },
+  "audience_segments": [
+    {
+      "name": "Tech Enthusiasts",
+      "percentage": 22.0,
+      "engagement_rate": 0.075,
+      "conversion_rate": 0.018
+    },
+    {
+      "name": "Fashion Followers",
+      "percentage": 18.0,
+      "engagement_rate": 0.068,
+      "conversion_rate": 0.022
+    },
+    {
+      "name": "Business Professionals",
+      "percentage": 15.0,
+      "engagement_rate": 0.055,
+      "conversion_rate": 0.025
+    }
+  ],
+  "channel_preferences": [
+    {
+      "channel": "Email",
+      "percentage": 35.0,
+      "engagement_rate": 0.065
+    },
+    {
+      "channel": "Instagram",
+      "percentage": 28.0,
+      "engagement_rate": 0.072
+    },
+    {
+      "channel": "Facebook",
+      "percentage": 22.0,
+      "engagement_rate": 0.058
+    },
+    {
+      "channel": "Website",
+      "percentage": 15.0,
+      "engagement_rate": 0.048
+    }
+  ]
+}</code></pre>
+        
+        <h3>Conversion Funnel Analysis</h3>
+        <p>Get conversion funnel analytics:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/analytics/conversion/funnel</code> <span class="badge get">GET</span></p>
+        
+        <p>Parameters:</p>
+        <ul>
+            <li><code>funnel_id</code>: Optional ID of a specific funnel to analyze</li>
+            <li><code>source</code>: Filter by traffic source</li>
+        </ul>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "funnel_name": "Standard Purchase Funnel",
+  "funnel_stages": [
+    {
+      "name": "Visit",
+      "users": 250000,
+      "percentage_of_total": 100.0,
+      "previous_stage_dropoff": 0.0
+    },
+    {
+      "name": "Product View",
+      "users": 150000,
+      "percentage_of_total": 60.0,
+      "previous_stage_dropoff": 40.0
+    },
+    {
+      "name": "Add to Cart",
+      "users": 37500,
+      "percentage_of_total": 15.0,
+      "previous_stage_dropoff": 75.0
+    },
+    {
+      "name": "Checkout",
+      "users": 18750,
+      "percentage_of_total": 7.5,
+      "previous_stage_dropoff": 50.0
+    },
+    {
+      "name": "Purchase",
+      "users": 12500,
+      "percentage_of_total": 5.0,
+      "previous_stage_dropoff": 33.3
+    }
+  ],
+  "conversion_rate": 0.05,
+  "average_time_to_convert": {
+    "total": 3.5,
+    "by_stage": [
+      {
+        "from": "Visit",
+        "to": "Product View",
+        "average_time_minutes": 2.5
+      },
+      {
+        "from": "Product View",
+        "to": "Add to Cart",
+        "average_time_minutes": 5.8
+      },
+      {
+        "from": "Add to Cart",
+        "to": "Checkout",
+        "average_time_minutes": 7.2
+      },
+      {
+        "from": "Checkout",
+        "to": "Purchase",
+        "average_time_minutes": 4.5
+      }
+    ]
+  },
+  "funnel_by_source": [
+    {
+      "source": "Organic Search",
+      "visit": 75000,
+      "product_view": 39000,
+      "add_to_cart": 9750,
+      "checkout": 4500,
+      "purchase": 3000,
+      "conversion_rate": 0.04
+    },
+    {
+      "source": "Paid Search",
+      "visit": 62500,
+      "product_view": 40625,
+      "add_to_cart": 10625,
+      "checkout": 5625,
+      "purchase": 3750,
+      "conversion_rate": 0.06
+    },
+    {
+      "source": "Social Media",
+      "visit": 50000,
+      "product_view": 30000,
+      "add_to_cart": 7500,
+      "checkout": 3750,
+      "purchase": 2750,
+      "conversion_rate": 0.055
+    },
+    {
+      "source": "Email",
+      "visit": 37500,
+      "product_view": 24375,
+      "add_to_cart": 6563,
+      "checkout": 3188,
+      "purchase": 2125,
+      "conversion_rate": 0.057
+    },
+    {
+      "source": "Direct",
+      "visit": 25000,
+      "product_view": 16000,
+      "add_to_cart": 3000,
+      "checkout": 1750,
+      "purchase": 875,
+      "conversion_rate": 0.035
+    }
+  ],
+  "conversion_by_device": [
+    {
+      "device": "Desktop",
+      "visit": 125000,
+      "purchase": 7500,
+      "conversion_rate": 0.06
+    },
+    {
+      "device": "Mobile",
+      "visit": 112500,
+      "purchase": 4375,
+      "conversion_rate": 0.039
+    },
+    {
+      "device": "Tablet",
+      "visit": 12500,
+      "purchase": 625,
+      "conversion_rate": 0.05
+    }
+  ],
+  "bottlenecks": [
+    {
+      "stage": "Add to Cart",
+      "dropoff_rate": 0.75,
+      "impact_score": 0.85,
+      "suggested_improvements": [
+        "Simplify product page CTA",
+        "Add social proof near add-to-cart button",
+        "Improve mobile add-to-cart experience"
+      ]
+    },
+    {
+      "stage": "Checkout",
+      "dropoff_rate": 0.5,
+      "impact_score": 0.65,
+      "suggested_improvements": [
+        "Reduce checkout form fields",
+        "Add progress indicator to checkout",
+        "Improve error messaging on form validation"
+      ]
+    }
+  ],
+  "trend_analysis": {
+    "weekly": [
+      {
+        "week": "2023-09-04",
+        "visit": 62500,
+        "product_view": 37500,
+        "add_to_cart": 9375,
+        "checkout": 4688,
+        "purchase": 3125,
+        "conversion_rate": 0.05
+      }
+      // Additional weeks omitted for brevity
+    ]
+  }
+}</code></pre>
+        
+        <div class="chart-container">
+            <h4>Sample Conversion Funnel Visualization</h4>
+            <div class="chart-placeholder">
+                [Conversion Funnel Chart]
+            </div>
+        </div>
+        
+        <h2>Custom Analytics</h2>
+        
+        <h3>Custom Metrics Query</h3>
+        <p>Query for custom metrics and dimensions:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/analytics/custom/query</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "metrics": [
+    "impressions", 
+    "clicks", 
+    "conversions", 
+    "revenue"
+  ],
+  "dimensions": [
+    "campaign",
+    "device",
+    "country"
+  ],
+  "filters": [
+    {
+      "dimension": "platform",
+      "operator": "in",
+      "values": ["facebook", "instagram"]
+    },
+    {
+      "metric": "impressions",
+      "operator": "gt",
+      "value": 1000
+    }
+  ],
+  "sort": [
+    {
+      "field": "revenue",
+      "direction": "desc"
+    }
+  ],
+  "limit": 20
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "date_range": {
+    "start": "2023-09-01",
+    "end": "2023-09-30"
+  },
+  "query_dimensions": ["campaign", "device", "country"],
+  "query_metrics": ["impressions", "clicks", "conversions", "revenue"],
+  "results": [
+    {
+      "dimensions": {
+        "campaign": "Summer Product Launch",
+        "device": "desktop",
+        "country": "United States"
+      },
+      "metrics": {
+        "impressions": 750000,
+        "clicks": 36000,
+        "conversions": 1800,
+        "revenue": 18000.00
+      }
+    },
+    {
+      "dimensions": {
+        "campaign": "Summer Product Launch",
+        "device": "mobile",
+        "country": "United States"
+      },
+      "metrics": {
+        "impressions": 675000,
+        "clicks": 32400,
+        "conversions": 1134,
+        "revenue": 11340.00
+      }
+    },
+    {
+      "dimensions": {
+        "campaign": "Back to School Promotion",
+        "device": "desktop",
+        "country": "United States"
+      },
+      "metrics": {
+        "impressions": 450000,
+        "clicks": 15750,
+        "conversions": 788,
+        "revenue": 7880.00
+      }
+    }
+    // Additional results omitted for brevity
+  ],
+  "totals": {
+    "impressions": 3375000,
+    "clicks": 135000,
+    "conversions": 6750,
+    "revenue": 67500.00
+  },
+  "row_count": 20,
+  "total_available": 42,
+  "execution_time_ms": 254
+}</code></pre>
+        
+        <h3>Create Custom Report</h3>
+        <p>Save a custom report configuration:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/analytics/custom/reports</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "name": "Social Platform Performance by Country",
+  "description": "Analysis of social media platform performance across countries",
+  "query": {
+    "metrics": [
+      "impressions", 
+      "clicks", 
+      "conversions", 
+      "revenue"
+    ],
+    "dimensions": [
+      "platform",
+      "country"
+    ],
+    "filters": [
+      {
+        "dimension": "platform",
+        "operator": "in",
+        "values": ["facebook", "instagram", "twitter"]
+      }
+    ],
+    "sort": [
+      {
+        "field": "revenue",
+        "direction": "desc"
+      }
+    ]
+  },
+  "visualization_type": "table",
+  "schedule": {
+    "frequency": "weekly",
+    "day": "monday",
+    "recipients": [
+      "marketing@example.com",
+      "analytics@example.com"
+    ]
+  }
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174010",
+  "name": "Social Platform Performance by Country",
+  "description": "Analysis of social media platform performance across countries",
+  "created_at": "2023-09-15T10:30:45Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "query": {
+    "metrics": [
+      "impressions", 
+      "clicks", 
+      "conversions", 
+      "revenue"
+    ],
+    "dimensions": [
+      "platform",
+      "country"
+    ],
+    "filters": [
+      {
+        "dimension": "platform",
+        "operator": "in",
+        "values": ["facebook", "instagram", "twitter"]
+      }
+    ],
+    "sort": [
+      {
+        "field": "revenue",
+        "direction": "desc"
+      }
+    ]
+  },
+  "visualization_type": "table",
+  "schedule": {
+    "frequency": "weekly",
+    "day": "monday",
+    "recipients": [
+      "marketing@example.com",
+      "analytics@example.com"
+    ],
+    "next_run": "2023-09-18T08:00:00Z"
+  }
+}</code></pre>
+        
+        <h2>Code Examples</h2>
+        
+        <h3>Python - Retrieving and Visualizing Campaign Performance</h3>
+        <pre><code class="language-python">import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime, timedelta
+
+# Authentication (replace with your token)
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json"
+}
+base_url = "https://api.ultimatemarketingteam.com/api/v1"
+
+# Set date range (last 30 days)
+end_date = datetime.now().strftime("%Y-%m-%d")
+start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+
+# Fetch campaign performance data
+def get_campaign_performance(start_date, end_date):
+    params = {
+        "start_date": start_date,
+        "end_date": end_date,
+        "granularity": "daily"
+    }
+    
+    response = requests.get(
+        f"{base_url}/analytics/campaigns/performance",
+        headers=headers,
+        params=params
+    )
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error: {response.status_code}")
+        return None
+
+# Fetch campaign performance
+performance_data = get_campaign_performance(start_date, end_date)
+
+if performance_data:
+    # Extract daily performance trend
+    daily_trend = performance_data["daily_performance_trend"]
+    
+    # Convert to DataFrame
+    df_daily = pd.DataFrame(daily_trend)
+    
+    # Convert date strings to datetime
+    df_daily["date"] = pd.to_datetime(df_daily["date"])
+    
+    # Calculate derived metrics
+    df_daily["ctr"] = df_daily["clicks"] / df_daily["impressions"]
+    df_daily["conversion_rate"] = df_daily["conversions"] / df_daily["clicks"]
+    df_daily["cpc"] = df_daily["spend"] / df_daily["clicks"]
+    
+    # Plot daily metrics
+    plt.figure(figsize=(12, 8))
+    
+    # Plot 1: Daily spend
+    plt.subplot(2, 2, 1)
+    plt.plot(df_daily["date"], df_daily["spend"], marker='o', linestyle='-')
+    plt.title("Daily Ad Spend")
+    plt.xlabel("Date")
+    plt.ylabel("Spend ($)")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Plot 2: Daily impressions and clicks
+    plt.subplot(2, 2, 2)
+    plt.plot(df_daily["date"], df_daily["impressions"], marker='o', linestyle='-', label="Impressions")
+    plt.plot(df_daily["date"], df_daily["clicks"], marker='x', linestyle='-', label="Clicks")
+    plt.title("Daily Impressions and Clicks")
+    plt.xlabel("Date")
+    plt.ylabel("Count")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.tight_layout()
+    
+    # Plot 3: Daily CTR
+    plt.subplot(2, 2, 3)
+    plt.plot(df_daily["date"], df_daily["ctr"] * 100, marker='o', linestyle='-', color='green')
+    plt.title("Daily Click-Through Rate")
+    plt.xlabel("Date")
+    plt.ylabel("CTR (%)")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Plot 4: Daily Conversion Rate
+    plt.subplot(2, 2, 4)
+    plt.plot(df_daily["date"], df_daily["conversion_rate"] * 100, marker='o', linestyle='-', color='purple')
+    plt.title("Daily Conversion Rate")
+    plt.xlabel("Date")
+    plt.ylabel("Conversion Rate (%)")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+    plt.savefig("campaign_performance.png")
+    plt.show()
+    
+    # Extract platform performance data
+    platform_data = performance_data["performance_by_platform"]
+    
+    # Convert to DataFrame
+    df_platform = pd.DataFrame(platform_data)
+    
+    # Create a bar chart for platform performance
+    plt.figure(figsize=(10, 6))
+    
+    x = df_platform["platform"]
+    y1 = df_platform["spend"]
+    y2 = df_platform["clicks"]
+    
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    
+    color = 'tab:blue'
+    ax1.set_xlabel('Platform')
+    ax1.set_ylabel('Spend ($)', color=color)
+    ax1.bar(x, y1, color=color, alpha=0.7)
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_ylabel('Clicks', color=color)
+    ax2.plot(x, y2, color=color, marker='o', linestyle='-', linewidth=2)
+    ax2.tick_params(axis='y', labelcolor=color)
+    
+    plt.title('Performance by Platform: Spend vs. Clicks')
+    fig.tight_layout()
+    plt.savefig("platform_performance.png")
+    plt.show()
+    
+    # Print summary statistics
+    print("Campaign Performance Summary:")
+    print(f"Date Range: {start_date} to {end_date}")
+    print(f"Total Spend: ${performance_data['total_spend']:,.2f}")
+    print(f"Total Impressions: {performance_data['total_impressions']:,}")
+    print(f"Total Clicks: {performance_data['total_clicks']:,}")
+    print(f"Overall CTR: {performance_data['overall_ctr']:.2%}")
+    print(f"Overall CPC: ${performance_data['overall_cpc']:.3f}")
+    print(f"Total Conversions: {performance_data['total_conversions']:,}")
+    print(f"Overall Conversion Rate: {performance_data['overall_conversion_rate']:.2%}")
+    print(f"Overall Cost Per Conversion: ${performance_data['overall_cost_per_conversion']:.2f}")
+    
+    # List top performing campaigns
+    print("\nTop Performing Campaigns:")
+    for idx, campaign in enumerate(performance_data["top_performing_campaigns"]):
+        print(f"{idx+1}. {campaign['name']}")
+        print(f"   Spend: ${campaign['spend']:,.2f}")
+        print(f"   Impressions: {campaign['impressions']:,}")
+        print(f"   Clicks: {campaign['clicks']:,}")
+        print(f"   CTR: {campaign['ctr']:.2%}")
+        print(f"   Conversions: {campaign['conversions']:,}")
+        print(f"   Conversion Rate: {campaign['conversion_rate']:.2%}")
+        print(f"   ROI: {campaign['roi']:.1f}x")
+</code></pre>
+        
+        <h3>JavaScript - Creating Custom Reports and Dashboards</h3>
+        <pre><code class="language-javascript">// Authentication (replace with your token)
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const headers = {
+  "Authorization": `Bearer ${token}`,
+  "Content-Type": "application/json"
+};
+const baseUrl = "https://api.ultimatemarketingteam.com/api/v1";
+
+// Function to get date range (last 30 days)
+function getDateRange() {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 30);
+  
+  return {
+    start: startDate.toISOString().split('T')[0],
+    end: endDate.toISOString().split('T')[0]
+  };
+}
+
+// Function to fetch content performance data
+async function getContentPerformance() {
+  const dateRange = getDateRange();
+  
+  try {
+    const response = await fetch(`${baseUrl}/analytics/content/performance?start_date=${dateRange.start}&end_date=${dateRange.end}`, {
+      method: "GET",
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching content performance:", error);
+    return null;
+  }
+}
+
+// Function to create a custom analytics query
+async function createCustomQuery(metrics, dimensions, filters) {
+  const dateRange = getDateRange();
+  
+  const queryData = {
+    date_range: {
+      start: dateRange.start,
+      end: dateRange.end
+    },
+    metrics: metrics,
+    dimensions: dimensions,
+    filters: filters,
+    sort: [
+      {
+        field: metrics[0],
+        direction: "desc"
+      }
+    ],
+    limit: 20
+  };
+  
+  try {
+    const response = await fetch(`${baseUrl}/analytics/custom/query`, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(queryData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error executing custom query:", error);
+    return null;
+  }
+}
+
+// Function to save a custom report
+async function saveCustomReport(name, description, query, visualizationType, schedule) {
+  const reportData = {
+    name: name,
+    description: description,
+    query: query,
+    visualization_type: visualizationType,
+    schedule: schedule
+  };
+  
+  try {
+    const response = await fetch(`${baseUrl}/analytics/custom/reports`, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(reportData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error saving custom report:", error);
+    return null;
+  }
+}
+
+// Function to create a dashboard with multiple visualizations
+async function createDashboard() {
+  // Step 1: Get content performance data
+  const contentData = await getContentPerformance();
+  
+  if (!contentData) {
+    console.error("Failed to fetch content performance data");
+    return;
+  }
+  
+  // Step 2: Create custom query for platform performance
+  const platformQuery = await createCustomQuery(
+    ["impressions", "clicks", "conversions", "spend", "revenue"], 
+    ["platform", "device"],
+    [
+      {
+        dimension: "platform",
+        operator: "in",
+        values: ["facebook", "instagram", "google"]
+      }
+    ]
+  );
+  
+  if (!platformQuery) {
+    console.error("Failed to execute platform performance query");
+    return;
+  }
+  
+  // Step 3: Create custom report for weekly content analytics
+  const contentReportQuery = {
+    metrics: ["views", "engagement", "social_shares", "conversion_rate"],
+    dimensions: ["content_type", "status"],
+    filters: [
+      {
+        dimension: "status",
+        operator: "in",
+        values: ["published", "archived"]
+      }
+    ],
+    sort: [
+      {
+        field: "views",
+        direction: "desc"
+      }
+    ]
+  };
+  
+  const contentReport = await saveCustomReport(
+    "Weekly Content Performance",
+    "Analysis of content performance by type and status",
+    contentReportQuery,
+    "bar_chart",
+    {
+      frequency: "weekly",
+      day: "monday",
+      recipients: ["content@example.com", "marketing@example.com"]
+    }
+  );
+  
+  if (!contentReport) {
+    console.error("Failed to save content report");
+    return;
+  }
+  
+  // Step 4: Create custom report for platform ROI
+  const platformRoiQuery = {
+    metrics: ["spend", "revenue", "roi", "conversions"],
+    dimensions: ["platform", "campaign"],
+    filters: [],
+    sort: [
+      {
+        field: "roi",
+        direction: "desc"
+      }
+    ]
+  };
+  
+  const platformRoiReport = await saveCustomReport(
+    "Platform ROI Analysis",
+    "Comparison of ROI across different platforms and campaigns",
+    platformRoiQuery,
+    "table",
+    {
+      frequency: "monthly",
+      day: "1",
+      recipients: ["analytics@example.com", "executive@example.com"]
+    }
+  );
+  
+  if (!platformRoiReport) {
+    console.error("Failed to save platform ROI report");
+    return;
+  }
+  
+  // Output dashboard creation results
+  console.log("Dashboard Creation Complete");
+  console.log("\nContent Performance Summary:");
+  console.log(`Total Content Items: ${contentData.total_content_items}`);
+  console.log(`Total Views: ${contentData.total_views.toLocaleString()}`);
+  console.log(`Total Engagement: ${contentData.total_engagement.toLocaleString()}`);
+  console.log(`Average Engagement Rate: ${(contentData.engagement_rate * 100).toFixed(2)}%`);
+  
+  console.log("\nTop Performing Content:");
+  contentData.top_performing_content.slice(0, 3).forEach((item, index) => {
+    console.log(`${index + 1}. ${item.title} (${item.content_type})`);
+    console.log(`   Views: ${item.views.toLocaleString()}`);
+    console.log(`   Engagement: ${item.engagement.toLocaleString()}`);
+    console.log(`   Engagement Rate: ${(item.engagement_rate * 100).toFixed(2)}%`);
+  });
+  
+  console.log("\nPlatform Performance:");
+  platformQuery.results.slice(0, 3).forEach(result => {
+    console.log(`Platform: ${result.dimensions.platform}, Device: ${result.dimensions.device}`);
+    console.log(`   Impressions: ${result.metrics.impressions.toLocaleString()}`);
+    console.log(`   Clicks: ${result.metrics.clicks.toLocaleString()}`);
+    console.log(`   Conversions: ${result.metrics.conversions.toLocaleString()}`);
+    console.log(`   Revenue: $${result.metrics.revenue.toLocaleString()}`);
+  });
+  
+  console.log("\nReports Created:");
+  console.log(`1. ${contentReport.name} (ID: ${contentReport.id})`);
+  console.log(`   Next run: ${new Date(contentReport.schedule.next_run).toLocaleDateString()}`);
+  console.log(`2. ${platformRoiReport.name} (ID: ${platformRoiReport.id})`);
+  console.log(`   Next run: ${new Date(platformRoiReport.schedule.next_run).toLocaleDateString()}`);
+}
+
+// Call the dashboard creation function to execute all steps
+// createDashboard();
+</code></pre>
+        
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Use date ranges consistently across analytics queries for accurate comparisons.</li>
+            <li>Limit requests for large data sets by using appropriate granularity settings.</li>
+            <li>Cache analytics results when possible to improve application performance.</li>
+            <li>Set up scheduled reports for regular monitoring rather than making repeated API calls.</li>
+            <li>Use filters to narrow down results and improve query performance.</li>
+            <li>When visualizing data, focus on actionable metrics rather than vanity metrics.</li>
+            <li>Compare metrics across dimensions (e.g., platform, device, geography) to identify opportunities.</li>
+            <li>Combine analytics from different sources (content, campaigns, AI) to get a complete picture.</li>
+            <li>Track conversion metrics to connect marketing efforts with business results.</li>
+            <li>Monitor trends over time rather than focusing on single-point measurements.</li>
+        </ul>
+        
+        <div class="note">
+            <strong>Tip:</strong> Create custom reports that align with your specific KPIs and business objectives. The custom analytics API is flexible enough to accommodate a wide range of reporting needs.
+        </div>
+    </main>
+    
+    <div class="navigation">
+        <div>
+            <a href="campaign-management.html">← Campaign Management Guide</a>
+        </div>
+        <div>
+            <a href="versioning.html">API Versioning and Migration →</a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

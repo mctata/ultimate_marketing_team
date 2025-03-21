@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Management Guide - Ultimate Marketing Team API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow: auto;
+        }
+        
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .badge.get {
+            background-color: #61affe;
+            color: white;
+        }
+        
+        .badge.post {
+            background-color: #49cc90;
+            color: white;
+        }
+        
+        .badge.put {
+            background-color: #fca130;
+            color: white;
+        }
+        
+        .badge.delete {
+            background-color: #f93e3e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Content Management Guide</h1>
+        <p>Learn how to create, manage, and publish content using the Ultimate Marketing Team API.</p>
+        <p><a href="../index.html">Back to Documentation Home</a></p>
+    </header>
+    
+    <main>
+        <h2>Overview</h2>
+        <p>The Content API allows you to manage various types of marketing content, including articles, social media posts, emails, ads, and landing pages. This guide covers common content management workflows and best practices.</p>
+        
+        <div class="note">
+            <strong>Note:</strong> All content endpoints require authentication. Make sure to include your JWT token in the Authorization header.
+        </div>
+        
+        <h2>Content Types</h2>
+        <p>The API supports the following content types:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Use Cases</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>article</td>
+                    <td>Long-form written content</td>
+                    <td>Blog posts, knowledge base articles, tutorials</td>
+                </tr>
+                <tr>
+                    <td>social_post</td>
+                    <td>Short-form content for social media</td>
+                    <td>Twitter/X posts, LinkedIn updates, Facebook posts</td>
+                </tr>
+                <tr>
+                    <td>email</td>
+                    <td>Email marketing content</td>
+                    <td>Newsletters, promotional emails, transactional emails</td>
+                </tr>
+                <tr>
+                    <td>ad</td>
+                    <td>Advertising content</td>
+                    <td>Banner ads, search ads, social media ads</td>
+                </tr>
+                <tr>
+                    <td>landing_page</td>
+                    <td>Landing page content</td>
+                    <td>Campaign landing pages, product pages</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>Content Workflow</h2>
+        
+        <h3>1. Create Content</h3>
+        <p>Start by creating a new content item:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/content</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "title": "How to Use Our Product",
+  "description": "Guide for using the new product features",
+  "content_type": "article",
+  "body": "# Introduction\n\nThis is a guide for using our product...",
+  "status": "draft",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "project_id": "123e4567-e89b-12d3-a456-426614174000",
+  "publish_date": "2023-11-15T09:00:00Z",
+  "metadata": {
+    "target_audience": "New customers",
+    "platforms": ["website", "knowledge_base"]
+  }
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "title": "How to Use Our Product",
+  "description": "Guide for using the new product features",
+  "content_type": "article",
+  "body": "# Introduction\n\nThis is a guide for using our product...",
+  "status": "draft",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "brand": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Brand Name"
+  },
+  "project_id": "123e4567-e89b-12d3-a456-426614174000",
+  "project": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Q4 Marketing Campaign"
+  },
+  "publish_date": "2023-11-15T09:00:00Z",
+  "created_at": "2023-10-15T14:30:45Z",
+  "updated_at": "2023-10-15T14:30:45Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "metadata": {
+    "target_audience": "New customers",
+    "platforms": ["website", "knowledge_base"]
+  },
+  "images": []
+}</code></pre>
+        
+        <div class="note">
+            <strong>Note:</strong> The <code>body</code> field supports Markdown formatting for rich content.
+        </div>
+        
+        <h3>2. Upload Images</h3>
+        <p>Add images to your content:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/content/upload-image</code> <span class="badge post">POST</span></p>
+        
+        <p>Request (multipart/form-data):</p>
+        <pre><code>file: [binary image file]
+content_id: 123e4567-e89b-12d3-a456-426614174001
+brand_id: 123e4567-e89b-12d3-a456-426614174000</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174002",
+  "filename": "product-image.jpg",
+  "url": "https://example.com/images/product-image.jpg",
+  "content_id": "123e4567-e89b-12d3-a456-426614174001",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "mime_type": "image/jpeg",
+  "size": 102400,
+  "width": 1200,
+  "height": 800,
+  "focal_point_x": 0.5,
+  "focal_point_y": 0.5,
+  "created_at": "2023-10-15T14:35:12Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000"
+}</code></pre>
+        
+        <h3>3. Set Image Focal Point</h3>
+        <p>Specify the focal point for responsive image display:</p>
+        
+        <p>Endpoint: <code>PUT /api/v1/content/images/{image_id}/focal-point</code> <span class="badge put">PUT</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "x": 0.35,
+  "y": 0.6
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174002",
+  "filename": "product-image.jpg",
+  "url": "https://example.com/images/product-image.jpg",
+  "content_id": "123e4567-e89b-12d3-a456-426614174001",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "mime_type": "image/jpeg",
+  "size": 102400,
+  "width": 1200,
+  "height": 800,
+  "focal_point_x": 0.35,
+  "focal_point_y": 0.6,
+  "created_at": "2023-10-15T14:35:12Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000"
+}</code></pre>
+        
+        <h3>4. Update Content</h3>
+        <p>Update the content as needed:</p>
+        
+        <p>Endpoint: <code>PUT /api/v1/content/{content_id}</code> <span class="badge put">PUT</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "title": "Complete Guide: How to Use Our Product",
+  "body": "# Introduction\n\nThis is an updated guide for using our product...",
+  "status": "review"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "title": "Complete Guide: How to Use Our Product",
+  "description": "Guide for using the new product features",
+  "content_type": "article",
+  "body": "# Introduction\n\nThis is an updated guide for using our product...",
+  "status": "review",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "brand": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Brand Name"
+  },
+  "project_id": "123e4567-e89b-12d3-a456-426614174000",
+  "project": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Q4 Marketing Campaign"
+  },
+  "publish_date": "2023-11-15T09:00:00Z",
+  "created_at": "2023-10-15T14:30:45Z",
+  "updated_at": "2023-10-15T15:10:22Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "metadata": {
+    "target_audience": "New customers",
+    "platforms": ["website", "knowledge_base"]
+  },
+  "images": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "filename": "product-image.jpg",
+      "url": "https://example.com/images/product-image.jpg",
+      "focal_point_x": 0.35,
+      "focal_point_y": 0.6
+    }
+  ]
+}</code></pre>
+        
+        <h2>Content Status Workflow</h2>
+        
+        <p>Content in the system follows a defined workflow with the following statuses:</p>
+        
+        <ol>
+            <li><strong>draft</strong>: Initial content creation (default)</li>
+            <li><strong>review</strong>: Content is ready for review</li>
+            <li><strong>approved</strong>: Content has been approved</li>
+            <li><strong>published</strong>: Content is live</li>
+            <li><strong>archived</strong>: Content is no longer active</li>
+        </ol>
+        
+        <p>To update a content item's status, use the update endpoint with the new status value.</p>
+        
+        <h2>Listing and Filtering Content</h2>
+        
+        <h3>Get All Content</h3>
+        <p>Retrieve a list of content items:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/content</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "items": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "title": "Complete Guide: How to Use Our Product",
+      "description": "Guide for using the new product features",
+      "content_type": "article",
+      "status": "review",
+      "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+      "brand": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Brand Name"
+      },
+      "created_at": "2023-10-15T14:30:45Z",
+      "updated_at": "2023-10-15T15:10:22Z"
+    },
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174003",
+      "title": "Product Announcement",
+      "description": "Announcing our new product features",
+      "content_type": "social_post",
+      "status": "published",
+      "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+      "brand": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Brand Name"
+      },
+      "created_at": "2023-10-14T10:15:30Z",
+      "updated_at": "2023-10-14T11:22:45Z"
+    }
+  ],
+  "pagination": {
+    "total": 2,
+    "page": 1,
+    "limit": 20,
+    "pages": 1
+  }
+}</code></pre>
+        
+        <h3>Filter Content</h3>
+        <p>Filter content items by status, type, or brand:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/content?status=published&content_type=article&brand_id=123e4567-e89b-12d3-a456-426614174000</code> <span class="badge get">GET</span></p>
+        
+        <p>Available filters:</p>
+        <ul>
+            <li><code>status</code>: Filter by content status (draft, review, approved, published, archived)</li>
+            <li><code>content_type</code>: Filter by content type (article, social_post, email, ad, landing_page)</li>
+            <li><code>brand_id</code>: Filter by brand ID</li>
+            <li><code>page</code>: Page number for pagination (default: 1)</li>
+            <li><code>limit</code>: Items per page (default: 20, max: 100)</li>
+        </ul>
+        
+        <h3>Get Specific Content</h3>
+        <p>Retrieve a specific content item by ID:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/content/{content_id}</code> <span class="badge get">GET</span></p>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "title": "Complete Guide: How to Use Our Product",
+  "description": "Guide for using the new product features",
+  "content_type": "article",
+  "body": "# Introduction\n\nThis is an updated guide for using our product...",
+  "status": "review",
+  "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+  "brand": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Brand Name"
+  },
+  "project_id": "123e4567-e89b-12d3-a456-426614174000",
+  "project": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Q4 Marketing Campaign"
+  },
+  "publish_date": "2023-11-15T09:00:00Z",
+  "created_at": "2023-10-15T14:30:45Z",
+  "updated_at": "2023-10-15T15:10:22Z",
+  "created_by": "123e4567-e89b-12d3-a456-426614174000",
+  "updated_by": "123e4567-e89b-12d3-a456-426614174000",
+  "metadata": {
+    "target_audience": "New customers",
+    "platforms": ["website", "knowledge_base"]
+  },
+  "images": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "filename": "product-image.jpg",
+      "url": "https://example.com/images/product-image.jpg",
+      "focal_point_x": 0.35,
+      "focal_point_y": 0.6
+    }
+  ]
+}</code></pre>
+        
+        <h2>Deleting Content</h2>
+        
+        <h3>Delete Content</h3>
+        <p>Remove a content item:</p>
+        
+        <p>Endpoint: <code>DELETE /api/v1/content/{content_id}</code> <span class="badge delete">DELETE</span></p>
+        
+        <p>Response (204 No Content)</p>
+        
+        <div class="warning">
+            <strong>Warning:</strong> Deleting content is permanent and cannot be undone. Consider archiving content instead by updating its status to "archived".
+        </div>
+        
+        <h3>Delete Image</h3>
+        <p>Remove an image from content:</p>
+        
+        <p>Endpoint: <code>DELETE /api/v1/content/images/{image_id}</code> <span class="badge delete">DELETE</span></p>
+        
+        <p>Response (204 No Content)</p>
+        
+        <h2>Code Examples</h2>
+        
+        <h3>Python - Create and Publish Content</h3>
+        <pre><code class="language-python">import requests
+import json
+
+# Authentication (replace with your token)
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json"
+}
+
+# 1. Create content
+content_data = {
+    "title": "10 Tips for Marketing Success",
+    "description": "Best practices for marketing in 2025",
+    "content_type": "article",
+    "body": "# 10 Tips for Marketing Success\n\n## Tip 1: Know Your Audience\n...",
+    "status": "draft",
+    "brand_id": "123e4567-e89b-12d3-a456-426614174000",
+    "project_id": "123e4567-e89b-12d3-a456-426614174000",
+    "metadata": {
+        "target_audience": "Marketing professionals",
+        "platforms": ["blog", "newsletter"]
+    }
+}
+
+create_response = requests.post(
+    "https://api.ultimatemarketingteam.com/api/v1/content",
+    headers=headers,
+    json=content_data
+)
+
+content = create_response.json()
+content_id = content["id"]
+print(f"Created content with ID: {content_id}")
+
+# 2. Upload an image
+image_path = "marketing-tips.jpg"
+with open(image_path, "rb") as image_file:
+    files = {"file": (image_path, image_file, "image/jpeg")}
+    data = {
+        "content_id": content_id,
+        "brand_id": "123e4567-e89b-12d3-a456-426614174000"
+    }
+    image_response = requests.post(
+        "https://api.ultimatemarketingteam.com/api/v1/content/upload-image",
+        headers={"Authorization": f"Bearer {token}"},
+        files=files,
+        data=data
+    )
+
+image = image_response.json()
+print(f"Uploaded image: {image['url']}")
+
+# 3. Update content status to published
+update_data = {
+    "status": "published",
+    "publish_date": "2023-11-15T09:00:00Z"
+}
+
+update_response = requests.put(
+    f"https://api.ultimatemarketingteam.com/api/v1/content/{content_id}",
+    headers=headers,
+    json=update_data
+)
+
+updated_content = update_response.json()
+print(f"Content published, status: {updated_content['status']}")</code></pre>
+        
+        <h3>JavaScript - List and Filter Content</h3>
+        <pre><code class="language-javascript">// Authentication (replace with your token)
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const headers = {
+  "Authorization": `Bearer ${token}`,
+  "Content-Type": "application/json"
+};
+
+// Fetch content items for a specific brand and status
+async function fetchBrandContent(brandId, status) {
+  try {
+    const response = await fetch(`https://api.ultimatemarketingteam.com/api/v1/content?brand_id=${brandId}&status=${status}`, {
+      method: "GET",
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.items;
+  } catch (error) {
+    console.error("Error fetching content:", error);
+    return [];
+  }
+}
+
+// Display content items in the UI
+async function displayPublishedContent() {
+  const brandId = "123e4567-e89b-12d3-a456-426614174000";
+  const publishedContent = await fetchBrandContent(brandId, "published");
+  
+  console.log(`Found ${publishedContent.length} published content items`);
+  
+  publishedContent.forEach(content => {
+    console.log(`- ${content.title} (${content.content_type})`);
+  });
+}
+
+displayPublishedContent();</code></pre>
+        
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Use descriptive titles and appropriate content types for better organization.</li>
+            <li>Include detailed metadata to make content more searchable and enable advanced filtering.</li>
+            <li>Follow the status workflow to track content through its lifecycle.</li>
+            <li>Set proper focal points on images for responsive display across different devices.</li>
+            <li>Use pagination parameters when dealing with large content collections.</li>
+            <li>Consider archiving content instead of deleting it to maintain a historical record.</li>
+            <li>For large images, compress them before uploading to improve performance.</li>
+            <li>Use Markdown formatting in the body field for rich content presentation.</li>
+        </ul>
+        
+        <div class="note">
+            <strong>Tip:</strong> When creating content programmatically, consider using a content approval workflow where items are first created as drafts, then moved to review and published states after appropriate checks.
+        </div>
+    </main>
+    
+    <div class="navigation">
+        <div>
+            <a href="authentication.html">← Authentication Guide</a>
+        </div>
+        <div>
+            <a href="campaign-management.html">Campaign Management →</a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Marketing Team API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        h2 {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+        }
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .card {
+            flex: 1 1 300px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .card img {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 1rem;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            padding: 1.5rem;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Ultimate Marketing Team API</h1>
+            <p>Comprehensive API documentation for the Ultimate Marketing Team platform</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <h2>Interactive API Documentation</h2>
+        <p>Explore and test the API using our interactive documentation tools.</p>
+        
+        <div class="card-container">
+            <div class="card">
+                <img src="https://raw.githubusercontent.com/swagger-api/swagger-ui/master/dist/favicon-32x32.png" alt="Swagger UI">
+                <h3>Swagger UI</h3>
+                <p>Interactive documentation with a try-it-out feature to test API endpoints directly from your browser.</p>
+                <a href="swagger.html" class="btn">View Swagger UI</a>
+            </div>
+            
+            <div class="card">
+                <img src="https://redocly.com/icons/icon-48x48.png" alt="ReDoc">
+                <h3>ReDoc</h3>
+                <p>Clean, responsive documentation with excellent navigation and search capabilities.</p>
+                <a href="redoc.html" class="btn">View ReDoc</a>
+            </div>
+            
+            <div class="card">
+                <img src="https://cdn-icons-png.flaticon.com/512/6295/6295417.png" alt="OpenAPI Spec">
+                <h3>OpenAPI Specification</h3>
+                <p>Download the raw OpenAPI 3.0 specification file for direct integration with other tools.</p>
+                <a href="openapi.yaml" class="btn">Download OpenAPI Spec</a>
+            </div>
+        </div>
+        
+        <h2>Getting Started</h2>
+        <p>The Ultimate Marketing Team API allows you to manage brands, content, campaigns, and analytics through a RESTful interface.</p>
+        <p>To use the API:</p>
+        <ol>
+            <li>Register a new user account or login with existing credentials</li>
+            <li>Use the returned JWT token for authentication</li>
+            <li>Add the token to your API requests in the Authorization header</li>
+            <li>Explore available endpoints using our interactive documentation</li>
+        </ol>
+        
+        <h2>API Guides</h2>
+        <p>Check out our detailed guides for common API use cases:</p>
+        <ul>
+            <li><a href="guides/authentication.html">Authentication Guide</a></li>
+            <li><a href="guides/content-management.html">Content Management</a></li>
+            <li><a href="guides/campaign-management.html">Campaign Management</a></li>
+            <li><a href="guides/analytics.html">Analytics Data Retrieval</a></li>
+            <li><a href="guides/versioning.html">API Versioning and Migration</a></li>
+        </ul>
+        
+        <h2>Client Libraries</h2>
+        <p>We provide official client libraries for common programming languages:</p>
+        <div class="card-container">
+            <div class="card">
+                <h3>Python</h3>
+                <p>Python client library with support for async operations.</p>
+                <a href="https://github.com/ultimate-marketing-team/umt-python-client" class="btn">Python SDK</a>
+            </div>
+            
+            <div class="card">
+                <h3>JavaScript</h3>
+                <p>JavaScript/TypeScript client library for browser and Node.js.</p>
+                <a href="https://github.com/ultimate-marketing-team/umt-js-client" class="btn">JavaScript SDK</a>
+            </div>
+            
+            <div class="card">
+                <h3>Sample Apps</h3>
+                <p>Sample applications demonstrating API integration patterns.</p>
+                <a href="https://github.com/ultimate-marketing-team/umt-sample-apps" class="btn">Sample Apps</a>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Ultimate Marketing Team. All rights reserved.</p>
+            <p>API Version: 1.0.0</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -2,7 +2,20 @@
 
 ## Overview
 
-The Ultimate Marketing Team API provides authentication, content management, and brand management capabilities through a RESTful interface.
+The Ultimate Marketing Team API provides authentication, content management, brand management, campaigns, and analytics capabilities through a RESTful interface.
+
+## Comprehensive Documentation
+
+We've created comprehensive API documentation using OpenAPI 3.0 specifications. The complete documentation is available at:
+
+- **Interactive Documentation**: [/docs/api/index.html](api/index.html)
+
+The documentation includes:
+
+- Complete API reference with all endpoints, request/response formats
+- Interactive Swagger UI for testing endpoints directly
+- Code examples in Python, JavaScript, and cURL
+- Detailed guides for common workflows
 
 ## Base URL
 
@@ -10,6 +23,12 @@ All API endpoints are accessible through the base URL:
 
 ```
 http://localhost:8000/api/v1
+```
+
+For production:
+
+```
+https://api.ultimatemarketingteam.com/api/v1
 ```
 
 ## Authentication
@@ -70,181 +89,33 @@ Login with email and password to obtain a JWT token.
 }
 ```
 
-#### OAuth2 Token (Form-based)
+## API Documentation Guides
 
-```
-POST /auth/token
-```
+For detailed guides on using specific features of the API, please refer to:
 
-Standard OAuth2 token endpoint for form-based authentication.
+- [Authentication Guide](api/guides/authentication.html)
+- [Content Management Guide](api/guides/content-management.html)
+- [Campaign Management Guide](api/guides/campaign-management.html)
+- [Analytics Data Retrieval Guide](api/guides/analytics.html)
+- [API Versioning and Migration Guide](api/guides/versioning.html)
 
-**Request Body (form-urlencoded):**
-```
-username=user@example.com
-password=yourpassword
-```
+## Client Libraries
 
-**Response (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
+We provide official client libraries for integrating with the API:
 
-#### Get Current User
+- [Python Client](https://github.com/ultimate-marketing-team/umt-python-client)
+- [JavaScript Client](https://github.com/ultimate-marketing-team/umt-js-client)
 
-```
-GET /auth/me
-```
+## API Versioning
 
-Get information about the currently authenticated user.
+The API uses URI path versioning (`/api/v1/`). For information about our versioning strategy and migration process, see the [API Versioning Guide](api/guides/versioning.html).
 
-**Headers:**
-```
-Authorization: Bearer <your_token>
-```
+## Rate Limits
 
-**Response (200 OK):**
-```json
-{
-  "id": "user-uuid",
-  "email": "user@example.com",
-  "full_name": "Your Name",
-  "is_active": true,
-  "is_superuser": false
-}
-```
-
-### OAuth Authentication
-
-#### Initiate OAuth Flow
-
-```
-POST /auth/oauth
-```
-
-Start an OAuth authentication flow with a third-party provider.
-
-**Request Body:**
-```json
-{
-  "provider": "google",
-  "redirect_uri": "http://localhost:3000/oauth/callback"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "auth_url": "https://accounts.google.com/o/oauth2/auth?..."
-}
-```
-
-#### OAuth Callback
-
-```
-POST /auth/oauth/callback
-```
-
-Handle OAuth callback and generate JWT token.
-
-**Request Body:**
-```json
-{
-  "provider": "google",
-  "code": "authorization_code_from_provider",
-  "state": "state_from_oauth_request"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-## Brands
-
-### Get Brands
-
-```
-GET /brands
-```
-
-Retrieve a list of brands.
-
-**Headers:**
-```
-Authorization: Bearer <your_token>
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": "brand-uuid",
-    "name": "Brand Name",
-    "description": "Brand description",
-    "logo_url": "https://example.com/logo.png",
-    "created_at": "2023-01-01T00:00:00Z",
-    "updated_at": "2023-01-01T00:00:00Z"
-  }
-]
-```
-
-## Content
-
-### Get Content Items
-
-```
-GET /content
-```
-
-Retrieve a list of content items.
-
-**Headers:**
-```
-Authorization: Bearer <your_token>
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": "content-uuid",
-    "title": "Content Title",
-    "description": "Content description",
-    "content_type": "article",
-    "status": "draft",
-    "created_at": "2023-01-01T00:00:00Z",
-    "updated_at": "2023-01-01T00:00:00Z"
-  }
-]
-```
-
-## Testing Authentication
-
-To test the authentication system:
-
-1. Register a new user:
-```
-POST /auth/register
-```
-
-2. Login to get a JWT token:
-```
-POST /auth/login
-```
-
-3. Use the token to access protected endpoints:
-```
-GET /auth/me
-GET /brands
-GET /content
-```
+API requests are limited to 100 requests per minute by default. Rate limit information is provided in response headers:
+- `X-RateLimit-Limit`: Maximum requests per minute
+- `X-RateLimit-Remaining`: Remaining requests in the current window
+- `X-RateLimit-Reset`: Time until the rate limit resets (in seconds)
 
 ## Development Notes
 

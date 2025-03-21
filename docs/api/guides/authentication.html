@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Guide - Ultimate Marketing Team API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow: auto;
+        }
+        
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0.5rem;
+        }
+        
+        .badge.get {
+            background-color: #61affe;
+            color: white;
+        }
+        
+        .badge.post {
+            background-color: #49cc90;
+            color: white;
+        }
+        
+        .badge.put {
+            background-color: #fca130;
+            color: white;
+        }
+        
+        .badge.delete {
+            background-color: #f93e3e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Authentication Guide</h1>
+        <p>Learn how to authenticate with the Ultimate Marketing Team API and manage user sessions.</p>
+        <p><a href="../index.html">Back to Documentation Home</a></p>
+    </header>
+    
+    <main>
+        <h2>Overview</h2>
+        <p>The Ultimate Marketing Team API uses JSON Web Tokens (JWT) for authentication. This guide explains how to register, login, and use authentication tokens to access protected endpoints.</p>
+        
+        <div class="note">
+            <strong>Note:</strong> All authentication requests are made to endpoints under <code>/api/v1/auth</code>.
+        </div>
+        
+        <h2>Authentication Flow</h2>
+        
+        <h3>1. Register a New User</h3>
+        <p>To use the API, you first need to register a new user account.</p>
+        
+        <p>Endpoint: <code>POST /api/v1/auth/register</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "securepassword123",
+  "full_name": "John Doe"
+}</code></pre>
+        
+        <p>Response (201 Created):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "is_active": true,
+  "is_superuser": false,
+  "created_at": "2023-10-15T12:30:45Z",
+  "updated_at": "2023-10-15T12:30:45Z"
+}</code></pre>
+        
+        <h3>2. Login to Get a Token</h3>
+        <p>After registering, you can login to obtain a JWT token.</p>
+        
+        <p>Endpoint: <code>POST /api/v1/auth/login</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}</code></pre>
+        
+        <h3>3. Use the Token for Authentication</h3>
+        <p>Add the JWT token to the Authorization header in subsequent requests:</p>
+        
+        <pre><code>Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
+        
+        <div class="note">
+            <strong>Note:</strong> The token is valid for 24 hours by default. After expiration, you need to log in again to obtain a new token.
+        </div>
+        
+        <h2>Alternative Authentication Methods</h2>
+        
+        <h3>OAuth2 Token (Form-based)</h3>
+        <p>For applications that require form-based authentication, you can use the standard OAuth2 password grant flow.</p>
+        
+        <p>Endpoint: <code>POST /api/v1/auth/token</code> <span class="badge post">POST</span></p>
+        
+        <p>Request (form-urlencoded):</p>
+        <pre><code>username=user@example.com&password=securepassword123</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}</code></pre>
+        
+        <h3>OAuth with Third-Party Providers</h3>
+        <p>The API supports authentication with third-party OAuth providers (Google, Facebook, Microsoft).</p>
+        
+        <p>Step 1: Initiate OAuth Flow</p>
+        <p>Endpoint: <code>POST /api/v1/auth/oauth</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "provider": "google",
+  "redirect_uri": "http://localhost:3000/oauth/callback"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "auth_url": "https://accounts.google.com/o/oauth2/auth?..."
+}</code></pre>
+        
+        <p>Step 2: Handle OAuth Callback</p>
+        <p>After the user completes the OAuth flow, process the callback:</p>
+        
+        <p>Endpoint: <code>POST /api/v1/auth/oauth/callback</code> <span class="badge post">POST</span></p>
+        
+        <p>Request:</p>
+        <pre><code class="language-json">{
+  "provider": "google",
+  "code": "4/0AY0e-g6...",
+  "state": "xyz123"
+}</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}</code></pre>
+        
+        <h2>Get Current User</h2>
+        <p>To verify authentication and get information about the current user:</p>
+        
+        <p>Endpoint: <code>GET /api/v1/auth/me</code> <span class="badge get">GET</span></p>
+        
+        <p>Headers:</p>
+        <pre><code>Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
+        
+        <p>Response (200 OK):</p>
+        <pre><code class="language-json">{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "is_active": true,
+  "is_superuser": false,
+  "created_at": "2023-10-15T12:30:45Z",
+  "updated_at": "2023-10-15T12:30:45Z"
+}</code></pre>
+        
+        <h2>Error Handling</h2>
+        
+        <h3>Invalid Credentials</h3>
+        <p>If login credentials are incorrect, you'll receive a 401 Unauthorized response:</p>
+        
+        <pre><code class="language-json">{
+  "detail": "Incorrect email or password"
+}</code></pre>
+        
+        <h3>Invalid Token</h3>
+        <p>If the authentication token is invalid or expired, you'll receive a 401 Unauthorized response:</p>
+        
+        <pre><code class="language-json">{
+  "detail": "Could not validate credentials"
+}</code></pre>
+        
+        <h3>Insufficient Permissions</h3>
+        <p>If the authenticated user lacks required permissions, you'll receive a 403 Forbidden response:</p>
+        
+        <pre><code class="language-json">{
+  "detail": "Not enough permissions"
+}</code></pre>
+        
+        <h2>Code Examples</h2>
+        
+        <h3>Python with Requests</h3>
+        <pre><code class="language-python">import requests
+
+# Register a new user
+register_data = {
+    "email": "user@example.com",
+    "password": "securepassword123",
+    "full_name": "John Doe"
+}
+register_response = requests.post("https://api.ultimatemarketingteam.com/api/v1/auth/register", json=register_data)
+print(register_response.json())
+
+# Login to get a token
+login_data = {
+    "email": "user@example.com",
+    "password": "securepassword123"
+}
+login_response = requests.post("https://api.ultimatemarketingteam.com/api/v1/auth/login", json=login_data)
+token = login_response.json()["access_token"]
+
+# Use the token for authentication
+headers = {"Authorization": f"Bearer {token}"}
+user_response = requests.get("https://api.ultimatemarketingteam.com/api/v1/auth/me", headers=headers)
+print(user_response.json())</code></pre>
+        
+        <h3>JavaScript with Fetch</h3>
+        <pre><code class="language-javascript">// Register a new user
+const registerData = {
+  email: "user@example.com",
+  password: "securepassword123",
+  full_name: "John Doe"
+};
+
+fetch("https://api.ultimatemarketingteam.com/api/v1/auth/register", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(registerData)
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// Login to get a token
+const loginData = {
+  email: "user@example.com",
+  password: "securepassword123"
+};
+
+let token;
+
+fetch("https://api.ultimatemarketingteam.com/api/v1/auth/login", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(loginData)
+})
+  .then(response => response.json())
+  .then(data => {
+    token = data.access_token;
+    
+    // Use the token for authentication
+    return fetch("https://api.ultimatemarketingteam.com/api/v1/auth/me", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+  })
+  .then(response => response.json())
+  .then(data => console.log(data));</code></pre>
+        
+        <h3>cURL</h3>
+        <pre><code class="language-bash"># Register a new user
+curl -X POST \
+  https://api.ultimatemarketingteam.com/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword123",
+    "full_name": "John Doe"
+  }'
+
+# Login to get a token
+curl -X POST \
+  https://api.ultimatemarketingteam.com/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword123"
+  }'
+
+# Use the token for authentication (replace YOUR_TOKEN with the actual token)
+curl -X GET \
+  https://api.ultimatemarketingteam.com/api/v1/auth/me \
+  -H 'Authorization: Bearer YOUR_TOKEN'</code></pre>
+        
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Store tokens securely and never expose them in client-side code or repositories.</li>
+            <li>Implement token refresh mechanisms for long-running applications.</li>
+            <li>Always use HTTPS for all API requests to ensure secure transmission of credentials.</li>
+            <li>Implement proper logout by discarding tokens on the client side.</li>
+            <li>Use strong passwords and consider implementing additional security measures like MFA for production environments.</li>
+        </ul>
+        
+        <div class="warning">
+            <strong>Security Warning:</strong> Never store JWT tokens in browser local storage as it is vulnerable to XSS attacks. Use HTTP-only cookies or other secure storage mechanisms.
+        </div>
+    </main>
+    
+    <div class="navigation">
+        <div>
+            <a href="../index.html">← Back to Documentation Home</a>
+        </div>
+        <div>
+            <a href="content-management.html">Content Management →</a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

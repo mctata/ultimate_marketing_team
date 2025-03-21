@@ -1,4 +1,4 @@
-.PHONY: setup dev test test-health lint format clean migrate-up migrate-down migrate-create docker-test docker-build docs help
+.PHONY: setup dev test test-health lint format clean migrate-up migrate-down migrate-create docker-test docker-build docs api-docs help
 
 # Variables
 PYTHON := python
@@ -27,7 +27,8 @@ help:
 	@echo "  migrate-create     - Create a new migration"
 	@echo "  docker-test        - Run tests in Docker environment"
 	@echo "  docker-build       - Build all Docker images"
-	@echo "  docs               - Generate documentation"
+	@echo "  docs               - Generate code documentation (Sphinx)
+  api-docs           - Generate API documentation (OpenAPI/Swagger)"
 	@echo "  clean              - Remove build artifacts and caches"
 	@echo ""
 	@echo "For more information, see README.md and CLAUDE.md"
@@ -93,6 +94,12 @@ docs:
 	@if [ ! -d "docs" ]; then mkdir docs; fi
 	sphinx-apidoc -o docs/source src
 	cd docs && make html
+	$(MAKE) api-docs
+
+# API Documentation
+api-docs:
+	@echo "Generating API documentation..."
+	python scripts/generate_api_docs.py --output-dir docs/api
 
 # Cleanup
 clean:
