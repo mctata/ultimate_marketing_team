@@ -9,6 +9,7 @@ import sys
 import pytest
 import tempfile
 import subprocess
+import datetime
 from unittest.mock import patch, MagicMock, mock_open
 
 # Add the project root to the Python path so we can import the script
@@ -103,11 +104,13 @@ def downgrade():
             assert result is False
 
     @patch("scripts.pre_migration_check.SCRIPT_DIR")
+    @patch("scripts.pre_migration_check.os.path.exists")
     @patch("scripts.pre_migration_check.run_command")
-    def test_check_migration_patterns_success(self, mock_run_command, mock_script_dir):
+    def test_check_migration_patterns_success(self, mock_run_command, mock_exists, mock_script_dir):
         """Test migration pattern check when successful."""
         # Setup mocks
         mock_script_dir.__str__.return_value = "/mock/script/dir"
+        mock_exists.return_value = True  # Make the script file exist
         mock_run_command.return_value = (0, "All migration files use proper SQLAlchemy patterns!", "")
         
         # Run check
@@ -118,11 +121,13 @@ def downgrade():
         mock_run_command.assert_called_once()
 
     @patch("scripts.pre_migration_check.SCRIPT_DIR")
+    @patch("scripts.pre_migration_check.os.path.exists")
     @patch("scripts.pre_migration_check.run_command")
-    def test_check_migration_patterns_failure(self, mock_run_command, mock_script_dir):
+    def test_check_migration_patterns_failure(self, mock_run_command, mock_exists, mock_script_dir):
         """Test migration pattern check when it fails."""
         # Setup mocks
         mock_script_dir.__str__.return_value = "/mock/script/dir"
+        mock_exists.return_value = True  # Make the script file exist
         mock_run_command.return_value = (1, "Issues found in migration files", "")
         
         # Run check
@@ -159,7 +164,8 @@ def downgrade():
 
     @patch("os.environ")
     @patch("sqlalchemy.create_engine")
-    def test_create_test_database(self, mock_create_engine, mock_environ):
+    @patch("datetime.datetime")
+    def test_create_test_database(self, mock_datetime, mock_create_engine, mock_environ):
         """Test creating a test database."""
         # Setup mocks
         mock_environ.get.return_value = "postgresql://user:pass@localhost:5432/dbname"
@@ -167,6 +173,11 @@ def downgrade():
         mock_engine = MagicMock()
         mock_engine.connect.return_value = mock_conn
         mock_create_engine.return_value = mock_engine
+        
+        # Mock the datetime to return a predictable value
+        mock_now = MagicMock()
+        mock_now.strftime.return_value = "20250101000000"
+        mock_datetime.now.return_value = mock_now
         
         # Setup mock for __setitem__ to track environment variable setting
         mock_environ.__setitem__ = MagicMock()
@@ -179,10 +190,10 @@ def downgrade():
         mock_create_engine.assert_called_once()
         assert mock_conn.execute.call_count > 0  # Should execute SQL to create DB
         
-        # Verify environment variable was set with the correct test URL
+        # Verify environment variable was set with a URL containing our fixed timestamp
         mock_environ.__setitem__.assert_called_with(
             "SQLALCHEMY_TEST_URL", 
-            "postgresql://user:pass@localhost:5432/migration_test_"
+            "postgresql://user:pass@localhost:5432/migration_test_20250101000000"
         )
         
     @patch("os.environ")
