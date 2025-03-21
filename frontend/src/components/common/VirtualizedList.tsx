@@ -1,102 +1,65 @@
-import React, { memo, useMemo } from 'react';
+import React from 'react';
 import { FixedSizeList, ListChildComponentProps } from 'react-window';
+import { Box, Typography } from '@mui/material';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import { Box, CircularProgress, Typography } from '@mui/material';
 
-// Generic type for list items
-export interface VirtualizedListProps<T> {
-  items: T[];
-  isLoading?: boolean;
+interface VirtualizedListProps<T> {
+  data: T[];
   height?: number | string;
-  itemHeight?: number;
-  renderItem: (item: T, index: number, style: React.CSSProperties) => React.ReactNode;
-  noItemsMessage?: string;
-  loadingMessage?: string;
-  className?: string;
-  style?: React.CSSProperties;
-  overscan?: number;
-  itemKey?: (index: number, data: any) => string | number;
+  width?: number | string;
+  itemSize?: number;
+  renderItem: (item: T, index: number) => React.ReactNode;
+  emptyMessage?: string;
+  keyExtractor?: (item: T, index: number) => string;
 }
 
-/**
- * VirtualizedList component for efficiently rendering large lists
- * Uses react-window for virtualization to improve performance
- */
 function VirtualizedList<T>({
-  items,
-  isLoading = false,
+  data,
   height = 400,
-  itemHeight = 50,
+  width = '100%',
+  itemSize = 50,
   renderItem,
-  noItemsMessage = 'No items to display',
-  loadingMessage = 'Loading items...',
-  className,
-  style,
-  overscan = 5,
-  itemKey = (index) => index,
+  emptyMessage = 'No items to display',
+  keyExtractor = (_, index) => `item-${index}`,
 }: VirtualizedListProps<T>) {
-  // Memoize the row renderer to prevent unnecessary re-renders
-  const Row = useMemo(() => {
-    return memo(({ index, style, data }: ListChildComponentProps) => {
-      return renderItem(data.items[index], index, style);
-    });
-  }, [renderItem]);
-
-  if (isLoading) {
+  // If the list is empty, show the empty message
+  if (data.length === 0) {
     return (
-      <Box 
-        display="flex" 
-        flexDirection="column" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight={200}
-        className={className}
-        style={style}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height,
+          width,
+        }}
       >
-        <CircularProgress size={32} />
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-          {loadingMessage}
+        <Typography variant="body1" color="text.secondary">
+          {emptyMessage}
         </Typography>
       </Box>
     );
   }
 
-  if (!items.length) {
+  // Row renderer function for react-window
+  const Row = ({ index, style }: ListChildComponentProps) => {
+    const item = data[index];
     return (
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight={200}
-        className={className}
-        style={style}
-      >
-        <Typography variant="body2" color="textSecondary">
-          {noItemsMessage}
-        </Typography>
-      </Box>
+      <div style={{ ...style, boxSizing: 'border-box' }} key={keyExtractor(item, index)}>
+        {renderItem(item, index)}
+      </div>
     );
-  }
+  };
 
   return (
-    <Box
-      height={height}
-      className={className}
-      style={{ 
-        width: '100%', 
-        ...style 
-      }}
-    >
+    <Box sx={{ height, width }}>
       <AutoSizer>
-        {({ width, height }) => (
+        {({ height: autoHeight, width: autoWidth }) => (
           <FixedSizeList
-            height={height}
-            width={width}
-            itemCount={items.length}
-            itemSize={itemHeight}
-            itemData={{ items }}
-            overscanCount={overscan}
-            itemKey={itemKey}
+            height={autoHeight}
+            width={autoWidth}
+            itemCount={data.length}
+            itemSize={itemSize}
           >
             {Row}
           </FixedSizeList>
@@ -106,4 +69,4 @@ function VirtualizedList<T>({
   );
 }
 
-export default memo(VirtualizedList) as typeof VirtualizedList;
+export default VirtualizedList;
