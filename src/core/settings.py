@@ -31,6 +31,41 @@ class Settings:
     JWT_SECRET = os.getenv("JWT_SECRET", "development_secret_key_change_in_production_please")
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRY = 60 * 60 * 24 * 7  # 7 days
+    SESSION_EXPIRY = 60 * 60 * 24 * 30  # 30 days
+    
+    # Enhanced rate limiting settings
+    RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "100"))
+    RATE_LIMIT_WINDOW_MS = int(os.getenv("RATE_LIMIT_WINDOW_MS", "60000"))  # 1 minute
+    RATE_LIMIT_SECURITY_MAX = int(os.getenv("RATE_LIMIT_SECURITY_MAX", "20"))
+    RATE_LIMIT_SECURITY_WINDOW_MS = int(os.getenv("RATE_LIMIT_SECURITY_WINDOW_MS", "60000"))
+    RATE_LIMIT_PUBLIC_MAX = int(os.getenv("RATE_LIMIT_PUBLIC_MAX", "200"))
+    RATE_LIMIT_PUBLIC_WINDOW_MS = int(os.getenv("RATE_LIMIT_PUBLIC_WINDOW_MS", "60000"))
+    
+    # Circuit breaker settings
+    CIRCUIT_BREAKER_ERROR_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_ERROR_THRESHOLD", "50"))
+    CIRCUIT_BREAKER_SUCCESS_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_SUCCESS_THRESHOLD", "5"))
+    CIRCUIT_BREAKER_TIMEOUT = int(os.getenv("CIRCUIT_BREAKER_TIMEOUT", "60"))  # 1 minute
+    
+    # Content security settings
+    MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))  # 10 MB
+    ALLOWED_UPLOAD_TYPES = os.getenv("ALLOWED_UPLOAD_TYPES", "image/jpeg,image/png,image/gif,image/webp,application/pdf").split(",")
+    MALWARE_SCAN_ENABLED = os.getenv("MALWARE_SCAN_ENABLED", "true").lower() == "true"
+    
+    # OAuth settings
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+    MICROSOFT_CLIENT_ID = os.getenv("MICROSOFT_CLIENT_ID")
+    MICROSOFT_CLIENT_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET")
+    MICROSOFT_TENANT_ID = os.getenv("MICROSOFT_TENANT_ID", "common")
+    OKTA_CLIENT_ID = os.getenv("OKTA_CLIENT_ID")
+    OKTA_CLIENT_SECRET = os.getenv("OKTA_CLIENT_SECRET")
+    OKTA_DOMAIN = os.getenv("OKTA_DOMAIN")
+    LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
+    LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
+    FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
+    FACEBOOK_CLIENT_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
+    GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+    GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
     
     # Database settings
     DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")

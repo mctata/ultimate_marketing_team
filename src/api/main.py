@@ -60,30 +60,80 @@ app.include_router(metrics.router, prefix=f"{settings.API_PREFIX}/metrics", tags
 # Add WebSocket endpoint
 app.add_api_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)
 
-# Rate limiting middleware
+# Enhanced rate limiting middleware
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    from src.core.rate_limiting import rate_limiter, RateLimitCategory
+    import re
+    
     # Skip rate limiting for internal paths
     if request.url.path.startswith("/api/internal"):
         return await call_next(request)
     
     # Get client IP
     client_ip = request.client.host
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # Use the first IP in the list (client's real IP)
+        client_ip = forwarded_for.split(",")[0].strip()
     
-    # Check rate limit (100 requests per minute by default)
-    if rate_limiter.is_rate_limited(
-        key=client_ip, 
-        max_requests=settings.RATE_LIMIT_MAX_REQUESTS, 
-        window_seconds=settings.RATE_LIMIT_WINDOW_MS // 1000
-    ):
+    # Determine the rate limit category based on the path
+    category = RateLimitCategory.DEFAULT
+    path = request.url.path
+    
+    # Security-related endpoints
+    if re.match(r"^/api/v\d+/auth", path) or path.endswith("/password") or "login" in path or "logout" in path:
+        category = RateLimitCategory.SECURITY
+    # Public endpoints
+    elif path.startswith("/public/") or path == "/api/health" or path == "/":
+        category = RateLimitCategory.PUBLIC
+    # Frontend app endpoints
+    elif "X-App-Client" in request.headers and request.headers["X-App-Client"] == "frontend":
+        category = RateLimitCategory.FRONTEND
+    # Sensitive endpoints
+    elif re.match(r"^/api/v\d+/(admin|users|settings|billing)", path):
+        category = RateLimitCategory.SENSITIVE
+    
+    # Check if circuit breaker is tripped
+    rate_limiter.check_and_update_circuit_breaker()
+    
+    # Check rate limit
+    allowed, context = rate_limiter.allow_request(
+        key=client_ip,
+        category=category,
+        endpoint=path,
+        headers=dict(request.headers),
+        ip_address=client_ip
+    )
+    
+    if not allowed:
+        retry_after = context.get("retry_after", 60)
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Rate limit exceeded"}
+            headers={"Retry-After": str(retry_after)},
+            content={"detail": context.get("reason", "Rate limit exceeded")}
         )
     
     # Process the request
-    response = await call_next(request)
-    return response
+    try:
+        response = await call_next(request)
+        
+        # Add rate limit headers to response
+        response.headers["X-RateLimit-Limit"] = str(context.get("limit", 0))
+        response.headers["X-RateLimit-Remaining"] = str(context.get("remaining", 0))
+        response.headers["X-RateLimit-Reset"] = str(context.get("reset", 0))
+        
+        # Record successful request for circuit breaker
+        if response.status_code < 500:
+            rate_limiter.record_request_result(success=True)
+        else:
+            rate_limiter.record_request_result(success=False)
+            
+        return response
+    except Exception as e:
+        # Record failed request for circuit breaker
+        rate_limiter.record_request_result(success=False)
+        raise
 
 # Request ID middleware
 @app.middleware("http")

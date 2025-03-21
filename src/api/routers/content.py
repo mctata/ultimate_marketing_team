@@ -168,7 +168,9 @@ async def upload_image(
     user=Depends(get_current_user),
     width: Optional[int] = Query(None, description="Resize image to this width"),
     height: Optional[int] = Query(None, description="Resize image to this height"),
-    focal_point: Optional[str] = Form(None, description="Focal point coordinates (x,y) as JSON string")
+    focal_point: Optional[str] = Form(None, description="Focal point coordinates (x,y) as JSON string"),
+    apply_watermark: bool = Form(False, description="Apply watermark to the image"),
+    watermark_text: Optional[str] = Form(None, description="Text to use for watermark")
 ) -> Dict[str, Any]:
     """
     Upload an image file with focal point information.
@@ -179,17 +181,15 @@ async def upload_image(
         width: Optional width to resize the image to
         height: Optional height to resize the image to
         focal_point: Optional JSON string with focal point coordinates {x: 50, y: 50} (percentages)
+        apply_watermark: Whether to apply a watermark to the image
+        watermark_text: Text to use for watermark
         
     Returns:
         Image details including URL
     """
     try:
-        # Validate file type
-        allowed_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        
-        if file_ext not in allowed_extensions:
-            raise HTTPException(status_code=400, detail="Invalid file format. Allowed formats: JPG, PNG, GIF, WebP")
+        from src.core.content_security import validate_file_upload, ContentType, DRMOptions, apply_drm
+        from src.core.security import create_audit_log
         
         # Parse focal point if provided
         fp_data = {"x": 50, "y": 50}  # Default center
@@ -205,38 +205,104 @@ async def upload_image(
             except Exception as e:
                 logger.warning(f"Could not parse focal point data: {str(e)}")
         
+        # Validate the file using content security
+        validation_result = validate_file_upload(file)
+        
+        # Ensure it's an image
+        if validation_result.content_type != ContentType.IMAGE:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File is not an image. Detected type: {validation_result.mime_type}"
+            )
+        
         # Create a unique filename with UUID to avoid collisions
         image_id = str(uuid.uuid4())
+        file_ext = os.path.splitext(file.filename)[1].lower()
         unique_filename = f"{image_id}{file_ext}"
         
-        # For demo purposes, we'll create an upload directory if it doesn't exist
+        # For real deployment, use a proper storage service
         upload_dir = "/tmp/uploads/images"
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, unique_filename)
         
-        # Save the uploaded file directly
+        # Read the file content
+        file.file.seek(0)  # Reset file position after validation
         contents = await file.read()
+        
+        # Apply DRM/watermarking if requested
+        if apply_watermark and watermark_text:
+            # Configure DRM options
+            drm_options = DRMOptions(
+                watermark_text=watermark_text or f"© {datetime.now().year} - {user.email}",
+                watermark_opacity=0.3,
+                restrict_downloads=False
+            )
+            
+            # Apply DRM
+            protected_content, drm_metadata = apply_drm(
+                contents,
+                validation_result.content_type,
+                drm_options
+            )
+            
+            # Use the protected content
+            contents = protected_content
+        else:
+            drm_metadata = {"has_drm": False}
+        
+        # Save the file
         with open(file_path, "wb") as f:
             f.write(contents)
         
         # Get file size
         file_size = os.path.getsize(file_path)
         
-        # Return simplified response
+        # Create the image URL
         image_url = f"/uploads/images/{unique_filename}"
         
+        # Create an audit log entry
+        from src.core.database import get_db
+        db = next(get_db())
+        
+        create_audit_log(
+            db=db,
+            user_id=user.id,
+            action="upload",
+            resource_type="image",
+            resource_id=image_id,
+            new_state={
+                "filename": unique_filename,
+                "original_filename": file.filename,
+                "content_type": validation_result.mime_type,
+                "size": file_size,
+                "focal_point": fp_data,
+                "has_drm": drm_metadata.get("has_drm", False)
+            },
+            ip_address=file.request.client.host
+        )
+        
+        # Return response with validation and security metadata
         return {
             "success": True,
             "image_id": image_id,
             "url": image_url,
             "filename": unique_filename,
             "original_filename": file.filename,
-            "content_type": file.content_type,
+            "content_type": validation_result.mime_type,
             "size": file_size,
             "focal_point": fp_data,
-            "message": "Image uploaded successfully. Image processing is disabled in this demo version."
+            "security": {
+                "validation": "passed",
+                "content_hash": validation_result.hash,
+                "has_drm": drm_metadata.get("has_drm", False),
+                "drm_type": drm_metadata.get("drm_type", []) if drm_metadata.get("has_drm") else []
+            },
+            "metadata": validation_result.metadata
         }
     
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Error uploading image: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error uploading image: {str(e)}")
