@@ -1,24 +1,29 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, lazy, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
+import { useDispatch } from 'react-redux';
+import { ErrorBoundary } from 'react-error-boundary';
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/common/LoadingScreen';
 import websocketService from './services/websocket';
+import { setupNetworkMonitoring } from './services/api';
+import { lazyPage } from './utils/lazyImport';
+import GlobalErrorFallback from './components/common/GlobalErrorFallback';
 
-// Lazy-loaded pages
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Login = lazy(() => import('./pages/auth/Login'));
-const Register = lazy(() => import('./pages/auth/Register'));
-const Brands = lazy(() => import('./pages/brands/Brands'));
-const BrandDetail = lazy(() => import('./pages/brands/BrandDetail'));
-const Content = lazy(() => import('./pages/content/Content'));
-const ContentCalendar = lazy(() => import('./pages/content/ContentCalendar'));
-const ContentDetail = lazy(() => import('./pages/content/ContentDetail'));
-const Campaigns = lazy(() => import('./pages/campaigns/Campaigns'));
-const CampaignDetail = lazy(() => import('./pages/campaigns/CampaignDetail'));
-const Analytics = lazy(() => import('./pages/analytics/Analytics'));
-const Settings = lazy(() => import('./pages/settings/Settings'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+// Lazy-loaded route-based code splitting for better performance
+const Dashboard = lazyPage(() => import('./pages/Dashboard'));
+const Login = lazyPage(() => import('./pages/auth/Login'));
+const Register = lazyPage(() => import('./pages/auth/Register'));
+const Brands = lazyPage(() => import('./pages/brands/Brands'));
+const BrandDetail = lazyPage(() => import('./pages/brands/BrandDetail'));
+const Content = lazyPage(() => import('./pages/content/Content'));
+const ContentCalendar = lazyPage(() => import('./pages/content/ContentCalendar'));
+const ContentDetail = lazyPage(() => import('./pages/content/ContentDetail'));
+const Campaigns = lazyPage(() => import('./pages/campaigns/Campaigns'));
+const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail'));
+const Analytics = lazyPage(() => import('./pages/analytics/Analytics'));
+const Settings = lazyPage(() => import('./pages/settings/Settings'));
+const NotFound = lazyPage(() => import('./pages/NotFound'));
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -52,6 +57,7 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const { isAuthenticated } = useAuth();
+  const dispatch = useDispatch();
   
   // Initialize WebSocket connection when authenticated
   useEffect(() => {
@@ -65,8 +71,22 @@ function App() {
     }
   }, [isAuthenticated]);
   
+  // Setup network monitoring for offline support
+  useEffect(() => {
+    const cleanupNetworkMonitoring = setupNetworkMonitoring();
+    return () => cleanupNetworkMonitoring();
+  }, []);
+  
+  // Prefetch critical resources for faster interactions
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Prefetch important data using React Query prefetchQuery
+      // This would typically be done in the QueryClient configuration
+    }
+  }, [isAuthenticated]);
+  
   return (
-    <Suspense fallback={<LoadingScreen />}>
+    <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={
@@ -80,7 +100,7 @@ function App() {
           </PublicOnlyRoute>
         } />
         
-        {/* Protected routes */}
+        {/* Protected routes with layout */}
         <Route path="/" element={
           <ProtectedRoute>
             <Layout />
@@ -102,7 +122,7 @@ function App() {
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Suspense>
+    </ErrorBoundary>
   );
 }
 
