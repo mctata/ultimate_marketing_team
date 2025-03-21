@@ -9,12 +9,14 @@ import json
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+import asyncio
 
 from src.core.database import get_db
 from src.models.integration import SocialAccount, CMSAccount, AdAccount, IntegrationHealth
 from src.agents.integrations.cms_integration import CMSIntegrationFactory
 from src.agents.integrations.social_integration import SocialMediaIntegrationFactory
 from src.agents.integrations.ad_integration import AdPlatformIntegrationFactory
+from src.agents.integrations.integration_utils import sanitize_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class IntegrationManager:
         self.cache_ttl = 3600  # 1 hour
         self.cache_prefix = "integration_credentials"
     
-    def _get_social_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
+    async def _get_social_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
         """Get social media account credentials for a brand.
         
         Args:
@@ -79,7 +81,7 @@ class IntegrationManager:
             logger.error(f"Error getting social account credentials: {e}")
             return None
     
-    def _get_cms_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
+    async def _get_cms_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
         """Get CMS account credentials for a brand.
         
         Args:
@@ -129,7 +131,7 @@ class IntegrationManager:
             logger.error(f"Error getting CMS account credentials: {e}")
             return None
     
-    def _get_ad_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
+    async def _get_ad_account_credentials(self, brand_id: Any, platform: str) -> Optional[Dict[str, Any]]:
         """Get ad platform account credentials for a brand.
         
         Args:
@@ -180,9 +182,9 @@ class IntegrationManager:
             logger.error(f"Error getting ad account credentials: {e}")
             return None
     
-    def _record_integration_health(self, integration_type: str, integration_id: int, 
-                                  status: str, response_time_ms: int = None, 
-                                  error_message: str = None, details: Dict[str, Any] = None):
+    async def _record_integration_health(self, integration_type: str, integration_id: int, 
+                              status: str, response_time_ms: int = None, 
+                              error_message: str = None, details: Dict[str, Any] = None):
         """Record integration health status in the database.
         
         Args:
@@ -208,7 +210,7 @@ class IntegrationManager:
         except Exception as e:
             logger.error(f"Error recording integration health: {e}")
     
-    def get_cms_integration(self, brand_id: Any, platform: str):
+    async def get_cms_integration(self, brand_id: Any, platform: str):
         """Get a CMS integration instance for a brand.
         
         Args:
@@ -218,7 +220,7 @@ class IntegrationManager:
         Returns:
             CMS integration instance if credentials are found, None otherwise
         """
-        credentials = self._get_cms_account_credentials(brand_id, platform)
+        credentials = await self._get_cms_account_credentials(brand_id, platform)
         if not credentials:
             logger.warning(f"No credentials found for CMS platform {platform} for brand {brand_id}")
             return None
@@ -229,7 +231,7 @@ class IntegrationManager:
             logger.error(f"Error creating CMS integration: {e}")
             return None
     
-    def get_social_integration(self, brand_id: Any, platform: str):
+    async def get_social_integration(self, brand_id: Any, platform: str):
         """Get a social media integration instance for a brand.
         
         Args:
@@ -239,7 +241,7 @@ class IntegrationManager:
         Returns:
             Social media integration instance if credentials are found, None otherwise
         """
-        credentials = self._get_social_account_credentials(brand_id, platform)
+        credentials = await self._get_social_account_credentials(brand_id, platform)
         if not credentials:
             logger.warning(f"No credentials found for social platform {platform} for brand {brand_id}")
             return None
@@ -250,7 +252,7 @@ class IntegrationManager:
             logger.error(f"Error creating social media integration: {e}")
             return None
     
-    def get_ad_integration(self, brand_id: Any, platform: str):
+    async def get_ad_integration(self, brand_id: Any, platform: str):
         """Get an ad platform integration instance for a brand.
         
         Args:
@@ -260,7 +262,7 @@ class IntegrationManager:
         Returns:
             Ad platform integration instance if credentials are found, None otherwise
         """
-        credentials = self._get_ad_account_credentials(brand_id, platform)
+        credentials = await self._get_ad_account_credentials(brand_id, platform)
         if not credentials:
             logger.warning(f"No credentials found for ad platform {platform} for brand {brand_id}")
             return None
@@ -271,7 +273,7 @@ class IntegrationManager:
             logger.error(f"Error creating ad platform integration: {e}")
             return None
     
-    def check_all_integrations_health(self, brand_id: Any) -> Dict[str, Any]:
+    async def check_all_integrations_health(self, brand_id: Any) -> Dict[str, Any]:
         """Check the health of all integrations for a brand.
         
         Args:
@@ -294,13 +296,13 @@ class IntegrationManager:
                 ).all()
                 
                 for account in social_accounts:
-                    integration = self.get_social_integration(brand_id, account.platform)
+                    integration = await self.get_social_integration(brand_id, account.platform)
                     if integration:
                         health_result = integration.check_health()
                         results["social"][account.platform] = health_result
                         
                         # Record health status
-                        self._record_integration_health(
+                        await self._record_integration_health(
                             integration_type="social",
                             integration_id=account.id,
                             status=health_result.get("status"),
@@ -319,13 +321,13 @@ class IntegrationManager:
                 ).all()
                 
                 for account in cms_accounts:
-                    integration = self.get_cms_integration(brand_id, account.platform)
+                    integration = await self.get_cms_integration(brand_id, account.platform)
                     if integration:
                         health_result = integration.check_health()
                         results["cms"][account.platform] = health_result
                         
                         # Record health status
-                        self._record_integration_health(
+                        await self._record_integration_health(
                             integration_type="cms",
                             integration_id=account.id,
                             status=health_result.get("status"),
@@ -344,13 +346,13 @@ class IntegrationManager:
                 ).all()
                 
                 for account in ad_accounts:
-                    integration = self.get_ad_integration(brand_id, account.platform)
+                    integration = await self.get_ad_integration(brand_id, account.platform)
                     if integration:
                         health_result = integration.check_health()
                         results["ad"][account.platform] = health_result
                         
                         # Record health status
-                        self._record_integration_health(
+                        await self._record_integration_health(
                             integration_type="ad",
                             integration_id=account.id,
                             status=health_result.get("status"),
@@ -371,8 +373,8 @@ class IntegrationManager:
         
         return results
     
-    def publish_to_social(self, brand_id: Any, platforms: List[str], content_data: Dict[str, Any], 
-                         publish_time: Optional[str] = None) -> Dict[str, Any]:
+    async def publish_to_social(self, brand_id: Any, platforms: List[str], content_data: Dict[str, Any], 
+                     publish_time: Optional[str] = None) -> Dict[str, Any]:
         """Publish content to social media platforms.
         
         Args:
@@ -387,12 +389,13 @@ class IntegrationManager:
         results = {}
         
         for platform in platforms:
-            integration = self.get_social_integration(brand_id, platform)
+            integration = await self.get_social_integration(brand_id, platform)
             if not integration:
                 results[platform] = {
                     "status": "error",
                     "platform": platform,
-                    "error": f"No integration available for {platform}"
+                    "error": f"No integration available for {platform}",
+                    "timestamp": datetime.now().isoformat()
                 }
                 continue
             
@@ -410,13 +413,14 @@ class IntegrationManager:
                     "status": "error",
                     "platform": platform,
                     "error": str(e),
-                    "details": "Exception during publication"
+                    "details": "Exception during publication",
+                    "timestamp": datetime.now().isoformat()
                 }
         
         return results
     
-    def publish_to_cms(self, brand_id: Any, platforms: List[str], content_data: Dict[str, Any], 
-                      publish_time: Optional[str] = None) -> Dict[str, Any]:
+    async def publish_to_cms(self, brand_id: Any, platforms: List[str], content_data: Dict[str, Any], 
+                  publish_time: Optional[str] = None) -> Dict[str, Any]:
         """Publish content to CMS platforms.
         
         Args:
@@ -431,12 +435,13 @@ class IntegrationManager:
         results = {}
         
         for platform in platforms:
-            integration = self.get_cms_integration(brand_id, platform)
+            integration = await self.get_cms_integration(brand_id, platform)
             if not integration:
                 results[platform] = {
                     "status": "error",
                     "platform": platform,
-                    "error": f"No integration available for {platform}"
+                    "error": f"No integration available for {platform}",
+                    "timestamp": datetime.now().isoformat()
                 }
                 continue
             
@@ -454,12 +459,13 @@ class IntegrationManager:
                     "status": "error",
                     "platform": platform,
                     "error": str(e),
-                    "details": "Exception during publication"
+                    "details": "Exception during publication",
+                    "timestamp": datetime.now().isoformat()
                 }
         
         return results
     
-    def create_ad_campaign(self, brand_id: Any, platforms: List[str], campaign_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_ad_campaign(self, brand_id: Any, platforms: List[str], campaign_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create ad campaigns on multiple platforms.
         
         Args:
@@ -473,12 +479,13 @@ class IntegrationManager:
         results = {}
         
         for platform in platforms:
-            integration = self.get_ad_integration(brand_id, platform)
+            integration = await self.get_ad_integration(brand_id, platform)
             if not integration:
                 results[platform] = {
                     "status": "error",
                     "platform": platform,
-                    "error": f"No integration available for {platform}"
+                    "error": f"No integration available for {platform}",
+                    "timestamp": datetime.now().isoformat()
                 }
                 continue
             
@@ -491,7 +498,8 @@ class IntegrationManager:
                     "status": "error",
                     "platform": platform,
                     "error": str(e),
-                    "details": "Exception during campaign creation"
+                    "details": "Exception during campaign creation",
+                    "timestamp": datetime.now().isoformat()
                 }
         
         return results
