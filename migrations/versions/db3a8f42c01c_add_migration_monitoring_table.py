@@ -10,6 +10,7 @@ making it easier to monitor the state of migrations in production environments.
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 from datetime import datetime
 
 # revision identifiers, used by Alembic
@@ -56,8 +57,15 @@ def upgrade():
     
     # Insert record for this migration
     op.execute(
-        f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-        f"VALUES ('{revision}', '{datetime.utcnow()}', 'Add migration monitoring table', 'OK', 'development')"
+        text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
+        f"VALUES (:revision, :timestamp, :description, :status, :environment)")
+        .bindparams(
+            revision=revision,
+            timestamp=datetime.utcnow(),
+            description='Add migration monitoring table',
+            status='OK',
+            environment='development'
+        )
     )
 
 

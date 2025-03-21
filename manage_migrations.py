@@ -131,16 +131,45 @@ def extract_revision_from_output(output):
     return None
 
 
-def run_alembic_command(command, check=True):
+def run_pre_migration_checks():
+    """Run pre-migration validation checks.
+    
+    Returns:
+        bool: True if checks pass, False otherwise
+    """
+    pre_check_script = os.path.join(project_root, 'scripts', 'pre_migration_check.py')
+    
+    if not os.path.exists(pre_check_script):
+        print("Warning: Pre-migration check script not found, skipping checks.")
+        return True
+    
+    print("Running pre-migration validation checks...")
+    try:
+        subprocess.check_call([sys.executable, pre_check_script])
+        print("Pre-migration checks passed successfully!")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Pre-migration checks failed with exit code {e.returncode}")
+        print("Please fix the issues before running migrations.")
+        return False
+
+def run_alembic_command(command, check=True, skip_checks=False):
     """Run an Alembic command and print its output
     
     Args:
         command (str): Alembic command to run
         check (bool): Whether to check return code
+        skip_checks (bool): Whether to skip pre-migration checks
         
     Returns:
         bool: True if successful, False otherwise
     """
+    # For upgrade commands, run pre-migration checks first
+    if "upgrade" in command and not skip_checks:
+        if not run_pre_migration_checks():
+            print("Pre-migration checks failed. Aborting migration.")
+            return False
+    
     full_command = f"alembic {command}"
     print(f"Running: {full_command}")
     
@@ -201,7 +230,8 @@ def create_migration(args):
 def upgrade_database(args):
     """Upgrade the database to a specific revision"""
     revision = args.revision or "head"
-    return run_alembic_command(f"upgrade {revision}")
+    skip_checks = args.skip_checks
+    return run_alembic_command(f"upgrade {revision}", skip_checks=skip_checks)
 
 def downgrade_database(args):
     """Downgrade the database to a specific revision"""
@@ -229,6 +259,16 @@ def show_current(args):
     verbose = "-v" if args.verbose else ""
     return run_alembic_command(f"current {verbose}")
 
+def verify_migrations(args):
+    """Run pre-migration verification checks"""
+    success = run_pre_migration_checks()
+    if success:
+        print("All pre-migration checks passed!")
+        return True
+    else:
+        print("Pre-migration checks failed. Please fix issues before proceeding.")
+        return False
+
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="UMT Database Migration Manager")
@@ -245,6 +285,8 @@ def main():
     upgrade_parser = subparsers.add_parser("upgrade", help="Upgrade the database")
     upgrade_parser.add_argument("revision", nargs="?", default="head", 
                               help="Revision to upgrade to (default: head)")
+    upgrade_parser.add_argument("-s", "--skip-checks", action="store_true",
+                              help="Skip pre-migration checks")
     upgrade_parser.set_defaults(func=upgrade_database)
     
     # Downgrade command
@@ -265,6 +307,10 @@ def main():
     current_parser.add_argument("-v", "--verbose", action="store_true",
                                help="Show detailed information")
     current_parser.set_defaults(func=show_current)
+    
+    # Verify command
+    verify_parser = subparsers.add_parser("verify", help="Verify migration files for issues")
+    verify_parser.set_defaults(func=verify_migrations)
     
     args = parser.parse_args()
     

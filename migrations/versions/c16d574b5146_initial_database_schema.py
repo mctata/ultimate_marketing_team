@@ -7,6 +7,7 @@ Create Date: 2025-03-21 11:40:16.618144
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -18,7 +19,7 @@ depends_on = None
 
 def upgrade():
     # Create schema
-    op.execute('CREATE SCHEMA IF NOT EXISTS umt')
+    op.execute(text('CREATE SCHEMA IF NOT EXISTS umt'))
     
     # Create tables in the 'umt' schema
     # Users
@@ -214,4 +215,4 @@ def downgrade():
     op.drop_table('users', schema='umt')
     
     # Drop schema - Only drop if empty
-    op.execute('DROP SCHEMA IF EXISTS umt CASCADE')
+    op.execute(text('DROP SCHEMA IF EXISTS umt CASCADE'))
