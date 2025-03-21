@@ -8,6 +8,7 @@ import os
 import sys
 import pytest
 import tempfile
+import subprocess
 from unittest.mock import patch, MagicMock, mock_open
 
 # Add the project root to the Python path so we can import the script
@@ -20,6 +21,7 @@ from scripts.pre_migration_check import (
     verify_migration_sequence,
     check_migration_patterns,
     create_test_database,
+    cleanup_test_database,
     simulate_migrations,
     run_command
 )
@@ -75,15 +77,12 @@ def downgrade():
              patch("scripts.pre_migration_check.os.path.join", side_effect=os.path.join), \
              patch("scripts.pre_migration_check.os.listdir", return_value=["001_initial.py", "002_second.py", "003_third.py"]):
             
-            # For this test, we need to mock the open function to read our test files
-            with patch("builtins.open", side_effect=open):
-                # Run verification
-                result = verify_migration_sequence()
-                
-                # Since we can't control all the implementation details, we'll consider this test passed
-                # without strict verification - the full integration tests will catch real issues
-                # The main purpose is to test our test setup works
-                print(f"Result: {result}")  # For debugging
+            # Use the actual open function to read our test files
+            # Run verification
+            result = verify_migration_sequence()
+            
+            # Verify the result is True for a valid sequence
+            assert result is True
 
     def test_verify_migration_sequence_invalid(self):
         """Test verifying an invalid migration sequence."""
@@ -97,13 +96,11 @@ def downgrade():
              patch("scripts.pre_migration_check.os.path.join", side_effect=os.path.join), \
              patch("scripts.pre_migration_check.os.listdir", return_value=["001_initial.py", "002_second.py", "003_third.py"]):
             
-            # For this test, we need to mock the open function to read our test files
-            with patch("builtins.open", side_effect=open):
-                # Run verification  
-                result = verify_migration_sequence()
-                
-                # Print result for debugging, similar to previous test
-                print(f"Result for invalid sequence: {result}")  # For debugging
+            # Run verification  
+            result = verify_migration_sequence()
+            
+            # Verify the result is False for an invalid sequence
+            assert result is False
 
     @patch("scripts.pre_migration_check.SCRIPT_DIR")
     @patch("scripts.pre_migration_check.run_command")
@@ -135,7 +132,7 @@ def downgrade():
         assert result is False
         mock_run_command.assert_called_once()
 
-    @patch("scripts.pre_migration_check.run_command")
+    @patch("subprocess.Popen")
     def test_run_command(self, mock_subprocess_popen):
         """Test the run_command function."""
         # Setup mock subprocess.Popen
@@ -151,6 +148,14 @@ def downgrade():
         assert exit_code == 0
         assert stdout == "stdout output"
         assert stderr == "stderr output"
+        
+        # Verify Popen was called with correct arguments
+        mock_subprocess_popen.assert_called_once()
+        args, kwargs = mock_subprocess_popen.call_args
+        assert args[0] == ["test", "command"]
+        assert kwargs["stdout"] == subprocess.PIPE
+        assert kwargs["stderr"] == subprocess.PIPE
+        assert kwargs["text"] == True
 
     @patch("os.environ")
     @patch("sqlalchemy.create_engine")
@@ -163,6 +168,9 @@ def downgrade():
         mock_engine.connect.return_value = mock_conn
         mock_create_engine.return_value = mock_engine
         
+        # Setup mock for __setitem__ to track environment variable setting
+        mock_environ.__setitem__ = MagicMock()
+        
         # Run function
         result = create_test_database()
         
@@ -170,7 +178,32 @@ def downgrade():
         assert result is True
         mock_create_engine.assert_called_once()
         assert mock_conn.execute.call_count > 0  # Should execute SQL to create DB
-        assert "SQLALCHEMY_TEST_URL" in mock_environ  # Should set env var
+        
+        # Verify environment variable was set with the correct test URL
+        mock_environ.__setitem__.assert_called_with(
+            "SQLALCHEMY_TEST_URL", 
+            "postgresql://user:pass@localhost:5432/migration_test_"
+        )
+        
+    @patch("os.environ")
+    @patch("sqlalchemy.create_engine")
+    def test_cleanup_test_database(self, mock_create_engine, mock_environ):
+        """Test cleanup of test database."""
+        # Setup mocks
+        mock_environ.__contains__.return_value = True  # 'SQLALCHEMY_TEST_URL' in os.environ
+        mock_environ.get.return_value = "postgresql://user:pass@localhost:5432/test_db"
+        mock_conn = MagicMock()
+        mock_engine = MagicMock()
+        mock_engine.connect.return_value = mock_conn
+        mock_create_engine.return_value = mock_engine
+        
+        # Run function
+        cleanup_test_database()
+        
+        # Verify that the connection was used to execute SQL
+        mock_create_engine.assert_called_once()
+        assert mock_conn.execute.call_count == 2  # Should execute SQL twice
+        assert mock_conn.close.call_count == 1  # Should close connection
 
     @patch("tempfile.NamedTemporaryFile")
     @patch("shutil.copyfile")
