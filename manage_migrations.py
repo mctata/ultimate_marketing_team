@@ -64,12 +64,11 @@ def log_migration_operation(version, status, description=None, error_message=Non
         engine = get_engine()
         with engine.connect() as conn:
             # Check if the migration_history table exists
-            result = conn.execute(text(
-                f"SELECT EXISTS ("
-                f"SELECT FROM information_schema.tables "
-                f"WHERE table_schema = '{SCHEMA_NAME}' AND table_name = 'migration_history'"
-                f")"
-            ))
+            query = text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                f"WHERE table_schema = '{SCHEMA_NAME}' AND table_name = 'migration_history')"
+            )
+            result = conn.execute(query)
             table_exists = result.scalar()
             
             if not table_exists:

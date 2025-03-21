@@ -114,9 +114,10 @@ def upgrade():
     )
     
     # Insert record in migration_history for this migration
+    from sqlalchemy import text
     op.execute(
-        f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-        f"VALUES ('{revision}', '{datetime.utcnow()}', 'Add AI API usage monitoring tables', 'OK', 'development')"
+        text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
+        f"VALUES ('{revision}', '{datetime.utcnow()}', 'Add AI API usage monitoring tables', 'OK', 'development')")
     )
 
 
