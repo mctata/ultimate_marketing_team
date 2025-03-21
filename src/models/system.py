@@ -57,6 +57,7 @@ class User(Base):
     assigned_projects = relationship("Project", foreign_keys="Project.assigned_to", back_populates="assigned_to_user")
     content_drafts = relationship("ContentDraft", back_populates="created_by_user")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    preferences = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class Role(Base):
     """Role model for RBAC"""
@@ -141,3 +142,25 @@ class SystemLog(Base):
     message = Column(Text, nullable=False)
     details = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserPreference(Base):
+    """User preferences for platform customization and settings."""
+    
+    __tablename__ = "user_preferences"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    theme = Column(String(20), server_default="light", nullable=True)
+    notifications_enabled = Column(Boolean, server_default="true", nullable=False)
+    email_frequency = Column(String(20), server_default="daily", nullable=True)
+    default_dashboard_view = Column(String(50), nullable=True)
+    timezone = Column(String(50), server_default="UTC", nullable=True)
+    language = Column(String(10), server_default="en", nullable=True)
+    settings = Column(JSON, nullable=True)  # For additional settings as JSON
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User", back_populates="preferences")
