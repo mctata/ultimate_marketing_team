@@ -29,6 +29,10 @@ app = FastAPI(
 async def startup_event():
     # Start WebSocket bridge
     await start_websocket_bridge()
+    
+    # Start budget monitoring service
+    from src.core.budget_monitor import start_budget_monitor
+    await start_budget_monitor()
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -45,12 +49,13 @@ app.add_middleware(
 )
 
 # Import routers
-from src.api.routers import auth, brands, content
+from src.api.routers import auth, brands, content, metrics
 
 # Add routers to app
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
 app.include_router(brands.router, prefix=f"{settings.API_PREFIX}/brands", tags=["Brands"])
 app.include_router(content.router, prefix=f"{settings.API_PREFIX}/content", tags=["Content"])
+app.include_router(metrics.router, prefix=f"{settings.API_PREFIX}/metrics", tags=["Metrics"])
 
 # Add WebSocket endpoint
 app.add_api_websocket_route(f"{settings.API_PREFIX}/ws", websocket_endpoint)

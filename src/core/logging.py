@@ -117,7 +117,20 @@ def log_slow_query(statement, parameters, execution_time):
     logger.bind(slow_query=True).warning(f"SLOW QUERY ({log_data['execution_time_ms']}ms): {json.dumps(log_data)}")
 
 
-def log_api_usage(provider, model, tokens_in, tokens_out, duration_ms, cost, endpoint, cached=False):
+async def log_api_usage(
+    provider, 
+    model, 
+    tokens_in, 
+    tokens_out, 
+    duration_ms, 
+    cost, 
+    endpoint, 
+    cached=False, 
+    success=True,
+    error_type=None,
+    agent_type=None,
+    task_id=None
+):
     """Log AI API usage for cost monitoring and optimization.
     
     Args:
@@ -129,6 +142,10 @@ def log_api_usage(provider, model, tokens_in, tokens_out, duration_ms, cost, end
         cost: Estimated cost in USD
         endpoint: API endpoint used (completion, chat, embeddings, etc.)
         cached: Whether the response was served from cache
+        success: Whether the request succeeded
+        error_type: Type of error if the request failed
+        agent_type: Type of agent that made the request
+        task_id: Associated task ID
     """
     log_data = {
         "provider": provider,
@@ -140,8 +157,98 @@ def log_api_usage(provider, model, tokens_in, tokens_out, duration_ms, cost, end
         "cost_usd": cost,
         "endpoint": endpoint,
         "cached": cached,
+        "success": success,
+        "error_type": error_type,
+        "agent_type": agent_type,
+        "task_id": task_id,
         "timestamp": time.time()
     }
     
     # Log with special logger context
     logger.bind(api_usage=True).info(f"AI API: {json.dumps(log_data)}")
+    
+    # Store metrics in database
+    try:
+        from src.core.api_metrics import metrics_service
+        
+        # Use asyncio.create_task to avoid blocking
+        import asyncio
+        asyncio.create_task(
+            metrics_service.record_api_usage(
+                provider=provider,
+                model=model,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                duration_ms=duration_ms,
+                cost_usd=cost,
+                endpoint=endpoint,
+                cached=cached,
+                success=success,
+                error_type=error_type,
+                agent_type=agent_type,
+                task_id=task_id
+            )
+        )
+    except ImportError:
+        # Module not available yet (likely during startup)
+        logger.debug("API metrics service not available yet, skipping database record")
+    except Exception as e:
+        logger.error(f"Error recording API metrics: {str(e)}")
+        
+# For backward compatibility with non-async code
+def log_api_usage_sync(
+    provider, 
+    model, 
+    tokens_in, 
+    tokens_out, 
+    duration_ms, 
+    cost, 
+    endpoint, 
+    cached=False,
+    success=True,
+    error_type=None,
+    agent_type=None,
+    task_id=None
+):
+    """Synchronous version of log_api_usage for non-async contexts."""
+    log_data = {
+        "provider": provider,
+        "model": model,
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "total_tokens": tokens_in + tokens_out,
+        "duration_ms": duration_ms,
+        "cost_usd": cost,
+        "endpoint": endpoint,
+        "cached": cached,
+        "success": success,
+        "timestamp": time.time()
+    }
+    
+    # Log with special logger context
+    logger.bind(api_usage=True).info(f"AI API: {json.dumps(log_data)}")
+    
+    # Schedule async task using asyncio.create_task if in event loop
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(
+                log_api_usage(
+                    provider=provider,
+                    model=model,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    duration_ms=duration_ms,
+                    cost=cost,
+                    endpoint=endpoint,
+                    cached=cached,
+                    success=success,
+                    error_type=error_type,
+                    agent_type=agent_type,
+                    task_id=task_id
+                )
+            )
+    except (RuntimeError, ValueError):
+        # No event loop available, just log to file
+        pass

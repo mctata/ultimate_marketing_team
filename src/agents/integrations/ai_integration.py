@@ -241,6 +241,8 @@ class AIClient:
         cache_ttl: Optional[int] = None,
         retry_count: int = 3,
         retry_delay: float = 1.0,
+        agent_type: Optional[str] = None,
+        task_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get a text completion from an AI provider.
         
@@ -295,7 +297,9 @@ class AIClient:
                     output_tokens
                 )
                 
-                log_api_usage(
+                from src.core.logging import log_api_usage_sync
+                
+                log_api_usage_sync(
                     provider=provider,
                     model=model,
                     tokens_in=input_tokens,
@@ -303,7 +307,9 @@ class AIClient:
                     duration_ms=0,  # No API call duration for cached responses
                     cost=cost,
                     endpoint="completion",
-                    cached=True
+                    cached=True,
+                    agent_type=kwargs.get('agent_type'),
+                    task_id=kwargs.get('task_id')
                 )
                 
                 return cached_response
@@ -373,7 +379,9 @@ class AIClient:
                     output_tokens
                 )
                 
-                log_api_usage(
+                from src.core.logging import log_api_usage_sync
+                
+                log_api_usage_sync(
                     provider=provider,
                     model=model,
                     tokens_in=input_tokens,
@@ -381,7 +389,10 @@ class AIClient:
                     duration_ms=duration_ms,
                     cost=cost,
                     endpoint="completion",
-                    cached=False
+                    cached=False,
+                    success=True,
+                    agent_type=kwargs.get('agent_type'),
+                    task_id=kwargs.get('task_id')
                 )
                 
                 return response

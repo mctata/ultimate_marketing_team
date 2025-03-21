@@ -144,6 +144,46 @@ class SystemLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class AIAPIUsage(Base):
+    """AI API usage tracking for cost and performance monitoring."""
+    
+    __tablename__ = "ai_api_usage"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    provider = Column(String(50), nullable=False, index=True)  # openai, anthropic, etc.
+    model = Column(String(50), nullable=False, index=True)     # gpt-4, claude-3-opus, etc.
+    tokens_in = Column(Integer, nullable=False)                # Input tokens
+    tokens_out = Column(Integer, nullable=False)               # Output tokens
+    total_tokens = Column(Integer, nullable=False)             # Total tokens
+    duration_ms = Column(Integer, nullable=False)              # Request duration in ms
+    cost_usd = Column(Integer, nullable=False)                 # Cost in USD (stored as cents)
+    endpoint = Column(String(50), nullable=False)              # completion, chat, etc.
+    cached = Column(Boolean, default=False, nullable=False)    # Whether response was from cache
+    success = Column(Boolean, default=True, nullable=False)    # Whether request succeeded
+    error_type = Column(String(50), nullable=True)             # Type of error if failed
+    agent_type = Column(String(50), nullable=True, index=True) # Type of agent that made the request
+    task_id = Column(String(100), nullable=True, index=True)   # Associated task ID
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class DailyCostSummary(Base):
+    """Daily aggregated cost summary by provider and model."""
+    
+    __tablename__ = "daily_cost_summary"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
+    provider = Column(String(50), nullable=False, index=True)
+    model = Column(String(50), nullable=False, index=True)
+    total_requests = Column(Integer, default=0, nullable=False)
+    cached_requests = Column(Integer, default=0, nullable=False)
+    failed_requests = Column(Integer, default=0, nullable=False)
+    total_tokens = Column(Integer, default=0, nullable=False)
+    cost_usd = Column(Integer, default=0, nullable=False)  # Cost in USD (stored as cents)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class UserPreference(Base):
     """User preferences for platform customization and settings."""
     
