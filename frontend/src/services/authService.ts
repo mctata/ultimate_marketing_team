@@ -26,15 +26,20 @@ export interface UserProfile {
 }
 
 // Constants
-const TOKEN_KEY = 'auth_token';
+const tokenKey = 'auth_token';
 
 // Service methods
+/**
+ * Authenticates a user with email and password
+ * @param credentials User login credentials
+ * @returns Authentication response with access token
+ */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
     const response = await api.post<AuthResponse>('/auth/login', credentials);
     
     // Store token in localStorage
-    localStorage.setItem(TOKEN_KEY, response.data.access_token);
+    localStorage.setItem(tokenKey, response.data.access_token);
     
     // Set the token in the API client for future requests
     api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
@@ -46,6 +51,11 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
   }
 };
 
+/**
+ * Registers a new user
+ * @param userData User registration data
+ * @returns Newly created user profile
+ */
 export const register = async (userData: RegisterData): Promise<UserProfile> => {
   try {
     const response = await api.post<UserProfile>('/auth/register', userData);
@@ -56,6 +66,10 @@ export const register = async (userData: RegisterData): Promise<UserProfile> => 
   }
 };
 
+/**
+ * Fetches the currently authenticated user's profile
+ * @returns User profile information
+ */
 export const getUserProfile = async (): Promise<UserProfile> => {
   try {
     const response = await api.get<UserProfile>('/auth/me');
@@ -66,20 +80,27 @@ export const getUserProfile = async (): Promise<UserProfile> => {
   }
 };
 
+/**
+ * Logs out the current user by removing the authentication token
+ */
 export const logout = (): void => {
   // Clear token from localStorage
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(tokenKey);
   
   // Remove Authorization header
   delete api.defaults.headers.common['Authorization'];
 };
 
+/**
+ * Checks if a user is currently authenticated
+ * @returns True if authenticated, false otherwise
+ */
 export const isAuthenticated = (): boolean => {
   return !!getToken();
 };
 
 export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(tokenKey);
 };
 
 export const setupTokenFromStorage = (): void => {
@@ -119,7 +140,7 @@ export const handleOAuthCallback = async (
     });
     
     // Store token in localStorage
-    localStorage.setItem(TOKEN_KEY, response.data.access_token);
+    localStorage.setItem(tokenKey, response.data.access_token);
     
     // Set the token in the API client for future requests
     api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
