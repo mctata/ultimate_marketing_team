@@ -95,8 +95,26 @@ make setup
 # Start development services
 make dev
 
-# Run tests
+# Run all tests
 make test
+
+# Run integration tests
+make test-integration
+
+# Run specific integration tests
+make test-social       # Social media integrations
+make test-email        # Email marketing integrations
+make test-analytics    # Analytics integrations
+make test-developer    # Developer platform
+make test-webhooks     # Webhook manager
+make test-api-keys     # API key manager
+make test-cms          # CMS integrations
+
+# Run tests with coverage
+make test-coverage
+
+# Run Docker tests
+make docker-test
 
 # Run linting
 make lint
@@ -109,9 +127,6 @@ make migrate-up
 
 # Create a new migration
 make migrate-create
-
-# Run Docker tests
-make docker-test
 ```
 
 For more commands, check the Makefile or run `make help`.
@@ -123,6 +138,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 - **Lint**: Checks code quality with flake8, mypy, isort, and black
 - **Migration Verification**: Validates migration files for SQLAlchemy patterns and sequence integrity
 - **Tests**: Runs Python tests, frontend tests, and migration tests
+- **Integration Tests**: Verifies cross-component integration for platform integrations
 - **Performance Benchmarks**: Runs load tests and compares against baselines
 - **Docker Build**: Builds and tests Docker images
 - **Deployment**: Deploys to staging or production environments based on branch
@@ -135,6 +151,36 @@ Performance benchmarks can be triggered manually or automatically on release can
 # Trigger performance benchmarks
 gh workflow run performance.yml -f environment=staging -f baseline_version=v1.0.0
 ```
+
+#### Integration Testing Framework
+
+The project includes a comprehensive testing framework for platform integrations:
+
+1. **Unit Tests** for all integration types:
+   - CMS integrations (WordPress, Webflow, Drupal, Joomla)
+   - Social media (Instagram, LinkedIn, TikTok, Pinterest)
+   - Email marketing (Mailchimp, HubSpot)
+   - Analytics (Google Analytics, Adobe Analytics)
+   - Developer platform (Webhooks, API Keys, Plugins)
+
+2. **Integration Tests** for cross-platform workflows:
+   - Cross-platform content publishing
+   - Authentication and authorization flows
+   - Event triggering and webhook delivery
+   - Analytics data collection and reporting
+
+3. **Dedicated CI Workflow** with specialized jobs:
+   - Separate unit test jobs for each integration type
+   - Integration test job with Redis service container
+   - Migration tests with PostgreSQL service container
+   - Docker-based integration test job
+
+4. **Testing Tools**:
+   - Test execution via `make test-*` commands
+   - GitHub Actions workflow for automated testing
+   - Coverage reporting with Codecov integration
+
+For more details, see the [Integration Testing Guide](tests/TESTING_INTEGRATIONS.md).
 
 #### Migration CI/CD Flow
 
