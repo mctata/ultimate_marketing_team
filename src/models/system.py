@@ -362,3 +362,190 @@ class ContentPerformancePrediction(Base):
     
     # Relationships
     model = relationship("ContentPredictionModel")
+
+
+class UserInteractionEvent(Base):
+    """Tracks detailed user interaction events for UX analytics."""
+    
+    __tablename__ = "user_interaction_events"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id = Column(String(100), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)  # click, view, feature_use, etc.
+    event_category = Column(String(50), nullable=False, index=True)  # collaboration, ai_suggestion, editor, etc.
+    event_action = Column(String(100), nullable=False)  # specific action (accept_suggestion, share_cursor, etc.)
+    event_label = Column(String(255), nullable=True)  # additional context
+    element_id = Column(String(255), nullable=True)  # UI element identifier
+    page_path = Column(String(255), nullable=True, index=True)  # Page where event occurred
+    
+    # Context data
+    content_id = Column(Integer, nullable=True, index=True)  # Associated content if applicable
+    value = Column(Float, nullable=True)  # Numeric value if applicable (e.g., time spent)
+    metadata = Column(JSON, nullable=True)  # Additional event metadata
+    
+    # Device and environment
+    device_type = Column(String(50), nullable=True)  # desktop, mobile, tablet
+    browser = Column(String(50), nullable=True)
+    os = Column(String(50), nullable=True)
+    screen_size = Column(String(50), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    # Relationships
+    user = relationship("User")
+
+
+class FeatureUsageMetric(Base):
+    """Aggregated metrics for feature usage."""
+    
+    __tablename__ = "feature_usage_metrics"
+    __table_args__ = (
+        UniqueConstraint("feature_id", "date", name="uq_feature_usage_date"),
+        {"schema": "umt"}
+    )
+    
+    id = Column(Integer, primary_key=True, index=True)
+    feature_id = Column(String(100), nullable=False, index=True)  # Unique feature identifier
+    feature_category = Column(String(50), nullable=False, index=True)  # collaboration, ai, editor, etc.
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
+    
+    # Usage metrics
+    unique_users = Column(Integer, default=0, nullable=False)
+    total_uses = Column(Integer, default=0, nullable=False)
+    avg_duration_sec = Column(Float, default=0.0, nullable=False)  # Average time spent using the feature
+    
+    # Success metrics
+    completion_rate = Column(Float, default=0.0, nullable=False)  # % of times feature used successfully
+    error_rate = Column(Float, default=0.0, nullable=False)  # % of errors encountered
+    
+    # Satisfaction metrics (if collected)
+    satisfaction_score = Column(Float, nullable=True)  # Average satisfaction rating
+    
+    # For A/B testing
+    variant = Column(String(50), nullable=True, index=True)  # A/B test variant
+    conversion_rate = Column(Float, default=0.0, nullable=False)  # % of users who converted after using
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AIAssistantUsageMetric(Base):
+    """Tracks AI writing assistant usage and effectiveness."""
+    
+    __tablename__ = "ai_assistant_usage_metrics"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
+    suggestion_type = Column(String(50), nullable=False, index=True)  # completion, rephrasing, grammar, etc.
+    
+    # Usage metrics
+    suggestions_generated = Column(Integer, default=0, nullable=False)
+    suggestions_viewed = Column(Integer, default=0, nullable=False)
+    suggestions_accepted = Column(Integer, default=0, nullable=False)
+    suggestions_rejected = Column(Integer, default=0, nullable=False)
+    suggestions_modified = Column(Integer, default=0, nullable=False)
+    
+    # Effectiveness metrics
+    acceptance_rate = Column(Float, default=0.0, nullable=False)
+    avg_response_time_ms = Column(Integer, default=0, nullable=False)
+    avg_suggestion_length = Column(Integer, default=0, nullable=False)  # Avg chars
+    
+    # For A/B testing
+    variant = Column(String(50), nullable=True, index=True)  # A/B test variant
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class WebSocketMetric(Base):
+    """Tracks WebSocket connection metrics."""
+    
+    __tablename__ = "websocket_metrics"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
+    metric_type = Column(String(50), nullable=False, index=True)  # connections, messages, latency, etc.
+    
+    # Connection metrics
+    peak_concurrent_connections = Column(Integer, default=0, nullable=False)
+    avg_concurrent_connections = Column(Float, default=0.0, nullable=False)
+    total_connections = Column(Integer, default=0, nullable=False)
+    connection_errors = Column(Integer, default=0, nullable=False)
+    
+    # Message metrics
+    messages_sent = Column(Integer, default=0, nullable=False)
+    messages_received = Column(Integer, default=0, nullable=False)
+    bytes_sent = Column(Integer, default=0, nullable=False)
+    bytes_received = Column(Integer, default=0, nullable=False)
+    
+    # Performance metrics
+    avg_message_latency_ms = Column(Float, default=0.0, nullable=False)
+    p95_message_latency_ms = Column(Float, default=0.0, nullable=False)
+    p99_message_latency_ms = Column(Float, default=0.0, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class UserJourneyPath(Base):
+    """Tracks user journey paths through the application."""
+    
+    __tablename__ = "user_journey_paths"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id = Column(String(100), nullable=False, index=True)
+    
+    # Journey details
+    path = Column(JSON, nullable=False)  # Array of {page, timestamp, duration} objects
+    entry_page = Column(String(255), nullable=False)
+    exit_page = Column(String(255), nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False, index=True)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    total_duration_sec = Column(Integer, default=0, nullable=False)
+    
+    # Context
+    entry_source = Column(String(100), nullable=True)  # direct, referral, email, etc.
+    device_type = Column(String(50), nullable=True)
+    
+    # Outcome
+    completed_task = Column(Boolean, default=False, nullable=False)
+    conversion_type = Column(String(50), nullable=True)  # content_created, content_edited, etc.
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ABTestVariant(Base):
+    """Defines A/B test variants for UX comparison."""
+    
+    __tablename__ = "ab_test_variants"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(String(100), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    
+    # Test configuration
+    feature_area = Column(String(50), nullable=False)  # Area being tested
+    config = Column(JSON, nullable=False)  # Variant configuration
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    is_control = Column(Boolean, default=False, nullable=False)
+    
+    # Traffic allocation
+    traffic_percentage = Column(Float, default=50.0, nullable=False)
+    user_segment = Column(String(100), nullable=True)  # Target user segment, if any
+    
+    # Results (updated when test concludes)
+    status = Column(String(20), default="active", nullable=False)  # active, paused, concluded
+    metrics = Column(JSON, nullable=True)  # Results metrics
+    winner = Column(Boolean, nullable=True)  # Whether this variant was the winner
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

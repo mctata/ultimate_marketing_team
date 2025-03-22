@@ -43,6 +43,75 @@ class ContentDraft(Base):
     content_calendar_entries = relationship("ContentCalendar", back_populates="content_draft")
     content_performance_metrics = relationship("ContentPerformance", back_populates="content_draft")
     ads = relationship("Ad", back_populates="content_draft")
+    version_history = relationship("ContentVersionHistory", back_populates="content_draft", cascade="all, delete-orphan")
+
+
+class ContentVersionHistory(Base):
+    """History of content versions with changes and metadata."""
+    
+    __tablename__ = "content_version_history"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    content_draft_id = Column(Integer, ForeignKey("umt.content_drafts.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    changes = Column(JSON, nullable=True)  # Store operations that led to this version
+    metadata = Column(JSON, nullable=True)  # Additional metadata (e.g., device info, editor info)
+    created_by = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    content_draft = relationship("ContentDraft", back_populates="version_history")
+    created_by_user = relationship("User")
+
+
+class ContentCollaborator(Base):
+    """Content collaborators for tracking who has edited/viewed content."""
+    
+    __tablename__ = "content_collaborators"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    content_draft_id = Column(Integer, ForeignKey("umt.content_drafts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("umt.users.id"), nullable=False)
+    last_viewed_at = Column(DateTime(timezone=True), nullable=True)
+    last_edited_at = Column(DateTime(timezone=True), nullable=True)
+    permission = Column(String(20), default="view")  # view, edit, approve
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    content_draft = relationship("ContentDraft")
+    user = relationship("User")
+
+
+class ContentComment(Base):
+    """Comments on content for collaboration and feedback."""
+    
+    __tablename__ = "content_comments"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    content_draft_id = Column(Integer, ForeignKey("umt.content_drafts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("umt.users.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("umt.content_comments.id"), nullable=True)
+    text = Column(Text, nullable=False)
+    position = Column(Integer, nullable=True)  # Position in the document
+    selection_path = Column(String(255), nullable=True)  # Path to the selected element
+    selection_start = Column(Integer, nullable=True)  # Start of text selection
+    selection_end = Column(Integer, nullable=True)  # End of text selection
+    resolved = Column(Boolean, default=False)
+    resolved_by = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    content_draft = relationship("ContentDraft")
+    user = relationship("User", foreign_keys=[user_id])
+    resolver = relationship("User", foreign_keys=[resolved_by])
+    parent_comment = relationship("ContentComment", remote_side=[id], backref="replies")
 
 
 class ABTest(Base):
