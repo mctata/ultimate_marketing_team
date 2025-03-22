@@ -41,11 +41,12 @@ export function lazyPage<T extends React.ComponentType<any>>(factory: () => Prom
   const LazyComponent = React.lazy(factory);
   
   // Return a wrapped component
-  return (props: React.ComponentProps<T>): JSX.Element => {
-    return (
-      <React.Suspense fallback={<LoadingPlaceholder />}>
-        <LazyComponent {...props} />
-      </React.Suspense>
+  return function LazyPage(props: React.ComponentProps<T>): JSX.Element {
+    const fallbackElement = React.createElement(LoadingPlaceholder);
+    return React.createElement(
+      React.Suspense,
+      { fallback: fallbackElement },
+      React.createElement(LazyComponent, props)
     );
   };
 }
@@ -54,18 +55,20 @@ export function lazyPage<T extends React.ComponentType<any>>(factory: () => Prom
  * Simple loading placeholder during lazy loading
  */
 const LoadingPlaceholder = () => {
-  return (
-    <div 
-      style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        width: '100%',
-        height: '200px'
-      }}
-    >
-      <div>Loading...</div>
-    </div>
+  const styles = {
+    container: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+      height: '200px'
+    }
+  };
+  
+  return React.createElement(
+    'div',
+    { style: styles.container },
+    React.createElement('div', null, 'Loading...')
   );
 };
 

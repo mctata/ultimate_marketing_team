@@ -36,7 +36,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
-import useAnalytics from '../../hooks/useAnalytics';
+import { useAnalytics } from '../../hooks/useAnalytics';
 import { ErrorBoundary } from 'react-error-boundary';
 import GlobalErrorFallback from '../../components/common/GlobalErrorFallback';
 
