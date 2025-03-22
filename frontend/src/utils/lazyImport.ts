@@ -41,28 +41,32 @@ export function lazyPage<T extends React.ComponentType<any>>(factory: () => Prom
   const LazyComponent = React.lazy(factory);
   
   // Return a wrapped component
-  return (props: React.ComponentProps<T>): JSX.Element => (
-    <React.Suspense fallback={<LoadingPlaceholder />}>
-      <LazyComponent {...props} />
-    </React.Suspense>
-  );
+  return (props: React.ComponentProps<T>): JSX.Element => {
+    return (
+      <React.Suspense fallback={<LoadingPlaceholder />}>
+        <LazyComponent {...props} />
+      </React.Suspense>
+    );
+  };
 }
 
 /**
  * Simple loading placeholder during lazy loading
  */
-const LoadingPlaceholder = () => (
-  <div 
-    style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      width: '100%',
-      height: '200px'
-    }}
-  >
-    <div>Loading...</div>
-  </div>
-);
+const LoadingPlaceholder = () => {
+  return (
+    <div 
+      style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        width: '100%',
+        height: '200px'
+      }}
+    >
+      <div>Loading...</div>
+    </div>
+  );
+};
 
 export default lazyImport;

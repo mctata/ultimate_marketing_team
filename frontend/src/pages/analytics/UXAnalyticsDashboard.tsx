@@ -884,7 +884,7 @@ const UXAnalyticsDashboard: React.FC = () => {
                     Percentage of users who used each feature at least once in the selected period
                   </Typography>
                   {featureUsageQuery.isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py:, 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                       <CircularProgress size={40} />
                     </Box>
                   ) : (

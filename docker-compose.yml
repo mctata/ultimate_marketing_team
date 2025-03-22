@@ -36,14 +36,16 @@ services:
     networks:
       - umt-network
 
-  # Frontend
+  # Frontend - using pre-built dist folder
   frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile
+    image: nginx:stable-alpine
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./docker/frontend/nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
       - "3000:80"
-    env_file: ./frontend/.env.local
+    environment:
+      - NODE_ENV=production
     deploy:
       <<: *deploy-limits
     depends_on:
