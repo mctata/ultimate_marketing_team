@@ -22,16 +22,16 @@ from src.models.project import Brand
 
 # Manually override the database URL
 import os
-# Reset default database URL for the agent context
-os.environ["DATABASE_URL"] = "postgresql://postgres:postgres@postgres:5432/ultimatemarketing"
-
 # Create a custom db context for the agent
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# Use the environment variable for database connection
+database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ultimatemarketing")
+
 # Direct database connection
-engine = create_engine("postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Import models directly

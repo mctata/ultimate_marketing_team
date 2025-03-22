@@ -11,10 +11,10 @@ import argparse
 from typing import Dict, Any, List, Optional
 from loguru import logger
 
-# Fix database connection for Docker containers
-os.environ["DATABASE_URL"] = "postgresql://postgres:postgres@postgres:5432/ultimatemarketing"
-os.environ["REDIS_URL"] = "redis://redis:6379/0"
-os.environ["RABBITMQ_URL"] = "amqp://guest:guest@rabbitmq:5672/"
+# Use environment variables for service connections, with defaults for Docker
+database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+rabbitmq_url = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
 
 # Setup database connection
 from sqlalchemy import create_engine, text
@@ -70,8 +70,8 @@ def run_agent(agent_name: str, stop_event: threading.Event):
 
 def initialize_database():
     """Initialize the database schema if needed."""
-    # Create a database connection
-    engine = create_engine(os.environ["DATABASE_URL"])
+    # Create a database connection using the environment variable
+    engine = create_engine(database_url)
     
     # Create schema if it doesn't exist
     try:
