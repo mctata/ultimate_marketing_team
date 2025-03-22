@@ -1,15 +1,17 @@
 # Standard library imports
 import uuid
 from typing import Dict, Any, List, Optional
+from enum import Enum
 
 # Third-party imports
 from fastapi import APIRouter, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.orm import Session
 
 # Local imports
-from src.agents.auth_integration_agent import AuthIntegrationAgent
 from src.core.security import create_access_token, verify_token
+from src.core.database import get_db
 
 router = APIRouter()
 
@@ -201,27 +203,26 @@ async def oauth_login(request: OAuthRequest):
     Returns:
         Dict containing authentication URL for the OAuth provider
     """
-    # Create an instance of the agent
-    auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
-    
-    # Prepare task
-    task = {
-        "task_type": "create_oauth_url_task",
-        "provider": request.provider,
-        "redirect_uri": request.redirect_uri,
-        "state": f"auth-{uuid.uuid4()}"
+    # Mock OAuth URL generation
+    state = f"auth-{uuid.uuid4()}"
+    provider_urls = {
+        OAuthProvider.GOOGLE: "https://accounts.google.com/o/oauth2/v2/auth",
+        OAuthProvider.MICROSOFT: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        OAuthProvider.FACEBOOK: "https://www.facebook.com/v13.0/dialog/oauth",
+        OAuthProvider.GITHUB: "https://github.com/login/oauth/authorize",
+        OAuthProvider.OKTA: "https://your-okta-domain.okta.com/oauth2/default/v1/authorize"
     }
     
-    # Execute task
-    result = auth_agent.handle_create_oauth_url(task)
-    
-    if result.get("status") != "success":
+    base_url = provider_urls.get(request.provider, "")
+    if not base_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("error", f"Failed to create OAuth URL for {request.provider}")
+            detail=f"Unsupported OAuth provider: {request.provider}"
         )
     
-    return {"auth_url": result["oauth_url"]}
+    mock_oauth_url = f"{base_url}?client_id=mock_client_id&redirect_uri={request.redirect_uri}&state={state}&response_type=code"
+    
+    return {"auth_url": mock_oauth_url}
 
 @router.post("/oauth/callback", response_model=Token)
 async def oauth_callback(callback: OAuthCallback):
@@ -233,37 +234,18 @@ async def oauth_callback(callback: OAuthCallback):
     Returns:
         Dict containing access token and token type
     """
-    # Create an instance of the agent
-    auth_agent = AuthIntegrationAgent("auth_agent", "Auth & Integration Agent")
-    
-    # Prepare task to handle the OAuth callback
-    task = {
-        "task_type": "user_authentication_task",
-        "auth_provider": callback.provider,
-        "auth_code": callback.code,
-        "redirect_uri": "http://localhost:8000/api/v1/auth/oauth/callback",  # Should be configurable
-        "state": callback.state
-    }
-    
-    # Execute task
-    result = auth_agent.handle_user_authentication(task)
-    
-    if result.get("status") != "success":
+    # Mock OAuth callback handling
+    if not callback.code:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=result.get("error", f"Authentication failed for {callback.provider}")
+            detail="Missing authorization code"
         )
     
-    # Get user info from the result
-    user_info = result.get("user_info", {})
-    user_id = user_info.get("user_id", "")
-    user_email = user_info.get("email", f"user_{user_id}@{callback.provider}.example.com")
+    # Mock user data based on provider
+    mock_user_email = f"user@{callback.provider.value}.example.com"
     
     # Create a JWT token for the user
-    access_token = create_access_token(subject=user_email)
-    
-    # Store the OAuth token in the agent's secure storage
-    # This is now handled by the agent itself
+    access_token = create_access_token(subject=mock_user_email)
     
     return {
         "access_token": access_token,
