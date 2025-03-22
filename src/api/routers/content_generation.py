@@ -16,9 +16,76 @@ import logging
 from datetime import datetime
 
 from src.core.security import get_current_user
-from src.agents.integrations.ai_provider_manager import ai_provider_manager, ContentType, LanguageType, IndustryType
-from src.agents.integrations.prompt_manager import PromptManager
-from src.agents.integrations.content_quality_service import content_quality_service
+# Mock implementations for development
+from enum import Enum
+
+class ContentType(str, Enum):
+    """Types of content that can be generated."""
+    BLOG_POST = "blog_post"
+    SOCIAL_POST = "social_post"
+    EMAIL = "email"
+    AD_COPY = "ad_copy"
+    PRODUCT_DESCRIPTION = "product_description"
+    LANDING_PAGE = "landing_page"
+    
+class LanguageType(str, Enum):
+    """Supported languages for content generation."""
+    ENGLISH = "en"
+    SPANISH = "es"
+    FRENCH = "fr"
+    GERMAN = "de"
+    ITALIAN = "it"
+    
+class IndustryType(str, Enum):
+    """Industry types for content targeting."""
+    TECHNOLOGY = "technology"
+    HEALTHCARE = "healthcare"
+    FINANCE = "finance"
+    EDUCATION = "education"
+    RETAIL = "retail"
+    TRAVEL = "travel"
+    FOOD = "food"
+
+class MockAIProviderManager:
+    """Mock AI Provider Manager for development."""
+    async def generate_content(self, **kwargs):
+        """Mock content generation."""
+        return {"text": "Mock generated content", "success": True}
+        
+    async def batch_generate_content(self, requests, **kwargs):
+        """Mock batch content generation."""
+        return [{"text": "Mock generated content", "success": True} for _ in requests]
+
+# Create mock instances
+ai_provider_manager = MockAIProviderManager()
+
+class MockPromptManager:
+    """Mock Prompt Manager for development."""
+    def get_template(self, template_name):
+        """Mock template retrieval."""
+        return "Mock template for {template_name}"
+        
+    def format_template(self, template_name, **kwargs):
+        """Mock template formatting."""
+        return f"Formatted template for {template_name}"
+
+# Create mock instance
+PromptManager = MockPromptManager()
+# Mock content quality service
+class MockContentQualityService:
+    """Mock Content Quality Service for development."""
+    async def evaluate_content(self, content, **kwargs):
+        """Mock content evaluation."""
+        return {"score": 0.85, "feedback": "Mock quality evaluation"}
+        
+    async def optimize_content(self, content, **kwargs):
+        """Mock content optimization."""
+        return {"optimized_content": content, "improvements": ["Mock improvement"]}
+
+# Create mock instance
+content_quality_service = MockContentQualityService()
+
+# Import actual service modules
 from src.core.rate_limiting import rate_limiter
 from src.core.cache import cache
 from src.core.logging import log_api_usage_sync
