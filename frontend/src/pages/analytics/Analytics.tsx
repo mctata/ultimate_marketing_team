@@ -9,6 +9,7 @@ import {
   Divider
 } from '@mui/material';
 import ApiMetrics from './ApiMetrics';
+import UXAnalyticsDashboard from './UXAnalyticsDashboard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -66,6 +67,7 @@ const Analytics = () => {
         >
           <Tab label="Overview" />
           <Tab label="AI API Metrics" />
+          <Tab label="UX Analytics" />
           <Tab label="Content Performance" />
           <Tab label="Campaign Analytics" />
         </Tabs>
@@ -84,6 +86,10 @@ const Analytics = () => {
         </TabPanel>
         
         <TabPanel value={tabValue} index={2}>
+          <UXAnalyticsDashboard />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={3}>
           <Typography variant="h5" component="h2" gutterBottom>
             Content Performance
           </Typography>
@@ -92,7 +98,7 @@ const Analytics = () => {
           </Typography>
         </TabPanel>
         
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <Typography variant="h5" component="h2" gutterBottom>
             Campaign Analytics
           </Typography>

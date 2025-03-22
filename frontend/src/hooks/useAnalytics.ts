@@ -1,510 +1,502 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import metricsService from '../services/metricsService';
-import contentAnalyticsService from '../services/contentAnalyticsService';
+import { useCallback } from 'react';
+import axios from 'axios';
 
-// Types from metricsService
-interface DailyCost {
-  date: string;
-  provider: string;
-  model: string;
-  total_requests: number;
-  cached_requests: number;
-  failed_requests: number;
-  total_tokens: number;
-  cost_usd: number;
-  cache_hit_ratio: number;
-  error_rate: number;
+// Define the base API URL
+const API_URL = '/api';
+
+// Analytics query parameter types
+interface DateRangeParams {
+  startDate: string;
+  endDate: string;
+  userType?: string;
+  features?: string;
+  platform?: string;
 }
 
-interface ModelCost {
-  provider: string;
-  model: string;
-  tokens: number;
-  cost_usd: number;
-  requests: number;
-  cached_requests: number;
-  cache_hit_ratio: number;
-  cost_per_1k_tokens: number;
-}
+// Mock data function for development
+const getMockData = (type: string) => {
+  // Mock feature usage data
+  if (type === 'featureUsage') {
+    const dailyUsage = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      aiAssistant: Math.floor(Math.random() * 1000) + 500,
+      collaboration: Math.floor(Math.random() * 800) + 300,
+      contentCreation: Math.floor(Math.random() * 1200) + 600,
+      dashboard: Math.floor(Math.random() * 500) + 200
+    }));
 
-interface ProviderCost {
-  [provider: string]: number;
-}
+    const userTypeDistribution = [
+      { name: 'Authenticated', value: 2341, percentage: 65.3 },
+      { name: 'Anonymous', value: 892, percentage: 24.9 },
+      { name: 'API', value: 351, percentage: 9.8 }
+    ];
 
-interface BudgetStatus {
-  [provider: string]: {
-    current_spend: number;
-    monthly_budget: number;
-    budget_percent: number;
-    projected_month_end: number;
-    projected_percent: number;
-    estimated_overage: number;
-    warning_level: 'low' | 'medium' | 'high';
-  };
-}
+    const heatmapData = [];
+    const heatmapXLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const heatmapYLabels = ['0-4', '4-8', '8-12', '12-16', '16-20', '20-24'];
+    
+    for (let day = 0; day < heatmapXLabels.length; day++) {
+      for (let hour = 0; hour < heatmapYLabels.length; hour++) {
+        heatmapData.push({
+          x: heatmapXLabels[day],
+          y: heatmapYLabels[hour],
+          value: Math.floor(Math.random() * 100) + 5
+        });
+      }
+    }
 
-interface CacheMetrics {
-  cache_hit_ratio: number;
-  estimated_savings: number;
-  total_requests: number;
-  cached_requests: number;
-}
+    const adoptionRates = [
+      { feature: 'AI Assistant', rate: 78 },
+      { feature: 'Collaboration', rate: 64 },
+      { feature: 'Content Creation', rate: 92 },
+      { feature: 'Dashboard', rate: 81 }
+    ];
 
-interface ErrorRates {
-  [provider: string]: {
-    error_rate: number;
-    total_requests: number;
-    failed_requests: number;
-  };
-}
+    const keyMetrics = [
+      { name: 'Total Users', value: '3,584', change: 12.5 },
+      { name: 'Avg. Session Duration', value: '8:24', change: 5.2 },
+      { name: 'Features Used Per Session', value: '3.2', change: 0.8 },
+      { name: 'Collaboration Rate', value: '72%', change: 18.3 }
+    ];
 
-interface AgentUsage {
-  agent_type: string;
-  request_count: number;
-  total_tokens: number;
-  cost_usd: number;
-  avg_tokens_per_request: number;
-}
-
-// Content Analytics Types
-interface ContentMetric {
-  id: number;
-  content_id: number;
-  date: string;
-  platform: string;
-  views: number;
-  unique_visitors: number;
-  likes: number;
-  shares: number;
-  comments: number;
-  clicks: number;
-  click_through_rate: number;
-  avg_time_on_page: number;
-  bounce_rate: number;
-  scroll_depth: number;
-  conversions: number;
-  conversion_rate: number;
-  leads_generated: number;
-  revenue_generated: number;
-  serp_position?: number;
-  organic_traffic: number;
-  backlinks: number;
-  demographics?: Record<string, any>;
-  sources?: Record<string, any>;
-  devices?: Record<string, any>;
-}
-
-interface PerformanceSummary {
-  total_views: number;
-  total_unique_visitors: number;
-  total_likes: number;
-  total_shares: number;
-  total_comments: number;
-  total_clicks: number;
-  avg_click_through_rate: number;
-  avg_time_on_page: number;
-  avg_bounce_rate: number;
-  total_conversions: number;
-  avg_conversion_rate: number;
-  total_revenue: number;
-  content_count: number;
-}
-
-interface TimeSeriesPoint {
-  period: string;
-  views: number;
-  unique_visitors: number;
-  likes: number;
-  shares: number;
-  comments: number;
-  clicks: number;
-  click_through_rate: number;
-  avg_time_on_page: number;
-  bounce_rate: number;
-  conversions: number;
-  conversion_rate: number;
-  revenue: number;
-}
-
-interface PerformanceSummaryResponse {
-  summary?: PerformanceSummary;
-  time_series?: TimeSeriesPoint[];
-}
-
-interface TopPerformingContent {
-  content_id: number;
-  views: number;
-  conversions: number;
-  revenue: number;
-  metric_value: number;
-}
-
-interface ContentComparison {
-  content_id: number;
-  metrics: Record<string, number>;
-}
-
-interface ContentComparisonResponse {
-  comparison: ContentComparison[];
-}
-
-interface AttributionData {
-  content_id: number;
-  attributed_conversions: number;
-  attributed_value: number;
-}
-
-interface ContentAttributionResponse {
-  model: string;
-  total_conversions: number;
-  total_value: number;
-  content_attribution: AttributionData[];
-}
-
-interface CustomDashboard {
-  id: number;
-  user_id: number;
-  name: string;
-  description?: string;
-  layout: Record<string, any>;
-  widgets: Record<string, any>[];
-  is_default: boolean;
-  role_id?: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface DashboardCreateInput {
-  name: string;
-  description?: string;
-  layout?: Record<string, any>;
-  widgets?: Record<string, any>[];
-  is_default?: boolean;
-  role_id?: number;
-}
-
-interface DashboardUpdateInput {
-  name?: string;
-  description?: string;
-  layout?: Record<string, any>;
-  widgets?: Record<string, any>[];
-  is_default?: boolean;
-  role_id?: number;
-}
-
-interface AnalyticsReport {
-  id: number;
-  name: string;
-  description?: string;
-  created_by: number;
-  report_type: string;
-  template_id?: string;
-  config: Record<string, any>;
-  schedule_type?: string;
-  schedule_config?: Record<string, any>;
-  recipients?: string[];
-  last_generated?: string;
-  file_path?: string;
-  file_type?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface AnalyticsReportInput {
-  name: string;
-  report_type: string;
-  config: Record<string, any>;
-  description?: string;
-  template_id?: string;
-  schedule_type?: string;
-  schedule_config?: Record<string, any>;
-  recipients?: string[];
-}
-
-interface ContentPredictionInput {
-  content_id: number;
-  content_data: Record<string, any>;
-  target_metric: string;
-  prediction_horizon: number;
-}
-
-interface ContentPrediction {
-  content_id: number;
-  target_metric: string;
-  prediction_date: string;
-  predicted_value: number;
-  confidence_interval_lower: number;
-  confidence_interval_upper: number;
-  model: Record<string, any>;
-}
-
-// Query keys for React Query
-export const analyticsKeys = {
-  all: ['analytics'] as const,
-  // API metrics keys
-  dailyCosts: (startDate?: string, endDate?: string, provider?: string) => 
-    [...analyticsKeys.all, 'dailyCosts', { startDate, endDate, provider }] as const,
-  providerCosts: (startDate?: string, endDate?: string) => 
-    [...analyticsKeys.all, 'providerCosts', { startDate, endDate }] as const,
-  modelCosts: (startDate?: string, endDate?: string, provider?: string) => 
-    [...analyticsKeys.all, 'modelCosts', { startDate, endDate, provider }] as const,
-  budgetStatus: () => [...analyticsKeys.all, 'budgetStatus'] as const,
-  cacheMetrics: (startDate?: string, endDate?: string) => 
-    [...analyticsKeys.all, 'cacheMetrics', { startDate, endDate }] as const,
-  errorRates: (startDate?: string, endDate?: string) => 
-    [...analyticsKeys.all, 'errorRates', { startDate, endDate }] as const,
-  agentUsage: (startDate?: string, endDate?: string) => 
-    [...analyticsKeys.all, 'agentUsage', { startDate, endDate }] as const,
+    return {
+      dailyUsage,
+      userTypeDistribution,
+      heatmapData,
+      heatmapXLabels,
+      heatmapYLabels,
+      adoptionRates,
+      keyMetrics
+    };
+  }
   
-  // Content analytics keys
-  contentMetrics: (contentId?: number, startDate?: string, endDate?: string, platform?: string, metrics?: string) =>
-    [...analyticsKeys.all, 'contentMetrics', { contentId, startDate, endDate, platform, metrics }] as const,
-  contentPerformance: (contentIds?: string, startDate?: string, endDate?: string, groupBy?: string) =>
-    [...analyticsKeys.all, 'contentPerformance', { contentIds, startDate, endDate, groupBy }] as const,
-  topContent: (startDate?: string, endDate?: string, metric?: string, limit?: number, contentType?: string) =>
-    [...analyticsKeys.all, 'topContent', { startDate, endDate, metric, limit, contentType }] as const,
-  contentComparison: (contentIds: string, startDate?: string, endDate?: string, metrics?: string) =>
-    [...analyticsKeys.all, 'contentComparison', { contentIds, startDate, endDate, metrics }] as const,
-  contentAttribution: (contentId?: number, startDate?: string, endDate?: string, model?: string) =>
-    [...analyticsKeys.all, 'contentAttribution', { contentId, startDate, endDate, model }] as const,
-  dashboards: (dashboardId?: number, includeRoleDashboards?: boolean) =>
-    [...analyticsKeys.all, 'dashboards', { dashboardId, includeRoleDashboards }] as const,
-  reports: (reportId?: number, reportType?: string) =>
-    [...analyticsKeys.all, 'reports', { reportId, reportType }] as const,
-  contentPrediction: (contentId: number, targetMetric: string) =>
-    [...analyticsKeys.all, 'contentPrediction', { contentId, targetMetric }] as const,
+  // Mock AI assistant data
+  if (type === 'aiAssistant') {
+    const dailyMetrics = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      acceptanceRate: Math.floor(Math.random() * 30) + 60,
+      qualityScore: Math.floor(Math.random() * 20) + 70
+    }));
+
+    const suggestionTypes = [
+      { name: 'Grammar', value: 3218, percentage: 42.3 },
+      { name: 'Rephrase', value: 1672, percentage: 22.0 },
+      { name: 'Expand', value: 1254, percentage: 16.5 },
+      { name: 'Summarize', value: 947, percentage: 12.5 },
+      { name: 'Other', value: 513, percentage: 6.7 }
+    ];
+
+    const responseTimes = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      averageResponseTime: Math.floor(Math.random() * 200) + 100
+    }));
+
+    const cachePerformance = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hitRate: Math.floor(Math.random() * 30) + 40
+    }));
+
+    const insights = [
+      {
+        title: 'Highest Acceptance Rates',
+        description: 'Grammar suggestions have the highest acceptance rate at 78%, while expansion suggestions are only accepted 42% of the time.',
+        metrics: { label: 'Acceptance Rate Gap', value: '36%' }
+      },
+      {
+        title: 'Cache Performance',
+        description: 'The suggestion cache is currently providing a 62% hit rate, reducing average response time by 248ms.',
+        metrics: { label: 'Time Saved', value: '248ms' }
+      },
+      {
+        title: 'Quality Improvement',
+        description: 'The perceived quality score has increased by 12 points over the past month, correlating with the new model deployment.',
+        metrics: { label: 'Quality Increase', value: '+12 pts' }
+      }
+    ];
+
+    return {
+      dailyMetrics,
+      suggestionTypes,
+      responseTimes,
+      cachePerformance,
+      insights
+    };
+  }
+  
+  // Mock WebSocket metrics
+  if (type === 'websocket') {
+    const connectionCounts = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      activeConnections: Math.floor(Math.random() * 500) + 200
+    }));
+
+    const messageVolume = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      sent: Math.floor(Math.random() * 10000) + 5000,
+      received: Math.floor(Math.random() * 8000) + 3000
+    }));
+
+    const latency = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      averageLatency: Math.floor(Math.random() * 80) + 20
+    }));
+
+    const errorRate = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      errorRate: Math.random() * 2
+    }));
+
+    const summary = [
+      { metric: 'Peak Connections', value: '754' },
+      { metric: 'Avg. Latency', value: '48ms' },
+      { metric: 'Messages/Day', value: '15.2K' },
+      { metric: 'Error Rate', value: '0.8%' }
+    ];
+
+    return {
+      connectionCounts,
+      messageVolume,
+      latency,
+      errorRate,
+      summary
+    };
+  }
+  
+  // Mock user journey data
+  if (type === 'userJourneys') {
+    const nodes = [
+      { id: 'entry', type: 'entry', name: 'Login/Entry', count: 5000, conversionRate: 100 },
+      { id: 'dashboard', type: 'page', name: 'Dashboard', count: 4850, conversionRate: 97, dropoffRate: 3 },
+      { id: 'content', type: 'page', name: 'Content List', count: 3200, conversionRate: 66, dropoffRate: 34 },
+      { id: 'create', type: 'action', name: 'Create Content', count: 2100, conversionRate: 65.6, dropoffRate: 34.4 },
+      { id: 'editor', type: 'page', name: 'Content Editor', count: 2000, conversionRate: 95.2, dropoffRate: 4.8 },
+      { id: 'aiAssist', type: 'action', name: 'Use AI Assistant', count: 1650, conversionRate: 82.5, dropoffRate: 17.5 },
+      { id: 'collaborate', type: 'action', name: 'Invite Collaborator', count: 780, conversionRate: 39, dropoffRate: 61 },
+      { id: 'review', type: 'decision', name: 'Review Content', count: 1850, conversionRate: 92.5, dropoffRate: 7.5 },
+      { id: 'publish', type: 'action', name: 'Publish Content', count: 1720, conversionRate: 93, dropoffRate: 7 },
+      { id: 'exit', type: 'exit', name: 'Exit', count: 5000, dropoffRate: 100 }
+    ];
+
+    const connections = [
+      { source: 'entry', target: 'dashboard', value: 4850, percentage: 97 },
+      { source: 'dashboard', target: 'content', value: 3200, percentage: 66 },
+      { source: 'content', target: 'create', value: 2100, percentage: 65.6 },
+      { source: 'create', target: 'editor', value: 2000, percentage: 95.2 },
+      { source: 'editor', target: 'aiAssist', value: 1650, percentage: 82.5 },
+      { source: 'aiAssist', target: 'collaborate', value: 780, percentage: 47.3 },
+      { source: 'aiAssist', target: 'review', value: 870, percentage: 52.7 },
+      { source: 'collaborate', target: 'review', value: 780, percentage: 100 },
+      { source: 'review', target: 'publish', value: 1720, percentage: 93 },
+      { source: 'review', target: 'editor', value: 130, percentage: 7 },
+      { source: 'publish', target: 'exit', value: 1720, percentage: 100 },
+      { source: 'dashboard', target: 'exit', value: 150, percentage: 3.1 },
+      { source: 'content', target: 'exit', value: 1100, percentage: 34.4 },
+      { source: 'editor', target: 'exit', value: 100, percentage: 5 },
+      { source: 'aiAssist', target: 'exit', value: 0, percentage: 0 }
+    ];
+
+    const conversionRates = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      contentCreation: Math.floor(Math.random() * 20) + 60,
+      collaboration: Math.floor(Math.random() * 30) + 40,
+      publishing: Math.floor(Math.random() * 15) + 75
+    }));
+
+    const journeyTimes = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      contentCreation: Math.floor(Math.random() * 300) + 600,
+      collaboration: Math.floor(Math.random() * 500) + 1200,
+      publishing: Math.floor(Math.random() * 200) + 300
+    }));
+
+    return {
+      nodes,
+      connections,
+      conversionRates,
+      journeyTimes
+    };
+  }
+  
+  // Mock A/B test data
+  if (type === 'abTest') {
+    const variants = [
+      { id: 'control', name: 'Control', description: 'Current UI' },
+      { id: 'variantA', name: 'Variant A', description: 'Simplified UI' },
+      { id: 'variantB', name: 'Variant B', description: 'Enhanced Collaboration' }
+    ];
+
+    const metrics = [
+      { key: 'conversionRate', name: 'Conversion Rate', formatter: (v: number) => `${v.toFixed(1)}%`, higherIsBetter: true },
+      { key: 'timeOnTask', name: 'Time on Task', formatter: (v: number) => `${v}s`, higherIsBetter: false },
+      { key: 'engagementScore', name: 'Engagement Score', formatter: (v: number) => `${v.toFixed(1)}`, higherIsBetter: true },
+      { key: 'errorRate', name: 'Error Rate', formatter: (v: number) => `${v.toFixed(1)}%`, higherIsBetter: false }
+    ];
+
+    const results = [
+      { variant: 'control', conversionRate: 24.3, timeOnTask: 127, engagementScore: 6.2, errorRate: 3.8 },
+      { variant: 'variantA', conversionRate: 29.7, timeOnTask: 103, engagementScore: 7.1, errorRate: 2.9 },
+      { variant: 'variantB', conversionRate: 31.2, timeOnTask: 118, engagementScore: 8.4, errorRate: 3.2 }
+    ];
+
+    // Generate time series data for each metric
+    const timeSeriesData: Record<string, any[]> = {};
+    metrics.forEach(metric => {
+      timeSeriesData[metric.key] = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const dataPoint: any = { date };
+        
+        variants.forEach(variant => {
+          // Base value from results
+          const baseValue = results.find(r => r.variant === variant.id)?.[metric.key as keyof typeof results[0]] || 0;
+          
+          // Add some random variation day by day
+          const randomFactor = 0.9 + Math.random() * 0.2; // Between 0.9 and 1.1
+          dataPoint[variant.id] = baseValue * randomFactor;
+        });
+        
+        return dataPoint;
+      });
+    });
+
+    const insights = [
+      { 
+        title: 'Variant B Shows Highest Engagement',
+        description: 'Variant B demonstrates a 35.5% increase in engagement score compared to control, suggesting that enhanced collaboration features significantly improve user engagement.',
+        isPositive: true,
+        confidence: 98
+      },
+      { 
+        title: 'Variant A Reduces Time on Task',
+        description: 'The simplified UI in Variant A reduces time on task by 18.9% compared to control, improving efficiency without sacrificing quality of output.',
+        isPositive: true,
+        confidence: 95
+      },
+      { 
+        title: 'Error Rates Improved in Both Variants',
+        description: 'Both test variants show lower error rates than control, with Variant A showing the largest improvement at 23.7% reduction.',
+        isPositive: true,
+        confidence: 91
+      }
+    ];
+
+    return {
+      variants,
+      metrics,
+      results,
+      timeSeriesData,
+      insights
+    };
+  }
+  
+  // Mock UX insights data
+  if (type === 'uxInsights') {
+    const now = new Date();
+    
+    return [
+      {
+        id: 'insight-1',
+        title: 'AI Assistant Suggestions Boost Productivity',
+        description: 'Users who actively utilize AI assistant suggestions complete content creation 43% faster than users who don\'t. The highest impact is seen with grammar and rephrasing suggestions.',
+        category: 'performance',
+        severity: 'high',
+        trend: 'up',
+        percent: 43,
+        createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        metrics: [
+          { name: 'Time Saved', value: '18 min/article', change: 43, trend: 'up' },
+          { name: 'Acceptance Rate', value: '76%', change: 12, trend: 'up' },
+          { name: 'Quality Improvement', value: '8.2/10', change: 18, trend: 'up' }
+        ],
+        isNew: true
+      },
+      {
+        id: 'insight-2',
+        title: 'Collaborative Editing Drop-offs',
+        description: 'There\'s a 24% drop-off rate when users attempt to initiate collaborative editing sessions. Session logs indicate confusion around permission settings may be the cause.',
+        category: 'anomaly',
+        severity: 'medium',
+        trend: 'down',
+        percent: 24,
+        createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+        metrics: [
+          { name: 'Initiation Success Rate', value: '76%', change: -24, trend: 'down' },
+          { name: 'Error Rate', value: '18%', change: 130, trend: 'up' },
+          { name: 'Avg Session Duration', value: '14 min', change: -8, trend: 'down' }
+        ]
+      },
+      {
+        id: 'insight-3',
+        title: 'Increasing Mobile Usage Trend',
+        description: 'Mobile usage of the platform has increased by 37% over the past month, but mobile sessions are 28% shorter than desktop sessions. Consider optimizing mobile collaboration features.',
+        category: 'trend',
+        severity: 'medium',
+        trend: 'up',
+        percent: 37,
+        createdAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        metrics: [
+          { name: 'Mobile Traffic', value: '32%', change: 37, trend: 'up' },
+          { name: 'Mobile Session Length', value: '8.4 min', change: -28, trend: 'down' },
+          { name: 'Mobile Conversion', value: '18%', change: -12, trend: 'down' }
+        ],
+        isNew: true
+      },
+      {
+        id: 'insight-4',
+        title: 'Content Template Usage Opportunity',
+        description: 'Only 23% of users utilize content templates, but those who do complete content 58% faster with 32% higher quality scores. Increasing template visibility could significantly improve productivity.',
+        category: 'opportunity',
+        severity: 'high',
+        createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        metrics: [
+          { name: 'Template Usage', value: '23%', change: 5, trend: 'up' },
+          { name: 'Time Saving', value: '58%', change: 0, trend: 'flat' },
+          { name: 'Quality Increase', value: '32%', change: 0, trend: 'flat' }
+        ]
+      },
+      {
+        id: 'insight-5',
+        title: 'Predicted Impact of New Feature Rollout',
+        description: 'Based on user behavior analysis and A/B test results, the new collaborative commenting feature is predicted to increase user engagement by 27% and reduce revision cycles by 14% when fully rolled out.',
+        category: 'prediction',
+        severity: 'medium',
+        trend: 'up',
+        percent: 27,
+        createdAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
+        metrics: [
+          { name: 'Engagement Increase', value: '27%', change: 0, trend: 'flat' },
+          { name: 'Revision Reduction', value: '14%', change: 0, trend: 'flat' },
+          { name: 'User Satisfaction', value: '8.7/10', change: 12, trend: 'up' }
+        ]
+      }
+    ];
+  }
+  
+  return null;
 };
 
 /**
- * Hook for working with analytics data
+ * Custom hook for analytics data fetching and management
  */
 export const useAnalytics = () => {
-  // ===== API Metrics =====
+  // Feature usage metrics
+  const getFeatureUsageMetrics = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/feature-usage`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('featureUsage');
+    } catch (error) {
+      console.error('Error fetching feature usage metrics:', error);
+      throw error;
+    }
+  }, []);
   
-  // Get daily costs data
-  const useDailyCosts = (startDate?: string, endDate?: string, provider?: string) => {
-    return useQuery<DailyCost[]>({
-      queryKey: analyticsKeys.dailyCosts(startDate, endDate, provider),
-      queryFn: () => metricsService.getDailyCosts(startDate, endDate, provider),
-    });
-  };
-
-  // Get provider costs data
-  const useProviderCosts = (startDate?: string, endDate?: string) => {
-    return useQuery<ProviderCost>({
-      queryKey: analyticsKeys.providerCosts(startDate, endDate),
-      queryFn: () => metricsService.getProviderCosts(startDate, endDate),
-    });
-  };
-
-  // Get model costs data
-  const useModelCosts = (startDate?: string, endDate?: string, provider?: string) => {
-    return useQuery<ModelCost[]>({
-      queryKey: analyticsKeys.modelCosts(startDate, endDate, provider),
-      queryFn: () => metricsService.getModelCosts(startDate, endDate, provider),
-    });
-  };
-
-  // Get budget status data
-  const useBudgetStatus = () => {
-    return useQuery<BudgetStatus>({
-      queryKey: analyticsKeys.budgetStatus(),
-      queryFn: () => metricsService.getBudgetStatus(),
-    });
-  };
-
-  // Get cache metrics data
-  const useCacheMetrics = (startDate?: string, endDate?: string) => {
-    return useQuery<CacheMetrics>({
-      queryKey: analyticsKeys.cacheMetrics(startDate, endDate),
-      queryFn: () => metricsService.getCacheMetrics(startDate, endDate),
-    });
-  };
-
-  // Get error rates data
-  const useErrorRates = (startDate?: string, endDate?: string) => {
-    return useQuery<ErrorRates>({
-      queryKey: analyticsKeys.errorRates(startDate, endDate),
-      queryFn: () => metricsService.getErrorRates(startDate, endDate),
-    });
-  };
-
-  // Get agent usage data
-  const useAgentUsage = (startDate?: string, endDate?: string) => {
-    return useQuery<AgentUsage[]>({
-      queryKey: analyticsKeys.agentUsage(startDate, endDate),
-      queryFn: () => metricsService.getAgentUsage(startDate, endDate),
-    });
-  };
-
-  // ===== Content Analytics =====
+  // AI assistant metrics
+  const getAIAssistantMetrics = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/ai-assistant`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('aiAssistant');
+    } catch (error) {
+      console.error('Error fetching AI assistant metrics:', error);
+      throw error;
+    }
+  }, []);
   
-  // Get content metrics data
-  const useContentMetrics = (
-    contentId?: number, 
-    startDate?: string, 
-    endDate?: string, 
-    platform?: string,
-    metrics?: string
-  ) => {
-    return useQuery<ContentMetric[]>({
-      queryKey: analyticsKeys.contentMetrics(contentId, startDate, endDate, platform, metrics),
-      queryFn: () => contentAnalyticsService.getContentMetrics(contentId, startDate, endDate, platform, metrics),
-    });
-  };
-
-  // Get content performance summary
-  const useContentPerformance = (
-    startDate?: string, 
-    endDate?: string,
-    groupBy?: string,
-    contentIds?: string
-  ) => {
-    return useQuery<PerformanceSummaryResponse>({
-      queryKey: analyticsKeys.contentPerformance(contentIds, startDate, endDate, groupBy),
-      queryFn: () => contentAnalyticsService.getContentPerformance(startDate, endDate, groupBy, contentIds),
-    });
-  };
-
-  // Get top performing content
-  const useTopContent = (
-    startDate?: string, 
-    endDate?: string,
-    metric: string = 'views',
-    limit: number = 10,
-    contentType?: string
-  ) => {
-    return useQuery<TopPerformingContent[]>({
-      queryKey: analyticsKeys.topContent(startDate, endDate, metric, limit, contentType),
-      queryFn: () => contentAnalyticsService.getTopContent(startDate, endDate, metric, limit, contentType),
-    });
-  };
-
-  // Get content comparison
-  const useContentComparison = (
-    contentIds: string,
-    startDate?: string, 
-    endDate?: string,
-    metrics?: string
-  ) => {
-    return useQuery<ContentComparisonResponse>({
-      queryKey: analyticsKeys.contentComparison(contentIds, startDate, endDate, metrics),
-      queryFn: () => contentAnalyticsService.getContentComparison(contentIds, startDate, endDate, metrics),
-    });
-  };
-
-  // Get content attribution
-  const useContentAttribution = (
-    contentId?: number,
-    startDate?: string, 
-    endDate?: string,
-    attributionModel: string = 'last_touch'
-  ) => {
-    return useQuery<ContentAttributionResponse>({
-      queryKey: analyticsKeys.contentAttribution(contentId, startDate, endDate, attributionModel),
-      queryFn: () => contentAnalyticsService.getContentAttribution(contentId, startDate, endDate, attributionModel),
-    });
-  };
-
-  // Get custom dashboards
-  const useCustomDashboards = (
-    dashboardId?: number,
-    includeRoleDashboards: boolean = true
-  ) => {
-    return useQuery<CustomDashboard[]>({
-      queryKey: analyticsKeys.dashboards(dashboardId, includeRoleDashboards),
-      queryFn: () => contentAnalyticsService.getCustomDashboards(dashboardId, includeRoleDashboards),
-    });
-  };
-
-  // Create custom dashboard
-  const useCreateDashboard = () => {
-    return useMutation({
-      mutationFn: (dashboardData: DashboardCreateInput) => 
-        contentAnalyticsService.createCustomDashboard(dashboardData),
-    });
-  };
-
-  // Update custom dashboard
-  const useUpdateDashboard = () => {
-    return useMutation({
-      mutationFn: ({ dashboardId, updates }: { dashboardId: number, updates: DashboardUpdateInput }) => 
-        contentAnalyticsService.updateCustomDashboard(dashboardId, updates),
-    });
-  };
-
-  // Get analytics reports
-  const useAnalyticsReports = (
-    reportId?: number,
-    reportType?: string
-  ) => {
-    return useQuery<AnalyticsReport[]>({
-      queryKey: analyticsKeys.reports(reportId, reportType),
-      queryFn: () => contentAnalyticsService.getAnalyticsReports(reportId, reportType),
-    });
-  };
-
-  // Create analytics report
-  const useCreateReport = () => {
-    return useMutation({
-      mutationFn: (reportData: AnalyticsReportInput) => 
-        contentAnalyticsService.createAnalyticsReport(reportData),
-    });
-  };
-
-  // Generate report
-  const useGenerateReport = () => {
-    return useMutation({
-      mutationFn: ({ reportId, fileType }: { reportId: number, fileType: string }) => 
-        contentAnalyticsService.generateReport(reportId, fileType),
-    });
-  };
-
-  // Get content predictions
-  const useContentPredictions = (
-    contentId: number,
-    targetMetric: string = 'views'
-  ) => {
-    return useQuery<ContentPrediction>({
-      queryKey: analyticsKeys.contentPrediction(contentId, targetMetric),
-      queryFn: () => contentAnalyticsService.getContentPrediction(contentId, targetMetric),
-      enabled: false, // Don't run automatically
-    });
-  };
-
-  // Create content prediction
-  const useCreatePrediction = () => {
-    return useMutation({
-      mutationFn: (predictionData: ContentPredictionInput) => 
-        contentAnalyticsService.createContentPrediction(predictionData),
-    });
-  };
+  // WebSocket metrics
+  const getWebSocketMetrics = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/websocket-metrics`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('websocket');
+    } catch (error) {
+      console.error('Error fetching WebSocket metrics:', error);
+      throw error;
+    }
+  }, []);
+  
+  // User journeys
+  const getUserJourneys = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/journeys`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('userJourneys');
+    } catch (error) {
+      console.error('Error fetching user journeys:', error);
+      throw error;
+    }
+  }, []);
+  
+  // A/B test results
+  const getABTestResults = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/ab-test`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('abTest');
+    } catch (error) {
+      console.error('Error fetching A/B test results:', error);
+      throw error;
+    }
+  }, []);
+  
+  // UX insights
+  const getUXInsights = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/ux/insights`, { params });
+      // return response.data;
+      
+      // For development, return mock data
+      return getMockData('uxInsights');
+    } catch (error) {
+      console.error('Error fetching UX insights:', error);
+      throw error;
+    }
+  }, []);
+  
+  // Dashboard data (aggregated metrics for dashboard)
+  const getDashboardData = useCallback(async (params: DateRangeParams) => {
+    try {
+      // In production, this would fetch from the API
+      // const response = await axios.get(`${API_URL}/metrics/dashboard/ux`, { params });
+      // return response.data;
+      
+      // For development, return mock data with combined data
+      return {
+        featureUsage: getMockData('featureUsage'),
+        aiAssistant: getMockData('aiAssistant'),
+        websocket: getMockData('websocket'),
+        userJourneys: getMockData('userJourneys'),
+        abTest: getMockData('abTest'),
+        insights: getMockData('uxInsights')
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      throw error;
+    }
+  }, []);
 
   return {
-    // API Metrics
-    useDailyCosts,
-    useProviderCosts,
-    useModelCosts,
-    useBudgetStatus,
-    useCacheMetrics,
-    useErrorRates,
-    useAgentUsage,
-    
-    // Content Analytics
-    useContentMetrics,
-    useContentPerformance,
-    useTopContent,
-    useContentComparison,
-    useContentAttribution,
-    useCustomDashboards,
-    useCreateDashboard,
-    useUpdateDashboard,
-    useAnalyticsReports,
-    useCreateReport,
-    useGenerateReport,
-    useContentPredictions,
-    useCreatePrediction
+    getFeatureUsageMetrics,
+    getAIAssistantMetrics,
+    getWebSocketMetrics,
+    getUserJourneys,
+    getABTestResults,
+    getUXInsights,
+    getDashboardData
   };
 };
-
-export default useAnalytics;
