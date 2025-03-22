@@ -51,7 +51,7 @@ def setup_logging():
     if settings.ENV == "development":
         logger.add(
             sys.stderr,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <blue>{extra[request_id]}</blue> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             level=log_level,
             backtrace=True,
             diagnose=True,
@@ -117,7 +117,7 @@ def setup_logging():
         # Also log to console in production with more compact format
         logger.add(
             sys.stderr,
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[request_id]} | {message}",
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}",
             level=log_level,
         )
     

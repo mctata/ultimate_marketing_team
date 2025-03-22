@@ -108,18 +108,38 @@ measure_image_sizes() {
   rm "$STATS_FILE.tmp"
 }
 
-# Function to run API load test
+# Function to run API load test with Python
 run_api_load_test() {
   echo "Running simple API load test..."
   
   # Wait for API to be ready
   sleep 5
   
-  # Measure response time for 10 requests
-  echo "Response times for /api/health endpoint:"
-  for i in {1..10}; do
-    curl -s -w "Request $i: %{time_total}s\n" -o /dev/null "http://localhost:8000/api/health"
-  done | tee -a "$STATS_FILE"
+  # Create Python script for measuring response times
+  cat > api_test.py << 'EOF'
+import requests
+import time
+import sys
+
+# Test API health endpoint
+for i in range(1, 11):
+    start_time = time.time()
+    try:
+        response = requests.get("http://localhost:8000/api/health")
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f"Request {i}: {total_time:.6f}s")
+    except Exception as e:
+        print(f"Request {i}: Error - {str(e)}")
+
+EOF
+
+  # Execute Python script and append results to stats file
+  echo "Response times for /api/health endpoint:" | tee -a "$STATS_FILE"
+  python3 api_test.py | tee -a "$STATS_FILE"
+  
+  # Clean up test script
+  rm api_test.py
 }
 
 # Run measurements
