@@ -3,3 +3,5 @@ from . import auth
 from . import brands
 from . import content
 from . import metrics
+from . import content_generation
+from . import content_analytics

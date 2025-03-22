@@ -1,6 +1,6 @@
 from datetime import datetime
 import enum
-from sqlalchemy import Column, DateTime, Integer, String, Text, JSON, ForeignKey, Boolean, Table
+from sqlalchemy import Column, DateTime, Integer, String, Text, JSON, ForeignKey, Boolean, Table, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -204,3 +204,161 @@ class UserPreference(Base):
     
     # Relationships
     user = relationship("User", back_populates="preferences")
+
+
+class ContentMetric(Base):
+    """Content performance metrics model."""
+    
+    __tablename__ = "content_metrics"
+    __table_args__ = (
+        UniqueConstraint("content_id", "date", "platform", name="uq_content_metric_content_date_platform"),
+        {"schema": "umt"}
+    )
+    
+    id = Column(Integer, primary_key=True, index=True)
+    content_id = Column(Integer, nullable=False, index=True)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
+    platform = Column(String(50), nullable=False, index=True)  # website, facebook, twitter, linkedin, etc.
+    
+    # Engagement metrics
+    views = Column(Integer, default=0, nullable=False)
+    unique_visitors = Column(Integer, default=0, nullable=False)
+    likes = Column(Integer, default=0, nullable=False)
+    shares = Column(Integer, default=0, nullable=False)
+    comments = Column(Integer, default=0, nullable=False)
+    clicks = Column(Integer, default=0, nullable=False)
+    click_through_rate = Column(Float, default=0.0, nullable=False)
+    avg_time_on_page = Column(Integer, default=0, nullable=False)  # In seconds
+    bounce_rate = Column(Float, default=0.0, nullable=False)
+    scroll_depth = Column(Float, default=0.0, nullable=False)
+    
+    # Conversion metrics
+    conversions = Column(Integer, default=0, nullable=False)
+    conversion_rate = Column(Float, default=0.0, nullable=False)
+    leads_generated = Column(Integer, default=0, nullable=False)
+    revenue_generated = Column(Integer, default=0, nullable=False)  # In cents
+    
+    # SEO metrics
+    serp_position = Column(Float, default=0.0, nullable=True)
+    organic_traffic = Column(Integer, default=0, nullable=False)
+    backlinks = Column(Integer, default=0, nullable=False)
+    
+    # Raw data for advanced analysis
+    demographics = Column(JSON, nullable=True)
+    sources = Column(JSON, nullable=True)
+    devices = Column(JSON, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ContentAttributionPath(Base):
+    """Multi-touch attribution model for content conversions."""
+    
+    __tablename__ = "content_attribution_paths"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_identifier = Column(String(255), nullable=False, index=True)  # Anonymized user ID
+    conversion_id = Column(String(255), nullable=False, index=True)
+    conversion_type = Column(String(50), nullable=False)  # purchase, signup, download, etc.
+    conversion_value = Column(Integer, default=0, nullable=False)  # In cents
+    path = Column(JSON, nullable=False)  # Array of touchpoints with content_id, timestamp, platform
+    first_touch_content_id = Column(Integer, nullable=True, index=True)
+    last_touch_content_id = Column(Integer, nullable=True, index=True)
+    conversion_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class CustomDashboard(Base):
+    """User-defined custom analytics dashboards."""
+    
+    __tablename__ = "custom_dashboards"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    layout = Column(JSON, nullable=False)  # Grid layout config
+    widgets = Column(JSON, nullable=False)  # Widget definitions and config
+    is_default = Column(Boolean, default=False, nullable=False)
+    role_id = Column(Integer, ForeignKey("umt.roles.id", ondelete="SET NULL"), nullable=True)  # For role-specific dashboards
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    role = relationship("Role")
+
+
+class AnalyticsReport(Base):
+    """Scheduled and generated analytics reports."""
+    
+    __tablename__ = "analytics_reports"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("umt.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    report_type = Column(String(50), nullable=False)  # content, campaign, competitor, executive, etc.
+    template_id = Column(String(100), nullable=True)  # Optional template identifier
+    config = Column(JSON, nullable=False)  # Report configuration (date ranges, metrics, filters)
+    
+    # Scheduling
+    schedule_type = Column(String(50), nullable=True)  # none, daily, weekly, monthly, etc.
+    schedule_config = Column(JSON, nullable=True)  # Cron expression, time of day, etc.
+    recipients = Column(JSON, nullable=True)  # List of email recipients
+    
+    # For generated reports
+    last_generated = Column(DateTime(timezone=True), nullable=True)
+    file_path = Column(String(255), nullable=True)  # Path to stored report file
+    file_type = Column(String(50), nullable=True)  # pdf, csv, html, pptx, etc.
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
+
+
+class ContentPredictionModel(Base):
+    """Machine learning model metadata for content performance prediction."""
+    
+    __tablename__ = "content_prediction_models"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    model_type = Column(String(50), nullable=False)  # regression, classification, timeseries, etc.
+    target_metric = Column(String(50), nullable=False)  # clicks, conversions, views, etc.
+    features = Column(JSON, nullable=False)  # List of features used in the model
+    model_path = Column(String(255), nullable=False)  # Path to stored model file
+    performance_metrics = Column(JSON, nullable=False)  # Accuracy, precision, recall, etc.
+    training_date = Column(DateTime(timezone=True), nullable=False)
+    last_used = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ContentPerformancePrediction(Base):
+    """Content performance predictions from ML models."""
+    
+    __tablename__ = "content_performance_predictions"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    content_id = Column(Integer, nullable=False, index=True)
+    model_id = Column(Integer, ForeignKey("umt.content_prediction_models.id"), nullable=False)
+    prediction_date = Column(DateTime(timezone=True), nullable=False)
+    metric = Column(String(50), nullable=False)  # clicks, conversions, views, etc.
+    predicted_value = Column(Float, nullable=False)
+    confidence_interval_lower = Column(Float, nullable=True)
+    confidence_interval_upper = Column(Float, nullable=True)
+    features_used = Column(JSON, nullable=True)  # Feature values used for this prediction
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    model = relationship("ContentPredictionModel")
