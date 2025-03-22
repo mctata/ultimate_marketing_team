@@ -46,8 +46,8 @@ class ConnectionManager:
         self.bytes_sent = 0
         self.bytes_received = 0
         
-        # Setup metrics recording task
-        asyncio.create_task(self._record_metrics_periodically())
+        # We'll start the metrics recording task when we have an event loop
+        self.metrics_task = None
         
     async def _record_metrics_periodically(self):
         """Record WebSocket metrics periodically."""
@@ -112,6 +112,12 @@ class ConnectionManager:
         except Exception as e:
             print(f"Error in websocket metrics recording: {e}")
     
+    async def start_metrics_task(self):
+        """Start the metrics recording task if it's not already running."""
+        if self.metrics_task is None or self.metrics_task.done():
+            self.metrics_task = asyncio.create_task(self._record_metrics_periodically())
+            logger.info("WebSocket metrics recording task started")
+    
     async def connect(self, websocket: WebSocket, user_id: str):
         """Connect a new WebSocket with user authentication."""
         await websocket.accept()
@@ -121,6 +127,9 @@ class ConnectionManager:
             self.active_connections[user_id] = []
         self.active_connections[user_id].append(websocket)
         self.connection_users[websocket] = user_id
+        
+        # Start the metrics task if not already running
+        await self.start_metrics_task()
         
         # Record connection start time for metrics
         self.connection_start_times[websocket] = time.time()
