@@ -57,7 +57,7 @@ class ContentVersionHistory(Base):
     version = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
     changes = Column(JSON, nullable=True)  # Store operations that led to this version
-    metadata = Column(JSON, nullable=True)  # Additional metadata (e.g., device info, editor info)
+    version_metadata = Column(JSON, nullable=True)  # Additional metadata (e.g., device info, editor info)
     created_by = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
