@@ -16,10 +16,11 @@ bcrypt>=4.1.0
 pyjwt>=2.8.0
 cryptography>=41.0.0
 pyotp>=2.9.0
-python-magic>=0.4.27
-clamd>=1.0.2
+# Removed problematic dependencies
+# python-magic>=0.4.27
+# clamd>=1.0.2
 bleach>=6.1.0
-av>=11.0.0
+# av>=11.0.0 - Requires ffmpeg
 safety>=2.3.5
 
 # Message queue
@@ -40,7 +41,6 @@ pgvector>=0.2.4
 requests>=2.31.0
 python-multipart>=0.0.7
 aiohttp>=3.9.0
-asyncio>=3.4.3
 pyyaml>=6.0.1
 
 # Web scraping and data processing
