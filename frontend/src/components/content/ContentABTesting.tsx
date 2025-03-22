@@ -50,6 +50,11 @@ import {
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 
+import { useState, useEffect } from 'react';
+import { ABTest as ApiABTest, ContentVariation } from '../../services/contentGenerationService';
+import { useABTesting } from '../../hooks/useContentGeneration';
+
+// Map API structures to component structures
 export interface ContentVariant {
   id: string;
   name: string;
@@ -86,8 +91,43 @@ export interface ABTest {
   trafficAllocation?: number;
 }
 
+// Map API response to component model
+const mapApiTestToComponentTest = (apiTest: ApiABTest): ABTest => {
+  return {
+    id: apiTest.id,
+    name: apiTest.title,
+    description: '',
+    status: apiTest.status,
+    startDate: apiTest.created_at,
+    endDate: apiTest.end_date,
+    variants: apiTest.content_variations.map((variation: ContentVariation, index: number) => ({
+      id: variation.variation_id,
+      name: `Variant ${index + 1}`,
+      content: variation.content,
+      status: apiTest.status,
+      isOriginal: index === 0,
+      isWinner: apiTest.winner_id === variation.variation_id,
+      metrics: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics ? {
+        impressions: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.impressions || 0,
+        clicks: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.clicks || 0,
+        conversions: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.conversions || 0,
+        engagementRate: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.engagement_rate || 0,
+        ctr: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.ctr || 0,
+        conversionRate: apiTest.results?.find(r => r.variation_id === variation.variation_id)?.metrics?.conversion_rate || 0
+      } : undefined
+    })),
+    metrics: apiTest.results ? {
+      totalImpressions: apiTest.results.reduce((sum, r) => sum + (r.metrics?.impressions || 0), 0),
+      totalClicks: apiTest.results.reduce((sum, r) => sum + (r.metrics?.clicks || 0), 0),
+      totalConversions: apiTest.results.reduce((sum, r) => sum + (r.metrics?.conversions || 0), 0),
+      confidence: 95 // Example confidence level
+    } : undefined
+  };
+};
+
 interface ContentABTestingProps {
-  test: ABTest;
+  testId: string;
+  initialTestData?: ABTest;
   onUpdateTest?: (updatedTest: ABTest) => void;
   onCreateVariant?: (testId: string) => void;
   onViewContent?: (content: string) => void;
@@ -95,18 +135,72 @@ interface ContentABTestingProps {
 }
 
 const ContentABTesting = ({
-  test,
+  testId,
+  initialTestData,
   onUpdateTest,
   onCreateVariant,
   onViewContent,
   onCompareVariants,
 }: ContentABTestingProps) => {
+  const { getABTest, updateABTest, startABTest, stopABTest } = useABTesting();
+  const [test, setTest] = useState<ABTest | undefined>(initialTestData);
+  const [loading, setLoading] = useState(!initialTestData);
+  const [error, setError] = useState<string | null>(null);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [selectedVariantsForComparison, setSelectedVariantsForComparison] = useState<string[]>([]);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [testName, setTestName] = useState(test.name);
+  const [testName, setTestName] = useState(initialTestData?.name || '');
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  
+  // Fetch test data if not provided
+  useEffect(() => {
+    if (!initialTestData) {
+      setLoading(true);
+      getABTest(testId)
+        .then(apiTestData => {
+          const mappedTest = mapApiTestToComponentTest(apiTestData);
+          setTest(mappedTest);
+          setTestName(mappedTest.name);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Error fetching A/B test data:', err);
+          setError('Failed to load A/B test data');
+          setLoading(false);
+        });
+    }
+  }, [testId, initialTestData, getABTest]);
+  
+  // If loading or no test data available, show loading state
+  if (loading) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body1">
+          Loading A/B test data...
+        </Typography>
+        <LinearProgress sx={{ mt: 2 }} />
+      </Paper>
+    );
+  }
+  
+  if (error || !test) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body1" color="error">
+          {error || 'A/B test data not available'}
+        </Typography>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          sx={{ mt: 2 }}
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </Paper>
+    );
+  }
   
   const handleVariantChange = (event: React.SyntheticEvent, newValue: number) => {
     setSelectedVariantIndex(newValue);
@@ -129,21 +223,67 @@ const ContentABTesting = ({
   };
   
   const handleNameEdit = () => {
-    if (onUpdateTest) {
-      onUpdateTest({
-        ...test,
-        name: testName
-      });
+    if (testName.trim() === '') {
+      return;
     }
+    
+    const updatedTest = { ...test, name: testName };
+    
+    // Update both local state and API
+    setTest(updatedTest);
+    
+    // Call API update function
+    updateABTest(testId, { 
+      title: testName 
+    }).catch(err => {
+      console.error('Error updating test name:', err);
+      // Revert on error
+      setTest(test);
+      setTestName(test.name);
+    });
+    
+    // Call parent's update callback if provided
+    if (onUpdateTest) {
+      onUpdateTest(updatedTest);
+    }
+    
     setIsEditingName(false);
   };
   
   const handleStatusChange = (event: any) => {
-    if (onUpdateTest) {
-      onUpdateTest({
-        ...test,
-        status: event.target.value
+    const newStatus = event.target.value;
+    const updatedTest = { ...test, status: newStatus };
+    
+    // Update local state
+    setTest(updatedTest);
+    
+    // Call appropriate API functions based on status change
+    if (newStatus === 'running') {
+      startABTest(testId).catch(err => {
+        console.error('Error starting test:', err);
+        // Revert on error
+        setTest(test);
       });
+    } else if (newStatus === 'paused' || newStatus === 'completed') {
+      stopABTest(testId).catch(err => {
+        console.error('Error stopping test:', err);
+        // Revert on error
+        setTest(test);
+      });
+    } else {
+      // For other status changes, use the general update function
+      updateABTest(testId, { 
+        status: newStatus 
+      }).catch(err => {
+        console.error('Error updating test status:', err);
+        // Revert on error
+        setTest(test);
+      });
+    }
+    
+    // Call parent's update callback if provided
+    if (onUpdateTest) {
+      onUpdateTest(updatedTest);
     }
   };
   
