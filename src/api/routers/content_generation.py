@@ -61,6 +61,11 @@ ai_provider_manager = MockAIProviderManager()
 
 class MockPromptManager:
     """Mock Prompt Manager for development."""
+    def __init__(self, templates_dir=None, analytics_dir=None):
+        """Mock initialization."""
+        self.templates_dir = templates_dir or "/templates"
+        self.analytics_dir = analytics_dir or "/analytics"
+        
     def get_template(self, template_name):
         """Mock template retrieval."""
         return "Mock template for {template_name}"
@@ -69,8 +74,8 @@ class MockPromptManager:
         """Mock template formatting."""
         return f"Formatted template for {template_name}"
 
-# Create mock instance
-PromptManager = MockPromptManager()
+# Create mock class
+PromptManager = MockPromptManager
 # Mock content quality service
 class MockContentQualityService:
     """Mock Content Quality Service for development."""
