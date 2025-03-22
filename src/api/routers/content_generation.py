@@ -744,6 +744,7 @@ async def _process_batch(task_id: str, batch_id: str, requests: List[GenerationR
     results = {}
     
     async def process_request(req: GenerationRequest, index: int):
+        nonlocal completed_count
         async with semaphore:
             try:
                 # Generate content
@@ -753,7 +754,6 @@ async def _process_batch(task_id: str, batch_id: str, requests: List[GenerationR
                 results[f"request_{index}"] = result.dict()
                 
                 # Update progress
-                nonlocal completed_count
                 completed_count += 1
                 TASK_STORE[task_id]["completed_count"] = completed_count
                 TASK_STORE[task_id]["progress"] = int((completed_count / request_count) * 100)
@@ -762,7 +762,6 @@ async def _process_batch(task_id: str, batch_id: str, requests: List[GenerationR
             except Exception as e:
                 logger.error(f"Batch request {index} failed: {str(e)}")
                 results[f"request_{index}"] = {"error": str(e)}
-                nonlocal completed_count
                 completed_count += 1
     
     # Create tasks for all requests
