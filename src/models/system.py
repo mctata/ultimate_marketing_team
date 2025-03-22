@@ -50,6 +50,11 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
+    # Data retention fields (added by retention migration)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
+    scheduled_deletion_date = Column(DateTime(timezone=True), nullable=True)
+    
     # Relationships
     roles = relationship("Role", secondary=user_roles, back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")
@@ -58,6 +63,10 @@ class User(Base):
     content_drafts = relationship("ContentDraft", back_populates="created_by_user")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     preferences = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    
+    # Compliance relationships
+    consent_records = relationship("ConsentRecord", back_populates="user", cascade="all, delete-orphan")
+    data_requests = relationship("DataSubjectRequest", foreign_keys="DataSubjectRequest.user_id", back_populates="user")
 
 class Role(Base):
     """Role model for RBAC"""

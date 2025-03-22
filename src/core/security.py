@@ -381,6 +381,109 @@ def decrypt_sensitive_data(encrypted_b64: str, salt_b64: str) -> str:
     
     return decrypted_data
 
+def encrypt_data(data: Any) -> Dict[str, str]:
+    """
+    Encrypt data of various types and return encrypted data with salt.
+    
+    Args:
+        data: The data to encrypt (string, dict, list, etc.)
+        
+    Returns:
+        Dict with encrypted_data and salt
+    """
+    if data is None:
+        return {"encrypted_data": "", "salt": ""}
+    
+    # Convert non-string data to JSON string
+    if not isinstance(data, str):
+        data = json.dumps(data)
+    
+    encrypted_data, salt = encrypt_sensitive_data(data)
+    return {"encrypted_data": encrypted_data, "salt": salt}
+
+def decrypt_data(encrypted_data: str, salt: str) -> Any:
+    """
+    Decrypt data and attempt to parse as JSON if possible.
+    
+    Args:
+        encrypted_data: The encrypted data
+        salt: The salt used for encryption
+        
+    Returns:
+        The decrypted data, parsed from JSON if possible
+    """
+    if not encrypted_data or not salt:
+        return None
+    
+    decrypted_data = decrypt_sensitive_data(encrypted_data, salt)
+    
+    # Try to parse as JSON
+    try:
+        return json.loads(decrypted_data)
+    except json.JSONDecodeError:
+        # Return as string if not valid JSON
+        return decrypted_data
+
+def encrypt_field_if_needed(table_name: str, field_name: str, value: Any, db: Session) -> Tuple[Any, bool]:
+    """
+    Check if a field needs encryption based on classification and encrypt if needed.
+    
+    Args:
+        table_name: The database table name
+        field_name: The field name
+        value: The value to potentially encrypt
+        db: Database session
+        
+    Returns:
+        Tuple of (final_value, is_encrypted)
+    """
+    try:
+        # Try to import here to avoid circular imports
+        from src.core.compliance import DataClassificationService
+        
+        # Check if this field should be encrypted
+        classification_service = DataClassificationService(db)
+        should_encrypt = classification_service.should_encrypt_field(table_name, field_name)
+        
+        if should_encrypt and value is not None:
+            encrypted = encrypt_data(value)
+            return {
+                "value": encrypted["encrypted_data"],
+                "salt": encrypted["salt"],
+                "encrypted": True
+            }, True
+        
+        return value, False
+    except Exception as e:
+        # If any error occurs, return the value unencrypted to avoid data loss
+        print(f"Error checking field encryption: {str(e)}")
+        return value, False
+
+def decrypt_field_if_needed(encrypted_value: Dict[str, Any]) -> Any:
+    """
+    Decrypt a field if it's encrypted.
+    
+    Args:
+        encrypted_value: Dict with value, salt, and encrypted flag
+        
+    Returns:
+        The decrypted value
+    """
+    if not isinstance(encrypted_value, dict):
+        return encrypted_value
+    
+    is_encrypted = encrypted_value.get("encrypted", False)
+    if not is_encrypted:
+        return encrypted_value.get("value")
+    
+    value = encrypted_value.get("value")
+    salt = encrypted_value.get("salt")
+    
+    if not value or not salt:
+        return None
+    
+    return decrypt_data(value, salt)
+
 # Multi-factor Authentication
 def generate_totp_secret() -> str:
     """Generate a secret key for TOTP (Time-based One-Time Password)."""
@@ -1045,7 +1148,8 @@ DEFAULT_ROLES = [
         "description": "Can manage brands and their projects",
         "permissions": [
             "brand:create", "brand:read", "brand:update", "brand:delete",
-            "project:create", "project:read", "project:update", "project:delete", "project:assign"
+            "project:create", "project:read", "project:update", "project:delete", "project:assign",
+            "compliance:read" # Can view compliance data but not modify
         ]
     },
     {
@@ -1053,14 +1157,38 @@ DEFAULT_ROLES = [
         "description": "Can create and edit content",
         "permissions": [
             "brand:read", "project:read",
-            "content:create", "content:read", "content:update"
+            "content:create", "content:read", "content:update",
+            "compliance:read" # Can view compliance data but not modify
         ]
     },
     {
         "name": "viewer",
         "description": "Can view brands, projects, and content but not modify them",
         "permissions": [
-            "brand:read", "project:read", "content:read"
+            "brand:read", "project:read", "content:read",
+            "compliance:read" # Can view compliance data but not modify
+        ]
+    },
+    {
+        "name": "compliance_officer",
+        "description": "Manages compliance and data retention policies",
+        "permissions": [
+            "brand:read", "project:read", "content:read", "user:read",
+            "compliance:create", "compliance:read", "compliance:update", "compliance:delete",
+            "data_retention:create", "data_retention:read", "data_retention:update", "data_retention:delete",
+            "data_classification:create", "data_classification:read", "data_classification:update", "data_classification:delete"
+        ]
+    },
+    {
+        "name": "data_protection_officer",
+        "description": "Manages privacy and data protection",
+        "permissions": [
+            "brand:read", "project:read", "content:read", "user:read",
+            "compliance:read", "compliance:update",
+            "data_retention:read", "data_retention:update",
+            "data_classification:read", "data_classification:update",
+            "data_subject_request:create", "data_subject_request:read", "data_subject_request:update", "data_subject_request:delete",
+            "privacy_impact_assessment:create", "privacy_impact_assessment:read", "privacy_impact_assessment:update"
         ]
     }
 ]
@@ -1071,8 +1199,13 @@ def initialize_rbac(db: Session):
     
     # Create default permissions
     permissions = {}
-    resources = ["brand", "project", "content", "user", "role", "integration"]
-    actions = ["create", "read", "update", "delete", "assign", "publish"]
+    resources = [
+        "brand", "project", "content", "user", "role", "integration",
+        # Compliance resources
+        "compliance", "data_retention", "data_classification", 
+        "data_subject_request", "privacy_impact_assessment"
+    ]
+    actions = ["create", "read", "update", "delete", "assign", "publish", "execute"]
     
     # Create wildcard permission
     wildcard_perm = db.query(Permission).filter(

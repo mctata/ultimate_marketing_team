@@ -73,7 +73,7 @@ app.add_middleware(
 )
 
 # Import routers
-from src.api.routers import auth, brands, content, metrics, content_generation, content_analytics, content_recommendations, content_collaboration, user_preferences, health
+from src.api.routers import auth, brands, content, metrics, content_generation, content_analytics, content_recommendations, content_collaboration, user_preferences, health, compliance, developer
 
 # Add routers to app
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
@@ -85,6 +85,8 @@ app.include_router(content_analytics.router, prefix=f"{settings.API_PREFIX}/cont
 app.include_router(content_recommendations.router, prefix=f"{settings.API_PREFIX}/content-recommendations", tags=["Content Recommendations"])
 app.include_router(content_collaboration.router, prefix=f"{settings.API_PREFIX}/content-collaboration", tags=["Content Collaboration"])
 app.include_router(user_preferences.router, prefix=f"{settings.API_PREFIX}/user-preferences", tags=["User Preferences"])
+app.include_router(compliance.router, tags=["Compliance"])  # Using router-defined prefix
+app.include_router(developer.router, prefix=f"{settings.API_PREFIX}/developer", tags=["Developer"])
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
 
 # Add WebSocket endpoint

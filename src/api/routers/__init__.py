@@ -8,3 +8,6 @@ from . import content_analytics
 from . import content_recommendations
 from . import content_collaboration
 from . import user_preferences
+from . import compliance
+from . import developer
+from . import health
