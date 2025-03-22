@@ -3,7 +3,7 @@ Settings for the Ultimate Marketing Team application
 """
 
 import os
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, Tuple
 
 class Settings:
     """Application settings."""
@@ -51,6 +51,43 @@ class Settings:
     ALLOWED_UPLOAD_TYPES = os.getenv("ALLOWED_UPLOAD_TYPES", "image/jpeg,image/png,image/gif,image/webp,application/pdf").split(",")
     MALWARE_SCAN_ENABLED = os.getenv("MALWARE_SCAN_ENABLED", "true").lower() == "true"
     
+    # Monitoring and observability settings
+    # Prometheus
+    PROMETHEUS_ENABLED = os.getenv("PROMETHEUS_ENABLED", "true").lower() == "true"
+    PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT", "9090"))
+    
+    # OpenTelemetry
+    OPENTELEMETRY_ENABLED = os.getenv("OPENTELEMETRY_ENABLED", "true").lower() == "true"
+    OPENTELEMETRY_ENDPOINT = os.getenv("OPENTELEMETRY_ENDPOINT", "http://otel-collector:4317")
+    OPENTELEMETRY_SAMPLING_RATE = float(os.getenv("OPENTELEMETRY_SAMPLING_RATE", "0.5"))
+    
+    # Elasticsearch/Logstash/Kibana (ELK)
+    ELK_ENABLED = os.getenv("ELK_ENABLED", "true").lower() == "true"
+    LOGSTASH_HOST = os.getenv("LOGSTASH_HOST", "logstash")
+    LOGSTASH_PORT = int(os.getenv("LOGSTASH_PORT", "5044"))
+    
+    # PagerDuty
+    PAGERDUTY_ENABLED = os.getenv("PAGERDUTY_ENABLED", "false").lower() == "true"
+    PAGERDUTY_ROUTING_KEY = os.getenv("PAGERDUTY_ROUTING_KEY", "")
+    PAGERDUTY_SERVICE_ID = os.getenv("PAGERDUTY_SERVICE_ID", "")
+    
+    # Synthetic monitoring
+    SYNTHETIC_MONITORING_ENABLED = os.getenv("SYNTHETIC_MONITORING_ENABLED", "true").lower() == "true"
+    SYNTHETIC_MONITORING_INTERVAL_MINUTES = int(os.getenv("SYNTHETIC_MONITORING_INTERVAL_MINUTES", "15"))
+    
+    # Critical monitoring
+    CRITICAL_EXCEPTIONS = os.getenv("CRITICAL_EXCEPTIONS", "DatabaseError,ConnectionError,TimeoutError").split(",")
+    CRITICAL_ENDPOINTS = os.getenv("CRITICAL_ENDPOINTS", "/auth,/payment").split(",")
+    
+    # External services to monitor
+    EXTERNAL_SERVICES_TO_MONITOR = [
+        {"name": "openai", "url": "https://api.openai.com/v1/health"},
+        {"name": "anthropic", "url": "https://api.anthropic.com/v1/health"},
+        {"name": "google_ads", "url": "https://googleads.googleapis.com/"},
+        {"name": "facebook_ads", "url": "https://graph.facebook.com/"},
+        {"name": "linkedin_ads", "url": "https://api.linkedin.com/v2/"},
+    ]
+    
     # OAuth settings
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -83,16 +120,6 @@ class Settings:
     RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
     RABBITMQ_QUEUE_PREFIX = os.getenv("RABBITMQ_QUEUE_PREFIX", "umt_")
     
-    # OAuth settings
-    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-    
-    FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
-    FACEBOOK_CLIENT_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
-    
-    LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
-    LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
-    
     # Email settings
     SMTP_TLS = True
     SMTP_PORT = 587
@@ -108,6 +135,12 @@ class Settings:
     
     # Logging settings
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_JSON_FORMAT = os.getenv("LOG_JSON_FORMAT", "true").lower() == "true"
+    LOG_REQUEST_BODY_ENABLED = os.getenv("LOG_REQUEST_BODY_ENABLED", "false").lower() == "true"
+    LOG_RESPONSE_BODY_ENABLED = os.getenv("LOG_RESPONSE_BODY_ENABLED", "false").lower() == "true"
+    LOG_SENSITIVE_DATA = os.getenv("LOG_SENSITIVE_DATA", "false").lower() == "true"
+    LOG_SLOW_API_THRESHOLD_MS = int(os.getenv("LOG_SLOW_API_THRESHOLD_MS", "500"))
+    LOG_SLOW_DB_THRESHOLD_MS = int(os.getenv("LOG_SLOW_DB_THRESHOLD_MS", "100"))
     
     # Initial admin user
     FIRST_SUPERUSER_EMAIL = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@example.com")
@@ -129,5 +162,11 @@ class Settings:
     AI_FALLBACK_TO_SMALLER_MODEL = os.getenv("AI_FALLBACK_TO_SMALLER_MODEL", "true").lower() == "true"
     AI_ENABLE_ADAPTIVE_RATE_LIMITING = os.getenv("AI_ENABLE_ADAPTIVE_RATE_LIMITING", "true").lower() == "true"
 
+    # Service Level Objectives (SLOs) and Service Level Agreements (SLAs)
+    SLO_API_LATENCY_MS = int(os.getenv("SLO_API_LATENCY_MS", "500"))
+    SLO_API_SUCCESS_RATE = float(os.getenv("SLO_API_SUCCESS_RATE", "0.995"))
+    SLO_API_AVAILABILITY = float(os.getenv("SLO_API_AVAILABILITY", "0.9995"))
+    SLO_CONTENT_GENERATION_SUCCESS_RATE = float(os.getenv("SLO_CONTENT_GENERATION_SUCCESS_RATE", "0.98"))
+    
 
 settings = Settings()

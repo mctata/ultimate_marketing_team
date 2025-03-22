@@ -2,9 +2,22 @@ import logging
 import sys
 import json
 import time
+import uuid
+import contextlib
+from contextvars import ContextVar
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
 from loguru import logger
 from src.core.settings import settings
+
+# Context variables for correlation and request tracking
+request_id_var: ContextVar[str] = ContextVar('request_id', default='')
+trace_id_var: ContextVar[str] = ContextVar('trace_id', default='')
+span_id_var: ContextVar[str] = ContextVar('span_id', default='')
+user_id_var: ContextVar[Optional[int]] = ContextVar('user_id', default=None)
+session_id_var: ContextVar[Optional[str]] = ContextVar('session_id', default=None)
+component_var: ContextVar[str] = ContextVar('component', default='app')
 
 # Configure loguru
 class InterceptHandler(logging.Handler):
@@ -27,60 +40,84 @@ class InterceptHandler(logging.Handler):
 
 
 def setup_logging():
-    """Configure logging with loguru."""
+    """Configure logging with loguru and structured JSON format."""
     # Remove default loguru handler
     logger.remove()
 
     # Add new handlers based on environment
     log_level = settings.LOG_LEVEL.upper()
     
-    # Configure development logger
+    # Configure development logger with colorized output
     if settings.ENV == "development":
         logger.add(
             sys.stderr,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <blue>{extra[request_id]}</blue> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             level=log_level,
             backtrace=True,
             diagnose=True,
         )
     else:
-        # Configure production logger
+        # Configure production logger with JSON formatting for ELK
         log_path = Path("logs")
         log_path.mkdir(exist_ok=True)
         
-        # Main application log
+        # Main application log - structured JSON format
         logger.add(
-            log_path / "app.log",
+            log_path / "app.json",
+            format=lambda record: format_json_log_record(record),
+            serialize=True,
             rotation="100 MB",
             retention="10 days",
             level=log_level,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         )
         
         # Slow query log
         logger.add(
-            log_path / "slow_query.log",
+            log_path / "slow_query.json",
+            format=lambda record: format_json_log_record(record),
+            serialize=True,
             rotation="50 MB",
             retention="7 days",
             level="WARNING",
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
             filter=lambda record: "slow_query" in record["extra"],
         )
         
         # AI API usage log
         logger.add(
-            log_path / "ai_api_usage.log",
+            log_path / "ai_api_usage.json",
+            format=lambda record: format_json_log_record(record),
+            serialize=True,
             rotation="50 MB",
             retention="30 days",
             level="INFO",
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
             filter=lambda record: "api_usage" in record["extra"],
         )
         
-        # Also log to console in production, but with a simpler format
+        # Health check log
+        logger.add(
+            log_path / "health.json",
+            format=lambda record: format_json_log_record(record),
+            serialize=True,
+            rotation="50 MB",
+            retention="14 days",
+            level="INFO",
+            filter=lambda record: "health" in record["extra"],
+        )
+        
+        # Error log with all ERROR and CRITICAL events
+        logger.add(
+            log_path / "error.json",
+            format=lambda record: format_json_log_record(record),
+            serialize=True,
+            rotation="50 MB",
+            retention="30 days",
+            level="ERROR",
+        )
+        
+        # Also log to console in production with more compact format
         logger.add(
             sys.stderr,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[request_id]} | {message}",
             level=log_level,
         )
     
@@ -98,6 +135,166 @@ def setup_logging():
         logging.getLogger(uvicorn_logger).propagate = True
 
 
+def format_json_log_record(record: Dict[str, Any]) -> str:
+    """Format a log record as a JSON string suitable for Elasticsearch."""
+    # Extract basic record info
+    log_data = {
+        "timestamp": record["time"].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "level": record["level"].name,
+        "message": record["message"],
+        "name": record["name"],
+        "function": record["function"],
+        "line": record["line"],
+        "process_id": record["process"].id,
+        "thread_id": record["thread"].id,
+    }
+    
+    # Add context tracking IDs from contextvars if they exist
+    extra = record["extra"]
+    for key in [
+        "request_id", "trace_id", "span_id", "user_id", 
+        "session_id", "component", "environment"
+    ]:
+        if key in extra:
+            log_data[key] = extra[key]
+    
+    # Add exception info if available
+    if record["exception"]:
+        log_data["exception"] = {
+            "type": record["exception"].type.__name__,
+            "value": str(record["exception"].value),
+            "traceback": record["exception"].traceback,
+        }
+    
+    # Add any other extra data (excluding context keys already handled)
+    for key, value in extra.items():
+        if key not in log_data and key not in [
+            "request_id", "trace_id", "span_id", "user_id", 
+            "session_id", "component", "environment"
+        ]:
+            log_data[key] = value
+    
+    # Convert to JSON string
+    return json.dumps(log_data)
+
+
+def get_request_id() -> str:
+    """Get the current request ID from context, or generate a new one."""
+    try:
+        request_id = request_id_var.get()
+        if not request_id:
+            request_id = str(uuid.uuid4())
+            request_id_var.set(request_id)
+        return request_id
+    except Exception:
+        return str(uuid.uuid4())
+
+
+def get_trace_id() -> str:
+    """Get the current trace ID from context, or generate a new one."""
+    try:
+        trace_id = trace_id_var.get()
+        if not trace_id:
+            trace_id = str(uuid.uuid4())
+            trace_id_var.set(trace_id)
+        return trace_id
+    except Exception:
+        return str(uuid.uuid4())
+
+
+def get_span_id() -> str:
+    """Get the current span ID from context, or generate a new one."""
+    try:
+        return span_id_var.get() or str(uuid.uuid4())
+    except Exception:
+        return str(uuid.uuid4())
+
+
+def set_context(
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    span_id: Optional[str] = None,
+    user_id: Optional[int] = None,
+    session_id: Optional[str] = None,
+    component: Optional[str] = None,
+) -> None:
+    """Set the current logging context variables."""
+    if request_id:
+        request_id_var.set(request_id)
+    if trace_id:
+        trace_id_var.set(trace_id)
+    if span_id:
+        span_id_var.set(span_id)
+    if user_id is not None:
+        user_id_var.set(user_id)
+    if session_id:
+        session_id_var.set(session_id)
+    if component:
+        component_var.set(component)
+
+
+def get_logger(**additional_context) -> logger:
+    """Get a logger with the current context already bound."""
+    context = {
+        "request_id": get_request_id(),
+        "trace_id": get_trace_id(),
+        "span_id": get_span_id(),
+        "component": component_var.get(),
+        "environment": settings.ENV,
+    }
+    
+    # Add optional context if available
+    user_id = user_id_var.get()
+    if user_id is not None:
+        context["user_id"] = user_id
+    
+    session_id = session_id_var.get()
+    if session_id:
+        context["session_id"] = session_id
+    
+    # Merge with any additional context provided
+    context.update(additional_context)
+    
+    return logger.bind(**context)
+
+
+@contextlib.contextmanager
+def span_context(operation: str, component: Optional[str] = None):
+    """Create a new span context for tracing."""
+    parent_span_id = get_span_id()
+    new_span_id = str(uuid.uuid4())
+    span_id_var.set(new_span_id)
+    
+    if component:
+        previous_component = component_var.get()
+        component_var.set(component)
+    
+    span_logger = get_logger(
+        parent_span_id=parent_span_id,
+        span_operation=operation
+    )
+    
+    start_time = time.time()
+    span_logger.debug(f"Starting span: {operation}")
+    
+    try:
+        yield span_logger
+    except Exception as e:
+        span_logger.exception(f"Exception in span: {str(e)}")
+        raise
+    finally:
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Restore parent span ID
+        span_id_var.set(parent_span_id)
+        
+        # Restore previous component if changed
+        if component:
+            component_var.set(previous_component)
+        
+        span_logger.bind(duration_ms=duration_ms).debug(f"Completed span: {operation}")
+
+
 def log_slow_query(statement, parameters, execution_time):
     """Log slow database queries for performance monitoring.
     
@@ -110,11 +307,12 @@ def log_slow_query(statement, parameters, execution_time):
         "query": statement,
         "parameters": str(parameters),
         "execution_time_ms": round(execution_time * 1000, 2),
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "component": "database"
     }
     
     # Log with special logger context
-    logger.bind(slow_query=True).warning(f"SLOW QUERY ({log_data['execution_time_ms']}ms): {json.dumps(log_data)}")
+    get_logger(slow_query=True, **log_data).warning(f"SLOW QUERY ({log_data['execution_time_ms']}ms)")
 
 
 async def log_api_usage(
@@ -161,11 +359,11 @@ async def log_api_usage(
         "error_type": error_type,
         "agent_type": agent_type,
         "task_id": task_id,
-        "timestamp": time.time()
+        "component": "ai_api"
     }
     
     # Log with special logger context
-    logger.bind(api_usage=True).info(f"AI API: {json.dumps(log_data)}")
+    get_logger(api_usage=True, **log_data).info(f"AI API: {provider}/{model}")
     
     # Store metrics in database
     try:
@@ -191,10 +389,11 @@ async def log_api_usage(
         )
     except ImportError:
         # Module not available yet (likely during startup)
-        logger.debug("API metrics service not available yet, skipping database record")
+        get_logger().debug("API metrics service not available yet, skipping database record")
     except Exception as e:
-        logger.error(f"Error recording API metrics: {str(e)}")
-        
+        get_logger().error(f"Error recording API metrics: {str(e)}")
+
+
 # For backward compatibility with non-async code
 def log_api_usage_sync(
     provider, 
@@ -222,11 +421,14 @@ def log_api_usage_sync(
         "endpoint": endpoint,
         "cached": cached,
         "success": success,
-        "timestamp": time.time()
+        "error_type": error_type,
+        "agent_type": agent_type,
+        "task_id": task_id,
+        "component": "ai_api"
     }
     
     # Log with special logger context
-    logger.bind(api_usage=True).info(f"AI API: {json.dumps(log_data)}")
+    get_logger(api_usage=True, **log_data).info(f"AI API: {provider}/{model}")
     
     # Schedule async task using asyncio.create_task if in event loop
     import asyncio
@@ -252,3 +454,97 @@ def log_api_usage_sync(
     except (RuntimeError, ValueError):
         # No event loop available, just log to file
         pass
+
+
+def log_exception(e: Exception, context: Optional[Dict[str, Any]] = None):
+    """Log an exception with additional context."""
+    ctx = context or {}
+    get_logger(**ctx).exception(f"Exception: {str(e)}")
+
+
+def log_request(
+    method: str,
+    path: str, 
+    status_code: int,
+    duration_ms: float,
+    user_id: Optional[int] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    params: Optional[Dict] = None,
+    extra: Optional[Dict] = None
+):
+    """Log HTTP request details."""
+    log_data = {
+        "method": method,
+        "path": path,
+        "status_code": status_code,
+        "duration_ms": duration_ms,
+        "component": "http"
+    }
+    
+    if ip_address:
+        log_data["ip_address"] = ip_address
+    if user_agent:
+        log_data["user_agent"] = user_agent
+    if user_id is not None:
+        log_data["user_id"] = user_id
+    if params:
+        # Filter out sensitive parameters
+        filtered_params = {k: v for k, v in params.items() if k.lower() not in 
+                         ["password", "token", "secret", "key", "authorization", "api_key"]}
+        log_data["params"] = filtered_params
+    if extra:
+        log_data.update(extra)
+    
+    level = "WARNING" if status_code >= 400 else "INFO" if status_code >= 300 else "DEBUG"
+    get_logger(**log_data).log(level, f"{method} {path} {status_code} ({duration_ms:.2f}ms)")
+
+
+def log_health_check(
+    component: str,
+    status: str,
+    details: Optional[Dict] = None,
+    duration_ms: Optional[float] = None
+):
+    """Log a health check result."""
+    log_data = {
+        "component": component,
+        "status": status,
+        "details": details or {},
+        "health": True
+    }
+    
+    if duration_ms is not None:
+        log_data["duration_ms"] = duration_ms
+    
+    level = "WARNING" if status != "healthy" else "INFO"
+    get_logger(**log_data).log(level, f"Health check: {component} is {status}")
+
+
+class LoggerAdapter:
+    """Adapter for supporting both loguru and OpenTelemetry logging."""
+    
+    def __init__(self, component: str = "app"):
+        self.component = component
+    
+    def debug(self, message, **extra):
+        get_logger(component=self.component, **extra).debug(message)
+    
+    def info(self, message, **extra):
+        get_logger(component=self.component, **extra).info(message)
+    
+    def warning(self, message, **extra):
+        get_logger(component=self.component, **extra).warning(message)
+    
+    def error(self, message, **extra):
+        get_logger(component=self.component, **extra).error(message)
+    
+    def critical(self, message, **extra):
+        get_logger(component=self.component, **extra).critical(message)
+    
+    def exception(self, message, **extra):
+        get_logger(component=self.component, **extra).exception(message)
+    
+    def span(self, operation: str):
+        """Create a new span context for tracing."""
+        return span_context(operation, component=self.component)

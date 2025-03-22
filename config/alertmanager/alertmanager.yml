@@ -1,0 +1,49 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp:25'
+  smtp_from: 'alertmanager@example.org'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+  smtp_require_tls: false
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Inhibit rules allow to mute alerts that match a set of criteria
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# Route configuration
+route:
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'email-notifications'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      continue: true
+    - match:
+        severity: warning
+      receiver: 'email-notifications'
+
+receivers:
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'admin@example.org'
+        send_resolved: true
+  
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: 'your_pagerduty_service_key'
+        send_resolved: true
+        severity: critical
+        description: '{{ .CommonLabels.alertname }}'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          summary: '{{ .CommonAnnotations.summary }}'
