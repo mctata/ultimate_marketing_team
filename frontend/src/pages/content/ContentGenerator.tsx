@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -18,6 +18,7 @@ import {
   AlertTitle,
   Tab,
   Tabs,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -29,13 +30,24 @@ import {
 } from '@mui/icons-material';
 
 // Import our custom components
-import TemplateSelector, { Template } from '../../components/content/TemplateSelector';
-import TemplateVariables, { TemplateVariable } from '../../components/content/TemplateVariables';
-import GenerationProgress, { GenerationStep } from '../../components/content/GenerationProgress';
-import ContentQualityMetrics, { ContentQualityData } from '../../components/content/ContentQualityMetrics';
+import TemplateSelector from '../../components/content/TemplateSelector';
+import TemplateVariables from '../../components/content/TemplateVariables';
+import GenerationProgress from '../../components/content/GenerationProgress';
+import ContentQualityMetrics from '../../components/content/ContentQualityMetrics';
 import PromptLibrary from '../../components/content/PromptLibrary';
 import RichTextEditor from '../../components/content/RichTextEditor';
-import ContentABTesting, { ABTest, ContentVariant } from '../../components/content/ContentABTesting';
+import ContentABTesting from '../../components/content/ContentABTesting';
+
+// Import API services and hooks
+import { useTemplates, useContentGeneration, useABTesting } from '../../hooks/useContentGeneration';
+import contentGenerationApi, { 
+  GenerationRequest, 
+  GenerationResponse,
+  ContentVariation,
+  QualityAssessment,
+  ABTest,
+  ABTestRequest
+} from '../../services/contentGenerationService';
 
 // Example mock data for A/B test
 const mockABTest: ABTest = {
@@ -117,15 +129,25 @@ const mockQualityData: ContentQualityData = {
 };
 
 const ContentGenerator = () => {
+  // API hooks
+  const { templatesQuery } = useTemplates();
+  const { generateContent, taskStatus, isGenerating, clearTaskStatus, assessContent, getQualityAssessment } = useContentGeneration();
+  const { createABTest, abTestsQuery } = useABTesting();
+
+  // UI state
   const [activeStep, setActiveStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
-  const [generationJobId, setGenerationJobId] = useState<string>('');
+  const [generationTaskId, setGenerationTaskId] = useState<string>('');
   const [generationComplete, setGenerationComplete] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string>('');
-  const [qualityData, setQualityData] = useState<ContentQualityData | null>(null);
+  const [generatedVariations, setGeneratedVariations] = useState<ContentVariation[]>([]);
+  const [assessmentId, setAssessmentId] = useState<string>('');
+  const [qualityAssessment, setQualityAssessment] = useState<QualityAssessment | null>(null);
+  const [isLoadingAssessment, setIsLoadingAssessment] = useState(false);
   const [abTest, setAbTest] = useState<ABTest | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   
   const steps = ['Select Template', 'Customize Variables', 'Generate Content', 'Review & Enhance'];
   
@@ -137,22 +159,111 @@ const ContentGenerator = () => {
     setTemplateVariables(variables);
   };
   
+  // Watch for taskStatus updates
+  useEffect(() => {
+    if (taskStatus) {
+      if (taskStatus.status === 'completed' && taskStatus.result) {
+        setGeneratedVariations(taskStatus.result);
+        setGeneratedContent(taskStatus.result[0]?.content || '');
+        setGenerationComplete(true);
+        
+        // Request quality assessment for the generated content
+        if (taskStatus.result[0]?.content) {
+          setIsLoadingAssessment(true);
+          
+          // Determine content type from the template
+          const contentType = templatesQuery.data?.find(t => t.id === selectedTemplate)?.content_type || 'blog';
+          
+          // Request quality assessment
+          assessContent({ 
+            content: taskStatus.result[0].content, 
+            contentType 
+          }).then((response) => {
+            if (response && response.task_id) {
+              setAssessmentId(response.task_id);
+              
+              // Wait a moment and then fetch the assessment
+              setTimeout(() => {
+                getQualityAssessment(response.task_id)
+                  .then(assessmentData => {
+                    setQualityAssessment(assessmentData);
+                    setIsLoadingAssessment(false);
+                  })
+                  .catch(err => {
+                    console.error('Error fetching quality assessment:', err);
+                    setIsLoadingAssessment(false);
+                  });
+              }, 2000); // Give the backend some time to complete the assessment
+            }
+          }).catch(err => {
+            console.error('Error requesting quality assessment:', err);
+            setIsLoadingAssessment(false);
+          });
+        }
+      } else if (taskStatus.status === 'failed') {
+        setError(taskStatus.error || 'Content generation failed');
+      }
+    }
+  }, [taskStatus, assessContent, getQualityAssessment, selectedTemplate, templatesQuery.data]);
+
+  const startContentGeneration = useCallback(() => {
+    // Clear any previous errors
+    setError(null);
+    setGenerationComplete(false);
+    clearTaskStatus();
+    
+    // Prepare the request
+    const request: GenerationRequest = {
+      content_type: templatesQuery.data?.find(t => t.id === selectedTemplate)?.content_type || 'blog',
+      template_id: selectedTemplate,
+      variables: templateVariables,
+      quality_assessment: true
+    };
+    
+    // Generate content
+    generateContent(request)
+      .then(response => {
+        if (response.task_id) {
+          setGenerationTaskId(response.task_id);
+        } else {
+          setError('No task ID returned from generation request');
+        }
+      })
+      .catch(err => {
+        console.error('Error starting content generation:', err);
+        setError('Failed to start content generation. Please try again.');
+      });
+  }, [selectedTemplate, templateVariables, generateContent, clearTaskStatus, templatesQuery.data]);
+
   const handleNext = () => {
     if (activeStep === 2) {
       // Start content generation
-      setGenerationJobId('mock-job-id-123');
-      
-      // Mock content generation completion after 5 seconds
-      setTimeout(() => {
-        setGeneratedContent(`# ${templateVariables.title || 'Sample Blog Post'}\n\nThis is a sample generated content based on the template and variables you provided. In a real implementation, this would be the actual AI-generated content.\n\n## Introduction\n\nThe topic of ${templateVariables.topic || 'this post'} is increasingly important in today's world. As more organizations recognize its significance, it's essential to understand the key concepts and applications.\n\n## Key Benefits\n\n1. Improved efficiency and productivity\n2. Enhanced customer experience\n3. Reduced operational costs\n4. Competitive advantage in the marketplace\n\n## Implementation Strategies\n\nImplementing effective solutions requires careful planning and execution. Here are some strategies to consider:\n\n- Start with a clear goal and metrics for success\n- Engage stakeholders early in the process\n- Use an iterative approach to implementation\n- Measure results and adjust as needed\n\n## Conclusion\n\nBy leveraging these insights and approaches, organizations can successfully navigate the challenges and opportunities in this space. The future looks promising for those who take a strategic approach to implementation.`);
-        setQualityData(mockQualityData);
-        setGenerationComplete(true);
-      }, 5000);
+      startContentGeneration();
     }
     
     if (activeStep === 3) {
       // Create an A/B test with the generated content
-      setAbTest(mockABTest);
+      if (generatedVariations.length > 0) {
+        const abTestRequest: ABTestRequest = {
+          title: `A/B Test for ${templateVariables.title || 'Content'}`,
+          content_variations: generatedVariations,
+          metrics: ['clicks', 'conversions', 'engagement'],
+          duration_days: 7
+        };
+        
+        createABTest(abTestRequest)
+          .then(response => {
+            setAbTest(response);
+          })
+          .catch(err => {
+            console.error('Error creating A/B test:', err);
+            setError('Failed to create A/B test. Using mock data instead.');
+            setAbTest(mockABTest);
+          });
+      } else {
+        // Fallback to mock data if no real variations available
+        setAbTest(mockABTest);
+      }
     }
     
     setActiveStep((prevStep) => prevStep + 1);
@@ -166,21 +277,39 @@ const ContentGenerator = () => {
     setActiveStep(0);
     setSelectedTemplate('');
     setTemplateVariables({});
-    setGenerationJobId('');
+    setGenerationTaskId('');
     setGenerationComplete(false);
     setGeneratedContent('');
-    setQualityData(null);
+    setGeneratedVariations([]);
+    setQualityAssessment(null);
     setAbTest(null);
+    setError(null);
+    clearTaskStatus();
   };
   
   const handleContentChange = (content: string) => {
     setGeneratedContent(content);
+    
+    // Update the variation array as well
+    if (generatedVariations.length > 0) {
+      const updatedVariations = [...generatedVariations];
+      updatedVariations[0].content = content;
+      setGeneratedVariations(updatedVariations);
+    }
   };
   
   const handleApplySuggestion = (suggestion: string) => {
     // In a real application, this would intelligently apply the suggestion
     // For now, we'll just append it as a comment
-    setGeneratedContent(generatedContent + `\n\n<!-- Applied suggestion: ${suggestion} -->`);
+    const updatedContent = generatedContent + `\n\n<!-- Applied suggestion: ${suggestion} -->`;
+    setGeneratedContent(updatedContent);
+    
+    // Update the variation array as well
+    if (generatedVariations.length > 0) {
+      const updatedVariations = [...generatedVariations];
+      updatedVariations[0].content = updatedContent;
+      setGeneratedVariations(updatedVariations);
+    }
   };
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -240,18 +369,28 @@ const ContentGenerator = () => {
             <Typography variant="h6" gutterBottom>
               Content Generation
             </Typography>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                <AlertTitle>Error</AlertTitle>
+                {error}
+              </Alert>
+            )}
+            
             {!generationComplete ? (
               <GenerationProgress
-                jobId={generationJobId}
+                taskId={generationTaskId}
                 onCancel={() => {
-                  // In a real app, we would cancel the generation job
+                  // Reset to variables step
+                  clearTaskStatus();
                   setActiveStep(1);
                 }}
                 onComplete={(result) => {
-                  // In a real app, we would handle the result
-                  setGeneratedContent(result.content);
-                  setQualityData(mockQualityData);
-                  setGenerationComplete(true);
+                  // Handle completion callback from progress component
+                  if (result && result.length > 0) {
+                    setGeneratedVariations(result);
+                    setGeneratedContent(result[0].content);
+                    setGenerationComplete(true);
+                  }
                 }}
               />
             ) : (
@@ -278,9 +417,18 @@ const ContentGenerator = () => {
               </Grid>
               
               <Grid item xs={12} md={4}>
-                {qualityData && (
+                {isLoadingAssessment ? (
+                  <Paper sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="body1" gutterBottom>
+                      Analyzing content quality...
+                    </Typography>
+                    <CircularProgress size={40} />
+                  </Paper>
+                ) : (
                   <ContentQualityMetrics
-                    data={qualityData}
+                    assessment={qualityAssessment}
+                    data={mockQualityData} // Fallback to mock data if no assessment
+                    isLoading={isLoadingAssessment}
                     onApplySuggestion={handleApplySuggestion}
                   />
                 )}
@@ -297,20 +445,29 @@ const ContentGenerator = () => {
             
             {abTest ? (
               <ContentABTesting
-                test={abTest}
+                testId={abTest.id}
+                initialTestData={abTest}
                 onUpdateTest={(updatedTest) => {
                   setAbTest(updatedTest);
                 }}
                 onCreateVariant={(testId) => {
-                  // In a real app, we would create a new variant
-                  alert('Creating new variant for test: ' + testId);
+                  // Create a new variant from the existing content with modifications
+                  if (generatedContent) {
+                    const newContent = generatedContent.replace(
+                      /(#\s.+)/,
+                      "$1 - Alternative Version"
+                    );
+                    
+                    // In a real app, we would make an API call here
+                    alert('Creating new variant: ' + newContent.substring(0, 50) + '...');
+                  }
                 }}
                 onViewContent={(content) => {
-                  // In a real app, we would show the content
+                  // Show content in a modal or edit view
                   alert('Viewing content: ' + content.substring(0, 50) + '...');
                 }}
                 onCompareVariants={(variantIds) => {
-                  // In a real app, we would compare variants
+                  // Compare variants in a modal or dedicated view
                   alert('Comparing variants: ' + variantIds.join(', '));
                 }}
               />
@@ -415,7 +572,8 @@ const ContentGenerator = () => {
                 variant="contained"
                 onClick={handleNext}
                 disabled={(activeStep === 0 && !selectedTemplate) || 
-                          (activeStep === 2 && !generationComplete)}
+                          (activeStep === 1 && Object.keys(templateVariables).length === 0) ||
+                          (activeStep === 2 && (!generationComplete || isGenerating))}
               >
                 {activeStep === steps.length - 1 ? 'Create A/B Test' : 'Next'}
               </Button>
