@@ -49,10 +49,10 @@ services:
     deploy:
       <<: *deploy-limits
     depends_on:
-      api-gateway:
-        condition: service_healthy
+      - api-gateway
     networks:
       - umt-network
+    profiles: ["frontend"]  # Only start when explicitly requested
 
   # Consolidated Agent Service
   marketing-agent:
