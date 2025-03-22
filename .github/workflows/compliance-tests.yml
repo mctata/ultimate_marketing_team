@@ -1,0 +1,249 @@
+name: Compliance Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/core/compliance/**'
+      - 'src/api/endpoints/compliance/**'
+      - 'src/models/compliance/**'
+      - 'tests/core/compliance/**'
+      - 'tests/api/test_compliance_api.py'
+      - 'tests/integration/test_data_retention_workflow.py'
+      - 'tests/integration/test_data_export.py'
+      - 'run_compliance_tests.py'
+      - '.github/workflows/compliance-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/core/compliance/**'
+      - 'src/api/endpoints/compliance/**'
+      - 'src/models/compliance/**'
+      - 'tests/core/compliance/**'
+      - 'tests/api/test_compliance_api.py'
+      - 'tests/integration/test_data_retention_workflow.py'
+      - 'tests/integration/test_data_export.py'
+      - 'run_compliance_tests.py'
+      - '.github/workflows/compliance-tests.yml'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run (unit, api, integration, all)'
+        required: false
+        default: 'all'
+
+jobs:
+  lint-compliance:
+    name: Lint Compliance Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 mypy
+
+      - name: Run flake8 on compliance code
+        run: |
+          flake8 src/core/compliance/ tests/core/compliance/ tests/api/test_compliance_api.py tests/integration/test_data_retention_workflow.py tests/integration/test_data_export.py
+      
+      - name: Run mypy on compliance code
+        run: |
+          mypy src/core/compliance/
+
+  unit-tests:
+    name: Compliance Unit Tests
+    needs: lint-compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run unit tests
+        if: ${{ github.event.inputs.test_suite == 'unit' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' }}
+        run: |
+          python run_compliance_tests.py --unit --verbose
+      
+      - name: Generate coverage report
+        run: |
+          python -m pytest tests/core/compliance/ --cov=src.core.compliance --cov-report=xml
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: compliance-unit
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  api-tests:
+    name: Compliance API Tests
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run API tests
+        if: ${{ github.event.inputs.test_suite == 'api' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' }}
+        run: |
+          python run_compliance_tests.py --api --verbose
+      
+      - name: Generate coverage report
+        run: |
+          python -m pytest tests/api/test_compliance_api.py --cov=src.api.endpoints.compliance --cov-report=xml
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: compliance-api
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  integration-tests:
+    name: Compliance Integration Tests
+    needs: [unit-tests, api-tests]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ultimatemarketing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:6.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Set up database schema
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ultimatemarketing
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          psql -h localhost -U postgres -c "CREATE SCHEMA IF NOT EXISTS umt" ultimatemarketing
+        env:
+          PGPASSWORD: postgres
+      
+      - name: Run migrations
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ultimatemarketing
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          alembic upgrade head
+      
+      - name: Run integration tests
+        if: ${{ github.event.inputs.test_suite == 'integration' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' }}
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ultimatemarketing
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python run_compliance_tests.py --integration --verbose
+        env:
+          REDIS_URL: redis://localhost:6379/0
+      
+      - name: Generate coverage report
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python -m pytest tests/integration/test_data_retention_workflow.py tests/integration/test_data_export.py --cov=src.core.compliance --cov-report=xml
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: compliance-integration
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  report-status:
+    name: Report Test Status
+    needs: [unit-tests, api-tests, integration-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Get test result status
+        id: test_results
+        run: |
+          echo "unit_tests=${{ needs.unit-tests.result }}" >> $GITHUB_OUTPUT
+          echo "api_tests=${{ needs.api-tests.result }}" >> $GITHUB_OUTPUT
+          echo "integration_tests=${{ needs.integration-tests.result }}" >> $GITHUB_OUTPUT
+      
+      - name: Send status notification
+        if: ${{ needs.unit-tests.result == 'failure' || needs.api-tests.result == 'failure' || needs.integration-tests.result == 'failure' }}
+        run: |
+          python scripts/notify_test_status.py \
+            --test-type "Compliance" \
+            --unit-test-status "${{ steps.test_results.outputs.unit_tests }}" \
+            --api-test-status "${{ steps.test_results.outputs.api_tests }}" \
+            --integration-test-status "${{ steps.test_results.outputs.integration_tests }}" \
+            --slack-webhook "${{ secrets.SLACK_WEBHOOK }}" \
+            --github-run-id "${{ github.run_id }}" \
+            --github-repository "${{ github.repository }}"

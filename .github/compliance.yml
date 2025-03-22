@@ -1,0 +1,34 @@
+compliance:
+  name: Compliance Status Check
+  description: Ensures all compliance tests are passing
+  checks:
+    - context: Compliance/lint-compliance
+      description: All compliance code must pass linting checks
+    - context: Compliance/unit-tests
+      description: All unit tests for compliance features must pass
+    - context: Compliance/api-tests
+      description: All API tests for compliance features must pass
+    - context: Compliance/integration-tests
+      description: All integration tests for compliance features must pass
+  settings:
+    strict: true
+    required: true
+    failure_message: Compliance checks failed! All compliance tests must pass before merging.
+    success_message: All compliance checks have passed!
+  actions:
+    - action: add_comment
+      if: failure()
+      comment: |
+        ### ⚠️ Compliance Tests Failed
+        
+        One or more compliance tests are failing. Please fix the issues before merging.
+        
+        Compliance features are critical for regulatory requirements and must be thoroughly tested.
+        
+        See the [Compliance Testing Documentation](docs/COMPLIANCE_TESTING.md) for details on how to run these tests locally.
+    - action: add_label
+      if: failure()
+      label: compliance-failed
+    - action: remove_label
+      if: success()
+      label: compliance-failed
