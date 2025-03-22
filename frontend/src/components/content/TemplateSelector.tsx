@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Box, 
   FormControl, 
@@ -6,14 +6,17 @@ import {
   Select, 
   MenuItem, 
   Typography, 
-  Paper, 
   Skeleton, 
   Chip,
-  FormHelperText
+  FormHelperText,
+  Alert
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
+import { useTemplates } from '../../hooks/useContentGeneration';
+import { Template as ApiTemplate } from '../../services/contentGenerationService';
 
-export interface Template {
+// Map API template to component's internal template format
+interface TemplateView {
   id: string;
   name: string;
   description: string;
@@ -37,58 +40,26 @@ const TemplateSelector = ({
   helperText,
   disabled = false
 }: TemplateSelectorProps) => {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // In a real implementation, this would fetch from an API
-    setLoading(true);
-    // Mock data - would be replaced with API call
-    setTimeout(() => {
-      setTemplates([
-        { 
-          id: 'blog-standard', 
-          name: 'Standard Blog Post', 
-          description: 'A general-purpose blog post template with introduction, body, and conclusion sections.',
-          type: 'blog',
-          tags: ['blog', 'general'],
-          lastModified: '2025-03-01' 
-        },
-        { 
-          id: 'email-newsletter', 
-          name: 'Weekly Newsletter', 
-          description: 'Email newsletter template with header, content sections, and footer.',
-          type: 'email',
-          tags: ['newsletter', 'weekly'],
-          lastModified: '2025-03-05' 
-        },
-        { 
-          id: 'social-announcement', 
-          name: 'Product Announcement', 
-          description: 'Social media post announcing a new product or feature.',
-          type: 'social',
-          tags: ['product', 'announcement'],
-          lastModified: '2025-03-10' 
-        },
-        { 
-          id: 'ad-carousel', 
-          name: 'Image Carousel Ad', 
-          description: 'Multi-image carousel ad with captions and call-to-action.',
-          type: 'ad',
-          tags: ['carousel', 'image'],
-          lastModified: '2025-03-15' 
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  // Use the API hook
+  const { templatesQuery } = useTemplates();
+  
+  // Map API templates to view templates
+  const mapApiTemplateToView = (apiTemplate: ApiTemplate): TemplateView => ({
+    id: apiTemplate.id,
+    name: apiTemplate.name,
+    description: apiTemplate.description,
+    // Map content_type to type or use 'other' as fallback
+    type: (apiTemplate.content_type as 'blog' | 'email' | 'social' | 'ad' | 'landing' | 'other') || 'other',
+    tags: apiTemplate.tags,
+    lastModified: apiTemplate.updated_at
+  });
 
   const handleChange = (event: SelectChangeEvent) => {
     onSelect(event.target.value as string);
   };
 
-  const getTemplateTypeColor = (type: Template['type']) => {
-    const colors: Record<Template['type'], string> = {
+  const getTemplateTypeColor = (type: TemplateView['type']) => {
+    const colors: Record<TemplateView['type'], string> = {
       blog: '#4caf50',
       email: '#2196f3',
       social: '#9c27b0',
@@ -99,13 +70,26 @@ const TemplateSelector = ({
     return colors[type];
   };
 
-  if (loading) {
+  // Check loading state
+  if (templatesQuery.isLoading) {
     return (
       <Box sx={{ width: '100%' }}>
         <Skeleton variant="rectangular" width="100%" height={60} />
       </Box>
     );
   }
+
+  // Handle error state
+  if (templatesQuery.isError) {
+    return (
+      <Alert severity="error" sx={{ width: '100%' }}>
+        Error loading templates. Please try again later.
+      </Alert>
+    );
+  }
+
+  // Map API templates to view templates
+  const templates: TemplateView[] = (templatesQuery.data || []).map(mapApiTemplateToView);
 
   return (
     <FormControl fullWidth error={error} disabled={disabled}>
