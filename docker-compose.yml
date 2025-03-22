@@ -4,10 +4,10 @@ x-deploy-limits: &deploy-limits
   resources:
     limits:
       cpus: '0.50'
-      memory: 512M
+      memory: 384M
     reservations:
       cpus: '0.25'
-      memory: 256M
+      memory: 128M
 
 services:
   # API Gateway
@@ -52,14 +52,14 @@ services:
     networks:
       - umt-network
 
-  # Consolidated Agents Service
-  agents:
+  # Consolidated Agent Service
+  marketing-agent:
     build:
       context: .
       dockerfile: docker/agents/Dockerfile
     env_file: .env
     environment:
-      - AGENT_NAMES=auth_integration_agent,brand_project_management_agent,content_strategy_agent,content_creation_agent,content_ad_management_agent
+      - AGENT_NAME=marketing_agent
     deploy:
       <<: *deploy-limits
     depends_on:
@@ -67,13 +67,13 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    command: ["python", "-m", "src.agents.runner", "--all-agents"]
+    command: ["python", "-m", "src.agents.runner"]
     networks:
       - umt-network
 
   # Infrastructure Services
   postgres:
-    image: ankane/pgvector:latest
+    image: postgres:14-alpine
     deploy:
       <<: *deploy-limits
     ports:
@@ -85,7 +85,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
-      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -101,7 +100,7 @@ services:
       <<: *deploy-limits
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
     volumes:
       - redis-data:/data
     healthcheck:
@@ -114,19 +113,18 @@ services:
       - umt-network
 
   rabbitmq:
-    image: rabbitmq:3.9-management-alpine
+    image: rabbitmq:3.9-alpine
     deploy:
       <<: *deploy-limits
     ports:
       - "5672:5672"
-      - "15672:15672"
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
       timeout: 10s
       retries: 3

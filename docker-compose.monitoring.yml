@@ -1,78 +1,7 @@
 version: '3.8'
 
 services:
-  # Elasticsearch for log storage and search
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
-    container_name: elasticsearch
-    environment:
-      - node.name=elasticsearch
-      - cluster.name=es-umt-cluster
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=false
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    healthcheck:
-      test: curl -s http://localhost:9200 >/dev/null || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Logstash for log processing
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.8.0
-    container_name: logstash
-    environment:
-      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
-    volumes:
-      - ./config/logstash/pipeline:/usr/share/logstash/pipeline
-      - ./config/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
-    ports:
-      - "5044:5044"
-      - "5000:5000/tcp"
-      - "5000:5000/udp"
-      - "9600:9600"
-    networks:
-      - monitoring_network
-    depends_on:
-      - elasticsearch
-    restart: unless-stopped
-    healthcheck:
-      test: bin/logstash -t || exit 1
-      interval: 60s
-      timeout: 15s
-      retries: 3
-
-  # Kibana for log visualization
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.8.0
-    container_name: kibana
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    networks:
-      - monitoring_network
-    depends_on:
-      - elasticsearch
-    restart: unless-stopped
-    healthcheck:
-      test: curl -s http://localhost:5601 >/dev/null || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Prometheus for metrics collection
+  # Prometheus for metrics collection - lightweight configuration
   prometheus:
     image: prom/prometheus:v2.45.0
     container_name: prometheus
@@ -82,21 +11,20 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
       - '--web.enable-lifecycle'
     ports:
       - "9090:9090"
     networks:
       - monitoring_network
     restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9090/-/healthy || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
-  # Grafana for metrics visualization
+  # Grafana for metrics visualization - essential dashboards only
   grafana:
     image: grafana/grafana:10.0.0
     container_name: grafana
@@ -108,7 +36,7 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
     ports:
       - "3000:3000"
     networks:
@@ -116,13 +44,13 @@ services:
     depends_on:
       - prometheus
     restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:3000/api/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 128M
 
-  # Node exporter for server metrics
+  # Node exporter for basic server metrics
   node-exporter:
     image: prom/node-exporter:v1.6.0
     container_name: node-exporter
@@ -135,142 +63,46 @@ services:
       - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.disable-defaults'
+      - '--collector.cpu'
+      - '--collector.meminfo'
+      - '--collector.loadavg'
+      - '--collector.filesystem'
     ports:
       - "9100:9100"
     networks:
       - monitoring_network
     restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9100/metrics || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
 
-  # OTEL collector for distributed tracing
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.80.0
-    container_name: otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
+  # Service exporters - combined into one container
+  exporters:
+    image: prom/prometheus:v2.45.0
+    container_name: exporters
     volumes:
-      - ./config/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "9464:9464"   # Prometheus exporter
+      - ./scripts/exporters.sh:/exporters.sh
+    entrypoint: ["/bin/sh", "/exporters.sh"]
     networks:
       - monitoring_network
-    depends_on:
-      - prometheus
+      - default
     restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:13133/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Jaeger for distributed tracing visualization
-  jaeger:
-    image: jaegertracing/all-in-one:1.45
-    container_name: jaeger
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
-    ports:
-      - "16686:16686"  # UI
-      - "4318:4318"    # OTLP HTTP
-      - "14268:14268"  # jaeger.thrift directly
-      - "9411:9411"    # zipkin.thrift
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:14269/ || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # AlertManager for managing alerts
-  alertmanager:
-    image: prom/alertmanager:v0.25.0
-    container_name: alertmanager
-    volumes:
-      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      - alertmanager_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-    ports:
-      - "9093:9093"
-    networks:
-      - monitoring_network
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9093/-/healthy || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Redis exporter for Redis metrics
-  redis-exporter:
-    image: oliver006/redis_exporter:v1.45.0
-    container_name: redis-exporter
-    command:
-      - '--redis.addr=redis://redis:6379'
-    ports:
-      - "9121:9121"
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9121/metrics || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Postgres exporter for PostgreSQL metrics
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.12.0
-    container_name: postgres-exporter
-    environment:
-      - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres:5432/ultimatemarketing?sslmode=disable
-    ports:
-      - "9187:9187"
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9187/metrics || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Synthetic monitoring
-  blackbox-exporter:
-    image: prom/blackbox-exporter:v0.24.0
-    container_name: blackbox-exporter
-    volumes:
-      - ./config/blackbox-exporter/blackbox.yml:/etc/blackbox_exporter/config.yml
-    command:
-      - '--config.file=/etc/blackbox_exporter/config.yml'
-    ports:
-      - "9115:9115"
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    healthcheck:
-      test: wget -q -O- http://localhost:9115/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 64M
 
 volumes:
-  es_data:
   prometheus_data:
   grafana_data:
-  alertmanager_data:
 
 networks:
   monitoring_network:
     driver: bridge
+  default:
+    external: true
+    name: umt-network
