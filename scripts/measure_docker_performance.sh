@@ -40,7 +40,7 @@ measure_startup_time() {
   ELAPSED=0
   
   while [ $ELAPSED -lt $MAX_WAIT ]; do
-    if docker-compose logs api_gateway | grep -q "Application startup complete"; then
+    if docker-compose logs api-gateway | grep -q "Application startup complete"; then
       break
     fi
     sleep 1
