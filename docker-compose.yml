@@ -1,5 +1,14 @@
 version: '3.8'
 
+x-deploy-limits: &deploy-limits
+  resources:
+    limits:
+      cpus: '0.50'
+      memory: 512M
+    reservations:
+      cpus: '0.25'
+      memory: 256M
+
 services:
   # API Gateway
   api-gateway:
@@ -9,12 +18,21 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    deploy:
+      <<: *deploy-limits
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
-    volumes:
-      - ./src:/app/src
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - umt-network
 
@@ -26,97 +44,38 @@ services:
     ports:
       - "3000:80"
     env_file: ./frontend/.env.local
+    deploy:
+      <<: *deploy-limits
     depends_on:
-      - api-gateway
-    volumes:
-      - ./frontend:/app/src
+      api-gateway:
+        condition: service_healthy
     networks:
       - umt-network
 
-  # Agent Services
-  auth-agent:
+  # Consolidated Agents Service
+  agents:
     build:
       context: .
       dockerfile: docker/agents/Dockerfile
     env_file: .env
     environment:
-      - AGENT_NAME=auth_integration_agent
+      - AGENT_NAMES=auth_integration_agent,brand_project_management_agent,content_strategy_agent,content_creation_agent,content_ad_management_agent
+    deploy:
+      <<: *deploy-limits
     depends_on:
-      - rabbitmq
-      - postgres
-    volumes:
-      - ./src:/app/src
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: ["python", "-m", "src.agents.runner", "--all-agents"]
     networks:
       - umt-network
-    command: ["python", "-m", "src.agents.runner"]
-
-  brand-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env
-    environment:
-      - AGENT_NAME=brand_project_management_agent
-    depends_on:
-      - rabbitmq
-      - postgres
-    volumes:
-      - ./src:/app/src
-    networks:
-      - umt-network
-    command: ["python", "-m", "src.agents.runner"]
-
-  content-strategy-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env
-    environment:
-      - AGENT_NAME=content_strategy_agent
-    depends_on:
-      - rabbitmq
-      - postgres
-    volumes:
-      - ./src:/app/src
-    networks:
-      - umt-network
-    command: ["python", "-m", "src.agents.runner"]
-
-  content-creation-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env
-    environment:
-      - AGENT_NAME=content_creation_agent
-    depends_on:
-      - rabbitmq
-      - postgres
-    volumes:
-      - ./src:/app/src
-    networks:
-      - umt-network
-    command: ["python", "-m", "src.agents.runner"]
-
-  content-ad-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env
-    environment:
-      - AGENT_NAME=content_ad_management_agent
-    depends_on:
-      - rabbitmq
-      - postgres
-    volumes:
-      - ./src:/app/src
-    networks:
-      - umt-network
-    command: ["python", "-m", "src.agents.runner"]
 
   # Infrastructure Services
   postgres:
     image: ankane/pgvector:latest
+    deploy:
+      <<: *deploy-limits
     ports:
       - "5432:5432"
     environment:
@@ -127,21 +86,37 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
       - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - umt-network
 
   redis:
     image: redis:6.2-alpine
+    deploy:
+      <<: *deploy-limits
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - umt-network
 
   rabbitmq:
     image: rabbitmq:3.9-management-alpine
+    deploy:
+      <<: *deploy-limits
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -150,6 +125,12 @@ services:
       - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - umt-network
       
@@ -163,12 +144,12 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ultimatemarketing
       - PYTHONPATH=/app
     depends_on:
-      - postgres
-    volumes:
-      - .:/app
+      postgres:
+        condition: service_healthy
     networks:
       - umt-network
     command: alembic upgrade head
+    profiles: ["migrations"]
 
 networks:
   umt-network:
