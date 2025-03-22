@@ -41,6 +41,9 @@ COPY src/models /app/src/models
 COPY src/core /app/src/core
 COPY alembic.ini /app/
 
+# Create empty agents directory to fix imports
+RUN mkdir -p /app/src/agents
+
 # Expose the application port
 EXPOSE 8000
 
