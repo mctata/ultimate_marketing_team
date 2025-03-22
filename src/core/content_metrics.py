@@ -1031,71 +1031,28 @@ class ContentMetricsService:
             Dict with prediction results
         """
         try:
-            with get_db() as session:
-                # Find the most appropriate prediction model
-                stmt = select(ContentPredictionModel).where(
-                    ContentPredictionModel.target_metric == target_metric
-                ).order_by(
-                    desc(ContentPredictionModel.training_date)
-                ).limit(1)
-                
-                result = session.execute(stmt)
-                model = result.scalars().first()
-                
-                if not model:
-                    return {
-                        'error': f'No prediction model available for {target_metric}'
-                    }
-                
-                # In a real implementation, we would:
-                # 1. Load the model from model_path
-                # 2. Prepare features from content_data
-                # 3. Generate predictions
-                # Here, we'll simulate a prediction
-                
-                # Simulated prediction logic
-                base_value = 1000  # Base value for the prediction
-                confidence = 0.2   # Confidence interval width (20%)
-                
-                predicted_value = base_value
-                confidence_interval_lower = predicted_value * (1 - confidence)
-                confidence_interval_upper = predicted_value * (1 + confidence)
-                
-                # Record the prediction in the database
-                prediction = ContentPerformancePrediction(
-                    content_id=content_id,
-                    model_id=model.id,
-                    prediction_date=datetime.utcnow() + timedelta(days=prediction_horizon),
-                    metric=target_metric,
-                    predicted_value=predicted_value,
-                    confidence_interval_lower=confidence_interval_lower,
-                    confidence_interval_upper=confidence_interval_upper,
-                    features_used=content_data,
-                    created_at=datetime.utcnow()
-                )
-                
-                session.add(prediction)
-                session.commit()
-                session.refresh(prediction)
-                
-                # Update model last_used timestamp
-                model.last_used = datetime.utcnow()
-                session.commit()
-                
+            # Ensure content_id is included in content_data
+            content_data['content_id'] = content_id
+            
+            # Import here to avoid circular imports
+            from src.core.content_prediction_models import content_prediction_service
+            
+            # Find the most appropriate prediction model for this metric
+            model = await content_prediction_service.get_model_by_metric(target_metric)
+            
+            if not model:
                 return {
-                    'content_id': content_id,
-                    'target_metric': target_metric,
-                    'prediction_date': prediction.prediction_date.isoformat(),
-                    'predicted_value': predicted_value,
-                    'confidence_interval_lower': confidence_interval_lower,
-                    'confidence_interval_upper': confidence_interval_upper,
-                    'model': {
-                        'id': model.id,
-                        'name': model.name,
-                        'model_type': model.model_type,
-                        'performance_metrics': model.performance_metrics
-                    }
+                    'error': f'No prediction model available for {target_metric}'
                 }
+            
+            # Generate prediction using the model
+            prediction_result = await content_prediction_service.predict(
+                model_id=model['id'],
+                content_data=content_data,
+                prediction_horizon=prediction_horizon
+            )
+            
+            return prediction_result
                 
         except Exception as e:
             logger.error(f"Error predicting content performance: {str(e)}")
