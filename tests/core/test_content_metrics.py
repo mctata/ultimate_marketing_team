@@ -418,6 +418,55 @@ class TestContentMetricsService:
 
     @pytest.mark.asyncio
     @patch('src.core.content_metrics.get_db')
+    async def test_record_attribution_path(self, mock_get_db):
+        """Test recording an attribution path"""
+        # Setup mock session
+        mock_session = MagicMock()
+        mock_get_db.return_value.__enter__.return_value = mock_session
+        
+        # Create test data
+        user_identifier = "test_user_123"
+        conversion_id = "test_conversion_456"
+        conversion_type = "purchase"
+        conversion_value = 10000  # $100.00 in cents
+        path = [
+            {"content_id": 1, "timestamp": "2025-03-01T08:00:00", "platform": "facebook"},
+            {"content_id": 2, "timestamp": "2025-03-01T09:30:00", "platform": "website"},
+            {"content_id": 3, "timestamp": "2025-03-01T10:45:00", "platform": "website"}
+        ]
+        
+        # Call function
+        result = await ContentMetricsService.record_attribution_path(
+            user_identifier=user_identifier,
+            conversion_id=conversion_id,
+            conversion_type=conversion_type,
+            conversion_value=conversion_value,
+            path=path
+        )
+        
+        # Assert correct data was recorded
+        assert mock_session.add.called
+        args, _ = mock_session.add.call_args
+        attribution_path = args[0]
+        
+        assert attribution_path.user_identifier == user_identifier
+        assert attribution_path.conversion_id == conversion_id
+        assert attribution_path.conversion_type == conversion_type
+        assert attribution_path.conversion_value == conversion_value
+        assert len(attribution_path.path) == 3
+        assert attribution_path.first_touch_content_id == 1
+        assert attribution_path.last_touch_content_id == 3
+        assert mock_session.commit.called
+        
+        # Assert result is correct
+        assert result['user_identifier'] == user_identifier
+        assert result['conversion_id'] == conversion_id
+        assert result['first_touch_content_id'] == 1
+        assert result['last_touch_content_id'] == 3
+        assert result['path_length'] == 3
+
+    @pytest.mark.asyncio
+    @patch('src.core.content_metrics.get_db')
     async def test_get_content_attribution(self, mock_get_db, mock_attribution_path):
         """Test retrieving content attribution data"""
         # Setup mock session

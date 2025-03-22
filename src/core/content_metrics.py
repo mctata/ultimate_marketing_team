@@ -6,6 +6,7 @@ This module provides functionality for:
 2. Calculating engagement and conversion metrics
 3. Generating content performance predictions
 4. Creating and managing analytics reports and dashboards
+5. Tracking content attribution paths
 """
 
 import asyncio
@@ -14,7 +15,7 @@ from typing import Dict, List, Optional, Union, Any, Tuple
 from datetime import datetime, timedelta, date
 import pandas as pd
 import numpy as np
-from sqlalchemy import func, select, and_, desc, cast, extract, text
+from sqlalchemy import func, select, and_, desc, cast, extract, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import expression
@@ -1012,6 +1013,78 @@ class ContentMetricsService:
             logger.error(f"Error getting analytics reports: {str(e)}")
             return []
     
+    @staticmethod
+    async def record_attribution_path(
+        user_identifier: str,
+        conversion_id: str,
+        conversion_type: str,
+        conversion_value: int,
+        path: List[Dict],
+        first_touch_content_id: Optional[int] = None,
+        last_touch_content_id: Optional[int] = None,
+        conversion_date: Optional[datetime] = None
+    ) -> Dict:
+        """Record a content attribution path for a conversion.
+        
+        Args:
+            user_identifier: Anonymized user ID
+            conversion_id: Unique conversion identifier
+            conversion_type: Type of conversion (purchase, signup, etc.)
+            conversion_value: Value of the conversion in cents
+            path: List of touchpoints with content_id, timestamp, platform
+            first_touch_content_id: Optional content ID of first touch
+            last_touch_content_id: Optional content ID of last touch
+            conversion_date: Optional conversion date (uses current time if not provided)
+            
+        Returns:
+            Dict with created attribution path data
+        """
+        try:
+            if not conversion_date:
+                conversion_date = datetime.utcnow()
+                
+            # Determine first and last touch if not provided
+            if not first_touch_content_id and path:
+                first_touchpoint = sorted(path, key=lambda x: x.get('timestamp'))[0]
+                first_touch_content_id = first_touchpoint.get('content_id')
+                
+            if not last_touch_content_id and path:
+                last_touchpoint = sorted(path, key=lambda x: x.get('timestamp'))[-1]
+                last_touch_content_id = last_touchpoint.get('content_id')
+            
+            with get_db() as session:
+                attribution_path = ContentAttributionPath(
+                    user_identifier=user_identifier,
+                    conversion_id=conversion_id,
+                    conversion_type=conversion_type,
+                    conversion_value=conversion_value,
+                    path=path,
+                    first_touch_content_id=first_touch_content_id,
+                    last_touch_content_id=last_touch_content_id,
+                    conversion_date=conversion_date,
+                    created_at=datetime.utcnow()
+                )
+                
+                session.add(attribution_path)
+                session.commit()
+                session.refresh(attribution_path)
+                
+                return {
+                    'id': attribution_path.id,
+                    'user_identifier': attribution_path.user_identifier,
+                    'conversion_id': attribution_path.conversion_id,
+                    'conversion_type': attribution_path.conversion_type,
+                    'conversion_value': attribution_path.conversion_value,
+                    'first_touch_content_id': attribution_path.first_touch_content_id,
+                    'last_touch_content_id': attribution_path.last_touch_content_id,
+                    'path_length': len(attribution_path.path),
+                    'conversion_date': attribution_path.conversion_date.isoformat() if attribution_path.conversion_date else None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error recording attribution path: {str(e)}")
+            return {'error': str(e)}
+            
     @staticmethod
     async def predict_content_performance(
         content_id: int,
