@@ -5,6 +5,10 @@ A comprehensive platform for managing marketing campaigns, content creation, and
 ## Features
 
 - AI-powered content creation and optimization
+- Advanced analytics with customizable dashboards
+- Predictive content performance with machine learning
+- Cross-channel attribution modeling
+- Content recommendation engine
 - Campaign management and analytics
 - Brand and project management
 - Integration with advertising platforms
@@ -265,6 +269,30 @@ The Ultimate Marketing Team consists of five specialized AI agents:
 5. Content & Ad Management Agent: Handles publishing and ad campaign management
 
 All agents inherit from BaseAgent, which provides core messaging and event handling functionality.
+
+### Analytics & Recommendations System
+
+The platform includes advanced analytics and recommendation capabilities:
+
+1. **Content Analytics**: 
+   - Customizable analytics dashboards using React Grid Layout
+   - Performance metrics tracking with time-series analysis
+   - Cross-channel attribution modeling (first-touch, last-touch, linear, position-based)
+   - Automated reporting with scheduling and multiple export formats
+
+2. **Predictive Analytics**:
+   - Machine learning models for content performance prediction
+   - Multiple model types supported (Random Forest, Gradient Boosting, Linear, etc.)
+   - Confidence intervals for predictions
+   - Automated model training and selection
+
+3. **Content Recommendation Engine**:
+   - Content clustering based on features and text similarity
+   - Similar content recommendations
+   - Performance-based recommendations
+   - User-specific recommendations based on interaction history
+
+The analytics system integrates with the content management workflow to provide real-time insights and predictive guidance for content creation and optimization.
 
 ## Database Migrations
 
