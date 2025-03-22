@@ -68,5 +68,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom'],
+    exclude: ['@tanstack/react-query-devtools', '@mui/x-date-pickers-pro'],
   },
 });

@@ -19,7 +19,7 @@ import {
   Tooltip
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
-import RestoreIcon from '@mui/icons-material/RestoreDefaultsOutlined';
+import RestoreIcon from '@mui/icons-material/RestoreOutlined';
 import { useChartAccessibility, defaultAccessibilityConfig } from '../../context/ChartAccessibilityContext';
 
 interface ChartAccessibilitySettingsProps {

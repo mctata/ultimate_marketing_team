@@ -13,7 +13,7 @@ import {
   Alert
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, subDays } from 'date-fns';
 
 // Custom components
