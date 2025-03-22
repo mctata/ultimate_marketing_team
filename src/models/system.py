@@ -392,7 +392,7 @@ class UserInteractionEvent(Base):
     # Context data
     content_id = Column(Integer, nullable=True, index=True)  # Associated content if applicable
     value = Column(Float, nullable=True)  # Numeric value if applicable (e.g., time spent)
-    metadata = Column(JSON, nullable=True)  # Additional event metadata
+    event_metadata = Column(JSON, nullable=True)  # Additional event metadata
     
     # Device and environment
     device_type = Column(String(50), nullable=True)  # desktop, mobile, tablet
