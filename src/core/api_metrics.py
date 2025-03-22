@@ -29,7 +29,7 @@ from src.models.system import (
     AIAssistantUsageMetric,
     WebSocketMetric,
     UserJourneyPath,
-    ABTestVariant
+    UXABTestVariant
 )
 
 # Lock for synchronizing daily summary updates
@@ -1027,7 +1027,7 @@ class UXAnalyticsService:
         """
         try:
             # Create new variant
-            variant = ABTestVariant(
+            variant = UXABTestVariant(
                 test_id=test_id,
                 name=name,
                 description=description,
@@ -1072,7 +1072,7 @@ class UXAnalyticsService:
         try:
             with get_db() as session:
                 # Get all variants for this test
-                stmt = select(ABTestVariant).where(ABTestVariant.test_id == test_id)
+                stmt = select(UXABTestVariant).where(UXABTestVariant.test_id == test_id)
                 result = session.execute(stmt)
                 variants = result.scalars().all()
                 
@@ -1438,20 +1438,20 @@ class UXAnalyticsService:
         filters = []
         
         if test_id:
-            filters.append(ABTestVariant.test_id == test_id)
+            filters.append(UXABTestVariant.test_id == test_id)
         if feature_area:
-            filters.append(ABTestVariant.feature_area == feature_area)
+            filters.append(UXABTestVariant.feature_area == feature_area)
         if status:
-            filters.append(ABTestVariant.status == status)
+            filters.append(UXABTestVariant.status == status)
         
         try:
             with get_db() as session:
-                stmt = select(ABTestVariant)
+                stmt = select(UXABTestVariant)
                 
                 if filters:
                     stmt = stmt.where(and_(*filters))
                     
-                stmt = stmt.order_by(ABTestVariant.test_id, ABTestVariant.name)
+                stmt = stmt.order_by(UXABTestVariant.test_id, UXABTestVariant.name)
                 
                 result = session.execute(stmt)
                 variants = result.scalars().all()
