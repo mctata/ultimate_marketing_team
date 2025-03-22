@@ -30,6 +30,8 @@ import {
   QuestionMark as QuestionMarkIcon,
 } from '@mui/icons-material';
 
+import { QualityAssessment } from '../../services/contentGenerationService';
+
 // Define the metrics data structure
 export interface ContentQualityData {
   overallScore: number;
@@ -46,12 +48,75 @@ export interface ContentQualityData {
 }
 
 interface ContentQualityMetricsProps {
-  data: ContentQualityData;
+  data?: ContentQualityData;
+  assessment?: QualityAssessment;
+  isLoading?: boolean;
+  contentId?: string;
   onApplySuggestion?: (suggestion: string) => void;
 }
 
-const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetricsProps) => {
+// Map API quality assessment to component data model
+const mapApiAssessmentToComponentData = (assessment: QualityAssessment): ContentQualityData => {
+  return {
+    overallScore: assessment.overall_score,
+    metrics: {
+      readability: assessment.metrics.readability,
+      grammar: assessment.metrics.grammar_spelling,
+      seo: assessment.metrics.seo_alignment,
+      engagement: assessment.metrics.engagement,
+      brandConsistency: assessment.metrics.brand_alignment,
+    },
+    strengths: assessment.strengths,
+    improvements: assessment.improvement_areas,
+    suggestions: assessment.improvement_suggestions,
+  };
+};
+
+const ContentQualityMetrics = ({ 
+  data, 
+  assessment, 
+  isLoading = false, 
+  contentId,
+  onApplySuggestion 
+}: ContentQualityMetricsProps) => {
   const [showSuggestions, setShowSuggestions] = useState(true);
+  
+  // If assessment is provided, convert it to the component data format
+  const qualityData: ContentQualityData | undefined = assessment 
+    ? mapApiAssessmentToComponentData(assessment) 
+    : data;
+  
+  // Return loading state or not found message if no data available
+  if (isLoading) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body1">
+          Loading quality assessment...
+        </Typography>
+        <LinearProgress sx={{ mt: 2 }} />
+      </Paper>
+    );
+  }
+  
+  if (!qualityData) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body1" color="text.secondary">
+          No quality assessment available for this content.
+        </Typography>
+        {contentId && (
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            sx={{ mt: 2 }}
+            // This would trigger a quality assessment request in a real implementation
+          >
+            Request Quality Assessment
+          </Button>
+        )}
+      </Paper>
+    );
+  }
   
   const getScoreColor = (score: number) => {
     if (score >= 85) return '#4caf50'; // Green
@@ -114,22 +179,22 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
                     width: 120,
                     height: 120,
                     borderRadius: '50%',
-                    border: `8px solid ${getScoreColor(data.overallScore)}`,
+                    border: `8px solid ${getScoreColor(qualityData.overallScore)}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
                   <Typography variant="h4" fontWeight="bold">
-                    {data.overallScore}
+                    {qualityData.overallScore}
                   </Typography>
                 </Box>
               </Box>
               <Typography 
                 variant="body1" 
-                sx={{ fontWeight: 'bold', color: getScoreColor(data.overallScore) }}
+                sx={{ fontWeight: 'bold', color: getScoreColor(qualityData.overallScore) }}
               >
-                {getScoreLabel(data.overallScore)}
+                {getScoreLabel(qualityData.overallScore)}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Based on 5 quality metrics
@@ -154,21 +219,21 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
               
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  {getMetricIcon(data.metrics.readability)}
+                  {getMetricIcon(qualityData.metrics.readability)}
                   <Typography variant="body2" sx={{ ml: 1 }}>Readability</Typography>
                   <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'medium' }}>
-                    {data.metrics.readability}/100
+                    {qualityData.metrics.readability}/100
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={data.metrics.readability} 
+                  value={qualityData.metrics.readability} 
                   sx={{ 
                     height: 6, 
                     borderRadius: 3,
                     bgcolor: '#f0f0f0',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: getScoreColor(data.metrics.readability),
+                      bgcolor: getScoreColor(qualityData.metrics.readability),
                     }
                   }} 
                 />
@@ -176,21 +241,21 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
               
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  {getMetricIcon(data.metrics.grammar)}
+                  {getMetricIcon(qualityData.metrics.grammar)}
                   <Typography variant="body2" sx={{ ml: 1 }}>Grammar & Style</Typography>
                   <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'medium' }}>
-                    {data.metrics.grammar}/100
+                    {qualityData.metrics.grammar}/100
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={data.metrics.grammar} 
+                  value={qualityData.metrics.grammar} 
                   sx={{ 
                     height: 6, 
                     borderRadius: 3,
                     bgcolor: '#f0f0f0',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: getScoreColor(data.metrics.grammar),
+                      bgcolor: getScoreColor(qualityData.metrics.grammar),
                     }
                   }} 
                 />
@@ -198,21 +263,21 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
               
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  {getMetricIcon(data.metrics.seo)}
+                  {getMetricIcon(qualityData.metrics.seo)}
                   <Typography variant="body2" sx={{ ml: 1 }}>SEO Optimization</Typography>
                   <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'medium' }}>
-                    {data.metrics.seo}/100
+                    {qualityData.metrics.seo}/100
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={data.metrics.seo} 
+                  value={qualityData.metrics.seo} 
                   sx={{ 
                     height: 6, 
                     borderRadius: 3,
                     bgcolor: '#f0f0f0',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: getScoreColor(data.metrics.seo),
+                      bgcolor: getScoreColor(qualityData.metrics.seo),
                     }
                   }} 
                 />
@@ -220,21 +285,21 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
               
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  {getMetricIcon(data.metrics.engagement)}
+                  {getMetricIcon(qualityData.metrics.engagement)}
                   <Typography variant="body2" sx={{ ml: 1 }}>Engagement Potential</Typography>
                   <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'medium' }}>
-                    {data.metrics.engagement}/100
+                    {qualityData.metrics.engagement}/100
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={data.metrics.engagement} 
+                  value={qualityData.metrics.engagement} 
                   sx={{ 
                     height: 6, 
                     borderRadius: 3,
                     bgcolor: '#f0f0f0',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: getScoreColor(data.metrics.engagement),
+                      bgcolor: getScoreColor(qualityData.metrics.engagement),
                     }
                   }} 
                 />
@@ -242,21 +307,21 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
               
               <Box sx={{ mb: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  {getMetricIcon(data.metrics.brandConsistency)}
+                  {getMetricIcon(qualityData.metrics.brandConsistency)}
                   <Typography variant="body2" sx={{ ml: 1 }}>Brand Consistency</Typography>
                   <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'medium' }}>
-                    {data.metrics.brandConsistency}/100
+                    {qualityData.metrics.brandConsistency}/100
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={data.metrics.brandConsistency} 
+                  value={qualityData.metrics.brandConsistency} 
                   sx={{ 
                     height: 6, 
                     borderRadius: 3,
                     bgcolor: '#f0f0f0',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: getScoreColor(data.metrics.brandConsistency),
+                      bgcolor: getScoreColor(qualityData.metrics.brandConsistency),
                     }
                   }} 
                 />
@@ -277,7 +342,7 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
           </Typography>
           
           <List dense disablePadding>
-            {data.strengths.map((strength, index) => (
+            {qualityData.strengths.map((strength, index) => (
               <ListItem key={index} disablePadding sx={{ mb: 1 }}>
                 <ListItemIcon sx={{ minWidth: 32 }}>
                   <CheckCircleIcon fontSize="small" sx={{ color: '#4caf50' }} />
@@ -298,7 +363,7 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
           </Typography>
           
           <List dense disablePadding>
-            {data.improvements.map((improvement, index) => (
+            {qualityData.improvements.map((improvement, index) => (
               <ListItem key={index} disablePadding sx={{ mb: 1 }}>
                 <ListItemIcon sx={{ minWidth: 32 }}>
                   <WarningIcon fontSize="small" sx={{ color: '#ff9800' }} />
@@ -314,61 +379,63 @@ const ContentQualityMetrics = ({ data, onApplySuggestion }: ContentQualityMetric
       </Grid>
       
       {/* Suggestions */}
-      <Box sx={{ mt: 3 }}>
-        <Button
-          onClick={() => setShowSuggestions(!showSuggestions)}
-          endIcon={<ExpandMoreIcon sx={{ transform: showSuggestions ? 'rotate(180deg)' : 'none' }} />}
-          sx={{ mb: 1 }}
-          color="primary"
-          variant="text"
-        >
-          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center' }}>
-            <LightbulbIcon fontSize="small" sx={{ mr: 1, color: '#0066cc' }} />
-            Improvement Suggestions
-          </Typography>
-        </Button>
-        
-        <Collapse in={showSuggestions}>
-          <Paper sx={{ p: 2, bgcolor: '#f8fafd', border: '1px solid #e3f2fd' }}>
-            <List dense disablePadding>
-              {data.suggestions.map((suggestion, index) => (
-                <ListItem
-                  key={index}
-                  disablePadding
-                  sx={{ 
-                    mb: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', width: '100%' }}>
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <LightbulbIcon fontSize="small" sx={{ color: '#0066cc' }} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={suggestion}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                    />
-                  </Box>
-                  
-                  {onApplySuggestion && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => onApplySuggestion(suggestion)}
-                      sx={{ ml: 4, mt: 1 }}
-                    >
-                      Apply Suggestion
-                    </Button>
-                  )}
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Collapse>
-      </Box>
+      {qualityData.suggestions && qualityData.suggestions.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Button
+            onClick={() => setShowSuggestions(!showSuggestions)}
+            endIcon={<ExpandMoreIcon sx={{ transform: showSuggestions ? 'rotate(180deg)' : 'none' }} />}
+            sx={{ mb: 1 }}
+            color="primary"
+            variant="text"
+          >
+            <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center' }}>
+              <LightbulbIcon fontSize="small" sx={{ mr: 1, color: '#0066cc' }} />
+              Improvement Suggestions
+            </Typography>
+          </Button>
+          
+          <Collapse in={showSuggestions}>
+            <Paper sx={{ p: 2, bgcolor: '#f8fafd', border: '1px solid #e3f2fd' }}>
+              <List dense disablePadding>
+                {qualityData.suggestions.map((suggestion, index) => (
+                  <ListItem
+                    key={index}
+                    disablePadding
+                    sx={{ 
+                      mb: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', width: '100%' }}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <LightbulbIcon fontSize="small" sx={{ color: '#0066cc' }} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={suggestion}
+                        primaryTypographyProps={{ variant: 'body2' }}
+                      />
+                    </Box>
+                    
+                    {onApplySuggestion && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => onApplySuggestion(suggestion)}
+                        sx={{ ml: 4, mt: 1 }}
+                      >
+                        Apply Suggestion
+                      </Button>
+                    )}
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Collapse>
+        </Box>
+      )}
     </Paper>
   );
 };

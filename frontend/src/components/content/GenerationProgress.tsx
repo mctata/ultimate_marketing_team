@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -11,12 +11,16 @@ import {
   Chip,
   Button,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
+import { useContentGeneration } from '../../hooks/useContentGeneration';
+import { contentWebSocketService, ContentGenerationEvent } from '../../services/contentWebSocketService';
+import { TaskStatusResponse, ContentVariation } from '../../services/contentGenerationService';
 
 export interface GenerationStep {
   id: string;
@@ -28,134 +32,204 @@ export interface GenerationStep {
 }
 
 interface GenerationProgressProps {
-  jobId: string;
+  taskId: string;
   onCancel?: () => void;
-  onComplete?: (result: any) => void;
+  onComplete?: (result: ContentVariation[]) => void;
 }
 
-const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressProps) => {
-  const [steps, setSteps] = useState<GenerationStep[]>([
-    {
-      id: 'template-preparation',
-      label: 'Template Preparation',
-      description: 'Loading template and preparing variables',
-      status: 'pending'
-    },
-    {
-      id: 'content-generation',
-      label: 'Content Generation',
-      description: 'Generating content based on your specifications',
-      status: 'pending'
-    },
-    {
-      id: 'quality-assessment',
-      label: 'Quality Assessment',
-      description: 'Evaluating content quality and readability',
-      status: 'pending'
-    },
-    {
-      id: 'optimization',
-      label: 'Content Optimization',
-      description: 'Applying final enhancements and improvements',
-      status: 'pending'
-    }
-  ]);
-  
+// Define default generation steps
+const DEFAULT_STEPS: GenerationStep[] = [
+  {
+    id: 'template-preparation',
+    label: 'Template Preparation',
+    description: 'Loading template and preparing variables',
+    status: 'pending'
+  },
+  {
+    id: 'content-generation',
+    label: 'Content Generation',
+    description: 'Generating content based on your specifications',
+    status: 'pending'
+  },
+  {
+    id: 'quality-assessment',
+    label: 'Quality Assessment',
+    description: 'Evaluating content quality and readability',
+    status: 'pending'
+  },
+  {
+    id: 'optimization',
+    label: 'Content Optimization',
+    description: 'Applying final enhancements and improvements',
+    status: 'pending'
+  }
+];
+
+const GenerationProgress = ({ taskId, onCancel, onComplete }: GenerationProgressProps) => {
+  const { getTaskStatus, wsConnected } = useContentGeneration();
+  const [steps, setSteps] = useState<GenerationStep[]>(DEFAULT_STEPS);
+  const [taskStatus, setTaskStatus] = useState<TaskStatusResponse | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
-  
-  // Mock function to simulate getting progress updates from a websocket
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    let currentProgress = 0;
-    let currentStep = 0;
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Function to update progress based on task status
+  const updateProgressFromTaskStatus = useCallback((status: TaskStatusResponse) => {
+    setTaskStatus(status);
     
-    const simulateProgress = () => {
-      if (currentStep < steps.length) {
-        // Update step status
-        setSteps(prevSteps => {
-          const newSteps = [...prevSteps];
-          
-          // Set current step to in-progress
-          if (newSteps[currentStep].status === 'pending') {
-            newSteps[currentStep].status = 'in-progress';
-            newSteps[currentStep].progress = 0;
-          }
-          
-          // Update progress of current step
-          if (newSteps[currentStep].status === 'in-progress') {
-            const stepProgress = (newSteps[currentStep].progress || 0) + Math.random() * 10;
-            
-            if (stepProgress >= 100) {
-              // Complete current step
-              newSteps[currentStep].status = 'completed';
-              newSteps[currentStep].progress = 100;
-              
-              // Move to next step
-              currentStep++;
-              
-              // Start next step if available
-              if (currentStep < newSteps.length) {
-                newSteps[currentStep].status = 'in-progress';
-                newSteps[currentStep].progress = 0;
-              }
-            } else {
-              newSteps[currentStep].progress = stepProgress;
-            }
-          }
-          
-          return newSteps;
-        });
+    // Update overall progress
+    if (status.progress !== undefined) {
+      setOverallProgress(status.progress);
+    }
+
+    // Update steps based on status
+    if (status.steps_completed !== undefined && status.total_steps !== undefined) {
+      // Calculate current step
+      const currentStepIndex = Math.min(status.steps_completed, steps.length - 1);
+      
+      // Update active step
+      setActiveStep(currentStepIndex);
+      
+      // Create new steps array with updated statuses
+      setSteps(prevSteps => {
+        const newSteps = [...prevSteps];
         
-        // Update active step
-        setActiveStep(currentStep);
-        
-        // Calculate overall progress
-        const newOverallProgress = (currentStep * 100 + (steps[currentStep]?.progress || 0)) / steps.length;
-        setOverallProgress(newOverallProgress);
-        
-        // Check if all steps are complete
-        if (currentStep >= steps.length) {
-          setIsComplete(true);
-          
-          // Simulate completion with result
-          setTimeout(() => {
-            setResult({
-              content: "This is the generated content based on your template and variables.",
-              metrics: {
-                readability: 85,
-                grammar: 92,
-                seo: 78,
-                engagement: 80
-              },
-              suggestions: [
-                "Consider adding more specific examples to strengthen your arguments.",
-                "The introduction could be more compelling with a stronger hook.",
-                "Add more statistics to support your main points."
-              ]
-            });
-            
-            // Call onComplete callback if provided
-            if (onComplete) {
-              onComplete(result);
-            }
-          }, 1000);
-          
-          clearInterval(timer);
+        // Mark completed steps
+        for (let i = 0; i < currentStepIndex; i++) {
+          newSteps[i].status = 'completed';
+          newSteps[i].progress = 100;
         }
+        
+        // Set current step to in-progress
+        if (currentStepIndex < newSteps.length) {
+          // Calculate progress for current step
+          const stepProgress = status.total_steps ? 
+            ((status.progress || 0) - (currentStepIndex * (100 / newSteps.length))) * newSteps.length : 
+            50;
+          
+          newSteps[currentStepIndex].status = 'in-progress';
+          newSteps[currentStepIndex].progress = stepProgress;
+          newSteps[currentStepIndex].message = status.current_step;
+        }
+        
+        return newSteps;
+      });
+    }
+    
+    // Handle completion or error
+    if (status.status === 'completed') {
+      setIsComplete(true);
+      
+      // Call onComplete callback if provided
+      if (onComplete && status.result) {
+        onComplete(status.result);
+      }
+      
+      // Mark all steps as completed
+      setSteps(prevSteps => 
+        prevSteps.map(step => ({ ...step, status: 'completed', progress: 100 }))
+      );
+      
+      // Clear polling if it's still active
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    } else if (status.status === 'failed') {
+      setError(status.error || 'Content generation failed');
+      
+      // Mark current step as error
+      setSteps(prevSteps => {
+        const newSteps = [...prevSteps];
+        if (activeStep < newSteps.length) {
+          newSteps[activeStep].status = 'error';
+          newSteps[activeStep].message = status.error;
+        }
+        return newSteps;
+      });
+      
+      // Clear polling if it's still active
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+  }, [steps.length, activeStep, onComplete]);
+
+  // WebSocket subscription
+  useEffect(() => {
+    if (!taskId) return;
+    
+    // Function to handle task status from WebSocket
+    const handleWebSocketUpdate = (event: ContentGenerationEvent) => {
+      if (event.data) {
+        updateProgressFromTaskStatus(event.data as TaskStatusResponse);
       }
     };
     
-    // Start simulation
-    timer = setInterval(simulateProgress, 1000);
+    // Initial fetch of task status
+    getTaskStatus(taskId)
+      .then(status => {
+        updateProgressFromTaskStatus(status);
+      })
+      .catch(err => {
+        console.error('Error fetching task status:', err);
+        setError('Failed to fetch generation status');
+      });
     
+    // Set up WebSocket subscription or polling
+    if (wsConnected) {
+      // Subscribe to WebSocket updates
+      unsubscribeRef.current = contentWebSocketService.subscribeToGenerationTask(
+        taskId, 
+        handleWebSocketUpdate
+      );
+    } else {
+      // Fall back to polling if WebSocket not available
+      const pollInterval = 3000; // 3 seconds
+      
+      const pollStatus = async () => {
+        try {
+          const status = await getTaskStatus(taskId);
+          updateProgressFromTaskStatus(status);
+          
+          // Stop polling if task is complete or failed
+          if (status.status === 'completed' || status.status === 'failed') {
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+          }
+        } catch (err) {
+          console.error('Error polling task status:', err);
+        }
+      };
+      
+      // Initial poll
+      pollStatus();
+      
+      // Set up polling interval
+      pollingIntervalRef.current = setInterval(pollStatus, pollInterval);
+    }
+    
+    // Cleanup function
     return () => {
-      clearInterval(timer);
+      // Unsubscribe from WebSocket if subscribed
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      
+      // Clear polling interval if active
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     };
-  }, [jobId]);
+  }, [taskId, getTaskStatus, updateProgressFromTaskStatus, wsConnected]);
   
   const getStepIcon = (status: GenerationStep['status']) => {
     switch (status) {
@@ -170,6 +244,25 @@ const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressP
     }
   };
 
+  // Handle cancellation
+  const handleCancel = () => {
+    if (onCancel) {
+      // Call the onCancel callback
+      onCancel();
+      
+      // Unsubscribe and clean up
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+  };
+
   return (
     <Paper sx={{ p: 3, mt: 2 }}>
       <Box sx={{ mb: 3 }}>
@@ -177,8 +270,26 @@ const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressP
           Content Generation in Progress
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          Your content is being generated. This might take a few moments.
+          {isComplete ? 
+            'Content generation complete!' : 
+            'Your content is being generated. This might take a few moments.'}
         </Typography>
+        
+        {wsConnected ? (
+          <Chip 
+            label="Real-time updates" 
+            size="small" 
+            color="primary" 
+            sx={{ mb: 2 }}
+          />
+        ) : (
+          <Chip 
+            label="Polling for updates" 
+            size="small" 
+            color="default" 
+            sx={{ mb: 2 }}
+          />
+        )}
         
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, mt: 2 }}>
           <Typography variant="body2" sx={{ mr: 1 }}>Overall Progress:</Typography>
@@ -191,6 +302,12 @@ const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressP
           value={overallProgress} 
           sx={{ height: 8, borderRadius: 4 }} 
         />
+        
+        {taskStatus?.estimated_completion_time && !isComplete && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Estimated completion: {new Date(taskStatus.estimated_completion_time).toLocaleTimeString()}
+          </Typography>
+        )}
       </Box>
       
       <Stepper activeStep={activeStep} orientation="vertical">
@@ -258,12 +375,9 @@ const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressP
       </Stepper>
       
       {error && (
-        <Box sx={{ mt: 2, p: 2, bgcolor: '#fdeded', borderRadius: 1 }}>
-          <Typography color="error" variant="body2">
-            <ErrorIcon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
-            {error}
-          </Typography>
-        </Box>
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
       )}
       
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -271,7 +385,7 @@ const GenerationProgress = ({ jobId, onCancel, onComplete }: GenerationProgressP
           <Button 
             variant="outlined" 
             color="inherit" 
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isComplete}
           >
             Cancel Generation
