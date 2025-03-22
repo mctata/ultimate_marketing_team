@@ -29,6 +29,8 @@ import CustomizableDashboard, {
   WidgetDefinition
 } from '../../components/analytics/CustomizableDashboard';
 import AutomatedInsights from '../../components/analytics/AutomatedInsights';
+import TrendDetector from '../../components/analytics/TrendDetector';
+import ComparisonSummary from '../../components/analytics/ComparisonSummary';
 
 // Services & Utilities
 import { useAnalytics } from '../../hooks/useAnalytics';
@@ -148,7 +150,8 @@ const availableWidgets: WidgetDefinition[] = [
     defaultOptions: {
       dataKeys: ['aiAssistant', 'collaboration', 'contentCreation', 'dashboard'],
       formatValue: (value: number) => `${value}`,
-      yAxisLabel: 'Usage Count'
+      yAxisLabel: 'Usage Count',
+      showControls: true
     }
   },
   {
@@ -171,7 +174,8 @@ const availableWidgets: WidgetDefinition[] = [
     defaultOptions: {
       dataKeys: ['acceptanceRate', 'qualityScore'],
       formatValue: (value: number) => `${value.toFixed(1)}%`,
-      yAxisLabel: 'Rate'
+      yAxisLabel: 'Rate',
+      showControls: true
     }
   },
   {
@@ -211,6 +215,102 @@ const availableWidgets: WidgetDefinition[] = [
     defaultSize: 'medium',
     defaultOptions: {
       showCategories: ['performance', 'opportunity']
+    }
+  },
+  {
+    type: 'trendAnalysis',
+    title: 'UX Trend Analysis',
+    description: 'Automatically detected trends and patterns',
+    component: TrendDetector,
+    defaultSize: 'medium',
+    defaultOptions: {
+      trends: [
+        {
+          metric: "Collaboration Feature Usage",
+          currentValue: 3240,
+          previousValue: 2150,
+          changePercent: 50.7,
+          changeType: "increase",
+          isPositive: true
+        },
+        {
+          metric: "WebSocket Error Rate",
+          currentValue: 0.8,
+          previousValue: 2.3,
+          changePercent: -65.2,
+          changeType: "decrease",
+          isPositive: true,
+          unit: "%"
+        },
+        {
+          metric: "Mobile Session Duration",
+          currentValue: 432,
+          previousValue: 520,
+          changePercent: -16.9,
+          changeType: "decrease",
+          isPositive: false,
+          isCritical: true,
+          unit: "s"
+        }
+      ],
+      patterns: [
+        {
+          patternType: "seasonal",
+          description: "Weekly pattern detected with higher usage on Wednesdays and Thursdays",
+          confidence: 93,
+          metric: "Daily Active Users",
+          suggestion: "Consider scheduling feature releases on Mondays to maximize weekly exposure"
+        },
+        {
+          patternType: "anomaly",
+          description: "Unexpected drop in collaboration session duration on mobile devices",
+          confidence: 87,
+          metric: "Mobile Collaboration Time",
+          suggestion: "Investigate mobile interface issues in collaborative editing"
+        }
+      ]
+    }
+  },
+  {
+    type: 'periodComparison',
+    title: 'Period Comparison',
+    description: 'Compare metrics between different time periods',
+    component: ComparisonSummary,
+    defaultSize: 'medium',
+    defaultOptions: {
+      baselinePeriod: "Previous Month",
+      currentPeriod: "Current Month",
+      comparisonItems: [
+        {
+          metric: "User Engagement",
+          baseline: { value: 6320, label: "Previous" },
+          current: { value: 8150, label: "Current" },
+          changePercent: 28.96,
+          isPositive: true,
+          target: 9000,
+          goalCompletion: 90.5
+        },
+        {
+          metric: "Average Session Duration",
+          baseline: { value: 720, label: "Previous" },
+          current: { value: 852, label: "Current" },
+          changePercent: 18.33,
+          isPositive: true,
+          unit: "s",
+          target: 900,
+          goalCompletion: 94.7
+        },
+        {
+          metric: "AI Suggestions Accepted",
+          baseline: { value: 62.4, label: "Previous" },
+          current: { value: 75.8, label: "Current" },
+          changePercent: 21.47,
+          isPositive: true,
+          unit: "%",
+          target: 80,
+          goalCompletion: 94.75
+        }
+      ]
     }
   }
 ];
@@ -608,6 +708,101 @@ const UXAnalyticsDashboard: React.FC = () => {
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {/* Dashboard Tab */}
         <TabPanel value={currentTab} index={0}>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={7}>
+              <ComparisonSummary
+                title="Performance Overview"
+                description="Comparison of key metrics between periods"
+                baselinePeriod="Previous Month"
+                currentPeriod="Current Month"
+                comparisonItems={[
+                  {
+                    metric: "User Engagement",
+                    baseline: { value: 6320, label: "Previous" },
+                    current: { value: 8150, label: "Current" },
+                    changePercent: 28.96,
+                    isPositive: true,
+                    target: 9000,
+                    goalCompletion: 90.5,
+                    notes: "User engagement significantly increased after new features release"
+                  },
+                  {
+                    metric: "Average Session Duration",
+                    baseline: { value: 720, label: "Previous" },
+                    current: { value: 852, label: "Current" },
+                    changePercent: 18.33,
+                    isPositive: true,
+                    unit: "s",
+                    target: 900,
+                    goalCompletion: 94.7
+                  },
+                  {
+                    metric: "AI Suggestions Accepted",
+                    baseline: { value: 62.4, label: "Previous" },
+                    current: { value: 75.8, label: "Current" },
+                    changePercent: 21.47,
+                    isPositive: true,
+                    unit: "%",
+                    target: 80,
+                    goalCompletion: 94.75
+                  }
+                ]}
+              />
+            </Grid>
+            <Grid item xs={12} md={5}>
+              <TrendDetector
+                title="UX Trends & Patterns"
+                description="Automatically detected trends and patterns in UX metrics"
+                trends={[
+                  {
+                    metric: "Collaboration Feature Usage",
+                    currentValue: 3240,
+                    previousValue: 2150,
+                    changePercent: 50.7,
+                    changeType: "increase",
+                    isPositive: true
+                  },
+                  {
+                    metric: "WebSocket Error Rate",
+                    currentValue: 0.8,
+                    previousValue: 2.3,
+                    changePercent: -65.2,
+                    changeType: "decrease",
+                    isPositive: true,
+                    unit: "%"
+                  },
+                  {
+                    metric: "Mobile Session Duration",
+                    currentValue: 432,
+                    previousValue: 520,
+                    changePercent: -16.9,
+                    changeType: "decrease",
+                    isPositive: false,
+                    isCritical: true,
+                    unit: "s",
+                    notes: "Mobile sessions are getting shorter despite increased user engagement"
+                  }
+                ]}
+                patterns={[
+                  {
+                    patternType: "seasonal",
+                    description: "Weekly pattern detected with higher usage on Wednesdays and Thursdays",
+                    confidence: 93,
+                    metric: "Daily Active Users",
+                    suggestion: "Consider scheduling feature releases on Mondays to maximize weekly exposure"
+                  },
+                  {
+                    patternType: "anomaly",
+                    description: "Unexpected drop in collaboration session duration on mobile devices",
+                    confidence: 87,
+                    metric: "Mobile Collaboration Time",
+                    suggestion: "Investigate mobile interface issues in collaborative editing"
+                  }
+                ]}
+              />
+            </Grid>
+          </Grid>
+          
           <Box 
             id="dashboard-container" 
             ref={dashboardRef}
@@ -642,6 +837,21 @@ const UXAnalyticsDashboard: React.FC = () => {
                 yAxisLabel="Usage Count"
                 height={400}
                 formatValue={(value) => `${value.toLocaleString()}`}
+                showControls={true}
+                referenceLines={[
+                  { value: 800, label: 'Target Usage', color: '#4caf50' }
+                ]}
+                annotations={[
+                  { date: featureUsageQuery.data?.dailyUsage?.[20]?.date || '', text: 'New Feature Launch', color: '#f44336' },
+                  { date: featureUsageQuery.data?.dailyUsage?.[25]?.date || '', text: 'Marketing Campaign', color: '#2196f3' }
+                ]}
+                onExport={(format) => {
+                  setSnackbar({
+                    open: true,
+                    message: `Chart exported as ${format.toUpperCase()}`,
+                    severity: 'success'
+                  });
+                }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -766,6 +976,28 @@ const UXAnalyticsDashboard: React.FC = () => {
                 yAxisLabel="Rate (%)"
                 height={400}
                 formatValue={(value) => `${value.toFixed(1)}%`}
+                showControls={true}
+                compareWith={{
+                  label: "Previous Month",
+                  startDate: aiAssistantQuery.data?.dailyMetrics?.[0]?.date || '',
+                  endDate: aiAssistantQuery.data?.dailyMetrics?.[7]?.date || '',
+                  color: '#673ab7'
+                }}
+                referencePoints={[
+                  { 
+                    date: aiAssistantQuery.data?.dailyMetrics?.[15]?.date || '', 
+                    value: aiAssistantQuery.data?.dailyMetrics?.[15]?.qualityScore || 0, 
+                    label: 'AI Model Update', 
+                    color: '#009688'
+                  }
+                ]}
+                onExport={(format) => {
+                  setSnackbar({
+                    open: true,
+                    message: `Chart exported as ${format.toUpperCase()}`,
+                    severity: 'success'
+                  });
+                }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
