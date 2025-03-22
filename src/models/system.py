@@ -529,10 +529,10 @@ class UserJourneyPath(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class ABTestVariant(Base):
+class UXABTestVariant(Base):
     """Defines A/B test variants for UX comparison."""
     
-    __tablename__ = "ab_test_variants"
+    __tablename__ = "ux_ab_test_variants"
     __table_args__ = {"schema": "umt"}
     
     id = Column(Integer, primary_key=True, index=True)
