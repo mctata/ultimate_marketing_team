@@ -1,0 +1,60 @@
+# Makefile for running integration tests
+
+.PHONY: test test-unit test-integration test-social test-email test-analytics test-developer test-cms test-webhooks test-api-keys test-plugin test-coverage test-docker clean
+
+# Default test target - runs all unit tests
+test:
+	python -m pytest tests/agents/integrations/ -v
+
+# Run unit tests for all integrations
+test-unit:
+	python -m pytest tests/agents/integrations/ -v
+
+# Run integration tests
+test-integration:
+	python -m pytest tests/integration/ -v
+
+# Run social media integration tests
+test-social:
+	python -m pytest tests/agents/integrations/social/ -v
+
+# Run email marketing integration tests
+test-email:
+	python -m pytest tests/agents/integrations/email_marketing/ -v
+
+# Run analytics integration tests
+test-analytics:
+	python -m pytest tests/agents/integrations/analytics/ -v
+
+# Run developer platform tests
+test-developer:
+	python -m pytest tests/agents/integrations/developer/ -v
+
+# Run CMS integration tests
+test-cms:
+	python -m pytest tests/agents/integrations/test_cms_integration.py -v
+
+# Run webhook tests
+test-webhooks:
+	python -m pytest tests/agents/integrations/developer/test_webhook_manager.py -v
+
+# Run API key tests
+test-api-keys:
+	python -m pytest tests/agents/integrations/developer/test_api_key_manager.py -v
+
+# Run plugin tests
+test-plugin:
+	python -m pytest tests/agents/integrations/developer/test_plugin_manager.py -v
+
+# Run all tests with coverage
+test-coverage:
+	python -m pytest tests/agents/integrations/ tests/integration/ --cov=src.agents.integrations --cov-report=html
+	@echo "Coverage report generated in htmlcov/"
+
+# Run tests in Docker
+test-docker:
+	docker-compose -f docker-compose.test.yml up --exit-code-from integration-tests integration-tests
+
+# Clean coverage reports
+clean:
+	rm -rf .coverage htmlcov/
