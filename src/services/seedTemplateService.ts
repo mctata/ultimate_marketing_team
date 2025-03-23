@@ -144,8 +144,8 @@ export const seedTemplateLibrary = async () => {
  */
 export const templatesExist = async (): Promise<boolean> => {
   try {
-    const response = await templateService.getTemplates({ limit: 1 });
-    return response.data.length > 0;
+    const templates = await templateService.getTemplates({ limit: 1 });
+    return templates.length > 0;
   } catch (error) {
     console.error('Error checking if templates exist:', error);
     return false;
@@ -176,23 +176,18 @@ export const seedTemplatesIfNeeded = async (): Promise<void> => {
 export const getTemplateStats = async () => {
   try {
     // Get categories with template counts
-    const categoriesResponse = await templateService.getTemplateCategories();
-    const categories = categoriesResponse.data;
+    const categories = await templateService.getTemplateCategories();
     
     // Get industries with template counts
-    const industriesResponse = await templateService.getTemplateIndustries();
-    const industries = industriesResponse.data;
+    const industries = await templateService.getTemplateIndustries();
     
     // Get formats with template counts
-    const formatsResponse = await templateService.getTemplateFormats();
-    const formats = formatsResponse.data;
+    const formats = await templateService.getTemplateFormats();
     
     // Get template statistics
-    const featuredTemplatesResponse = await templateService.getTemplates({ is_featured: true });
-    const featuredTemplates = featuredTemplatesResponse.data;
-    
-    const popularTemplatesResponse = await templateService.getPopularTemplates(10);
-    const popularTemplates = popularTemplatesResponse.data;
+    const featuredTemplates = await templateService.getTemplates({ is_featured: true });
+    const allTemplates = await templateService.getTemplates();
+    const popularTemplates = await templateService.getPopularTemplates(10);
     
     return {
       categories,
@@ -200,9 +195,9 @@ export const getTemplateStats = async () => {
       formats,
       featuredTemplates,
       popularTemplates,
-      totalTemplates: templates.length,
+      totalTemplates: allTemplates.length,
       featuredCount: featuredTemplates.length,
-      premiumCount: templates.filter(t => t.is_premium).length
+      premiumCount: allTemplates.filter(t => t.is_premium).length
     };
   } catch (error) {
     console.error('Error getting template statistics:', error);

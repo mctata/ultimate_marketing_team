@@ -1,4 +1,5 @@
 import api from './api';
+import { apiMethods } from './api';
 
 export interface TemplateCategory {
   id: string;
@@ -60,24 +61,24 @@ export interface TemplateRating {
 
 // Template Categories APIs
 export const getTemplateCategories = () => 
-  api.get<TemplateCategory[]>('/templates/categories');
+  apiMethods.get<TemplateCategory[]>('/templates/categories');
 
 export const createTemplateCategory = (category: Omit<TemplateCategory, 'id' | 'template_count'>) => 
-  api.post<TemplateCategory>('/templates/categories', category);
+  apiMethods.post<TemplateCategory>('/templates/categories', category);
 
 // Template Industries APIs
 export const getTemplateIndustries = () => 
-  api.get<TemplateIndustry[]>('/templates/industries');
+  apiMethods.get<TemplateIndustry[]>('/templates/industries');
 
 export const createTemplateIndustry = (industry: Omit<TemplateIndustry, 'id' | 'template_count'>) => 
-  api.post<TemplateIndustry>('/templates/industries', industry);
+  apiMethods.post<TemplateIndustry>('/templates/industries', industry);
 
 // Template Formats APIs
 export const getTemplateFormats = (contentType?: string) => 
-  api.get<TemplateFormat[]>('/templates/formats', { params: { content_type: contentType } });
+  apiMethods.get<TemplateFormat[]>('/templates/formats', { content_type: contentType });
 
 export const createTemplateFormat = (format: Omit<TemplateFormat, 'id' | 'template_count'>) => 
-  api.post<TemplateFormat>('/templates/formats', format);
+  apiMethods.post<TemplateFormat>('/templates/formats', format);
 
 // Templates APIs
 export const getTemplates = (params?: { 
@@ -91,10 +92,10 @@ export const getTemplates = (params?: {
   skip?: number;
   limit?: number;
 }) => 
-  api.get<Template[]>('/templates', { params });
+  apiMethods.get<Template[]>('/templates', params);
 
 export const getTemplateById = (id: string) => 
-  api.get<Template>(`/templates/${id}`);
+  apiMethods.get<Template>(`/templates/${id}`);
 
 export const createTemplate = (template: {
   title: string;
@@ -109,7 +110,7 @@ export const createTemplate = (template: {
   category_ids?: string[];
   industry_ids?: string[];
 }) => 
-  api.post<Template>('/templates', template);
+  apiMethods.post<Template>('/templates', template);
 
 export const updateTemplate = (id: string, template: Partial<{
   title: string;
@@ -124,38 +125,38 @@ export const updateTemplate = (id: string, template: Partial<{
   category_ids: string[];
   industry_ids: string[];
 }>) => 
-  api.put<Template>(`/templates/${id}`, template);
+  apiMethods.put<Template>(`/templates/${id}`, template);
 
 export const deleteTemplate = (id: string) => 
-  api.delete(`/templates/${id}`);
+  apiMethods.delete(`/templates/${id}`);
 
 // Template Ratings APIs
 export const rateTemplate = (templateId: string, rating: { rating: number; comment?: string }) => 
-  api.post<{ message: string; new_avg_rating: number }>(`/templates/${templateId}/ratings`, rating);
+  apiMethods.post<{ message: string; new_avg_rating: number }>(`/templates/${templateId}/ratings`, rating);
 
 // Template Usage APIs
 export const useTemplate = (templateId: string, 
   customizations: Record<string, any>, 
   draftData: Record<string, any>
 ) => 
-  api.post<{ message: string; content_draft_id: string }>(`/templates/${templateId}/use`, {
+  apiMethods.post<{ message: string; content_draft_id: string }>(`/templates/${templateId}/use`, {
     customizations,
     draft_data: draftData
   });
 
 // Template Favorites APIs
 export const favoriteTemplate = (templateId: string) => 
-  api.post<{ message: string }>(`/templates/${templateId}/favorite`);
+  apiMethods.post<{ message: string }>(`/templates/${templateId}/favorite`);
 
 export const unfavoriteTemplate = (templateId: string) => 
-  api.delete<{ message: string }>(`/templates/${templateId}/favorite`);
+  apiMethods.delete<{ message: string }>(`/templates/${templateId}/favorite`);
 
 export const getFavoriteTemplates = () => 
-  api.get<Template[]>('/templates/favorites');
+  apiMethods.get<Template[]>('/templates/favorites');
 
 // Template Analytics APIs
 export const getPopularTemplates = (limit?: number) => 
-  api.get<Template[]>('/templates/popular', { params: { limit } });
+  apiMethods.get<Template[]>('/templates/popular', { limit });
 
 export const getRecommendedTemplates = (limit?: number) => 
-  api.get<Template[]>('/templates/recommended', { params: { limit } });
+  apiMethods.get<Template[]>('/templates/recommended', { limit });

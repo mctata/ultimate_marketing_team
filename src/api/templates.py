@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_, or_
 
 from src.core.database import get_db
-from src.core.auth import get_current_user
+from src.core.security import get_current_user
 from src.models.template import (
     Template, TemplateCategory, TemplateIndustry, TemplateFormat, 
     TemplateRating, TemplateUsage, TemplateFavorite
