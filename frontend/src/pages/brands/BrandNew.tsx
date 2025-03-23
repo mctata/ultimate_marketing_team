@@ -1,5 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// Font preloading and font transition utilities to prevent FOUC (Flash of Unstyled Content)
+const preloadFont = (fontFamily: string) => {
+  // Skip if already preloaded
+  if (document.querySelector(`style[data-font="${fontFamily}"]`)) {
+    return;
+  }
+  
+  // Create style element to preload font
+  const style = document.createElement('style');
+  style.setAttribute('data-font', fontFamily);
+  style.textContent = `
+    @font-face {
+      font-family: '${fontFamily}';
+      font-display: swap;
+      src: local('${fontFamily}');
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Add CSS for smooth font transitions
+  if (!document.querySelector('style[data-font-transitions]')) {
+    const transitionStyle = document.createElement('style');
+    transitionStyle.setAttribute('data-font-transitions', 'true');
+    transitionStyle.textContent = `
+      .brand-preview-container * {
+        transition: font-family 0.3s ease-in-out;
+      }
+    `;
+    document.head.appendChild(transitionStyle);
+  }
+};
 import {
   Box,
   Typography,
@@ -134,6 +166,12 @@ const BrandNew = () => {
   
   // Modal & confetti state
   const [openSuccessModal, setOpenSuccessModal] = useState<boolean>(false);
+  
+  // Preload all fonts when component mounts to prevent FOUC
+  useEffect(() => {
+    const fonts = ["Roboto", "Open Sans", "Lato", "Montserrat", "Source Sans Pro"];
+    fonts.forEach(font => preloadFont(font));
+  }, []);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [activePlatformPreview, setActivePlatformPreview] = useState<string>('Instagram');
   
@@ -1144,6 +1182,9 @@ const BrandNew = () => {
                     // Also update the font family state separately to ensure Brand Preview reflects the change
                     const selectedFont = e.target.value as string;
                     document.documentElement.style.setProperty('--brand-preview-font', selectedFont);
+                    
+                    // Preload the selected font to prevent FOUC
+                    preloadFont(selectedFont);
                   }}
                 >
                   <MenuItem value="Roboto">Roboto</MenuItem>
@@ -1260,7 +1301,9 @@ const BrandNew = () => {
                 <Typography variant="h6">Brand Preview</Typography>
               </Box>
               
-              <Box sx={{ 
+              <Box 
+                className="brand-preview-container"
+                sx={{ 
                 p: 3, 
                 borderRadius: 2, 
                 bgcolor: 'background.default',
