@@ -47,7 +47,12 @@ const Login = () => {
     },
     validationSchema,
     onSubmit: async (values) => {
-      await login(values.email, values.password);
+      try {
+        await login(values.email, values.password);
+      } catch (err) {
+        console.error('Login submission error:', err);
+        // Error is handled by the AuthContext and passed to the component via error prop
+      }
     },
   });
   

@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -9,6 +9,8 @@ import websocketService from './services/websocket';
 import { setupNetworkMonitoring } from './services/api';
 import { lazyPage } from './utils/lazyImport';
 import GlobalErrorFallback from './components/common/GlobalErrorFallback';
+import authService from './services/authService';
+import { loginSuccess } from './store/slices/authSlice';
 
 // Lazy-loaded route-based code splitting for better performance
 const Dashboard = lazyPage(() => import('./pages/Dashboard'));
@@ -84,6 +86,94 @@ function App() {
       // This would typically be done in the QueryClient configuration
     }
   }, [isAuthenticated]);
+
+  // OAuth callback handler component
+  const OAuthCallback = ({ provider }: { provider: string }) => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const [error, setError] = useState<string | null>(null);
+    
+    useEffect(() => {
+      const handleCallback = async () => {
+        try {
+          // Get code from URL query params
+          const params = new URLSearchParams(location.search);
+          const code = params.get('code');
+          const state = params.get('state');
+          
+          if (!code) {
+            throw new Error('Authentication code not found in the URL');
+          }
+          
+          // Exchange code for token
+          const authResponse = await authService.handleOAuthCallback(
+            provider,
+            code,
+            state || undefined
+          );
+          
+          // Get user profile
+          const userProfile = await authService.getUserProfile();
+          
+          // Dispatch login success and redirect to dashboard
+          dispatch(loginSuccess({
+            user: {
+              id: userProfile.id,
+              email: userProfile.email,
+              firstName: userProfile.full_name?.split(' ')[0] || '',
+              lastName: userProfile.full_name?.split(' ').slice(1).join(' ') || '',
+              role: userProfile.is_superuser ? 'admin' : 'user'
+            },
+            token: authResponse.access_token
+          }));
+          
+          navigate('/dashboard');
+        } catch (err: any) {
+          console.error('OAuth callback error:', err);
+          setError(err.message || 'Authentication failed');
+          
+          // Redirect to login after error
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        }
+      };
+      
+      handleCallback();
+    }, [location, navigate, provider, dispatch]);
+    
+    if (error) {
+      return (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          flexDirection: 'column',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <h3>Authentication Error</h3>
+          <p>{error}</p>
+          <p>Redirecting to login page...</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column'
+      }}>
+        <h3>Processing {provider.charAt(0).toUpperCase() + provider.slice(1)} login...</h3>
+        <p>Please wait while we complete your authentication</p>
+      </div>
+    );
+  };
   
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
@@ -101,9 +191,9 @@ function App() {
         } />
         
         {/* OAuth callback routes */}
-        <Route path="/auth/callback/google" element={<div>Processing Google Login...</div>} />
-        <Route path="/auth/callback/facebook" element={<div>Processing Facebook Login...</div>} />
-        <Route path="/auth/callback/linkedin" element={<div>Processing LinkedIn Login...</div>} />
+        <Route path="/auth/callback/google" element={<OAuthCallback provider="google" />} />
+        <Route path="/auth/callback/facebook" element={<OAuthCallback provider="facebook" />} />
+        <Route path="/auth/callback/linkedin" element={<OAuthCallback provider="linkedin" />} />
         
         {/* Protected routes with layout */}
         <Route path="/" element={
