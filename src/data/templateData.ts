@@ -4,6 +4,8 @@
 // Import industry-specific templates
 import { professionalServicesTemplates } from './professionalServicesTemplates';
 import { foodBeverageTemplates } from './foodBeverageTemplates';
+import { healthWellnessTemplates } from './healthWellnessTemplates';
+import { homeServicesTemplates } from './homeServicesTemplates';
 
 // Industry definitions
 export const industries = [
@@ -749,6 +751,8 @@ export const templates = [
   ...retailEcommerceTemplates,
   ...professionalServicesTemplates,
   ...foodBeverageTemplates,
+  ...healthWellnessTemplates,
+  ...homeServicesTemplates
   // Add more industry templates as they are developed
 ];
 
@@ -757,5 +761,7 @@ export const templateCounts = {
   "retail-ecommerce": retailEcommerceTemplates.length,
   "professional-services": professionalServicesTemplates.length,
   "food-beverage": foodBeverageTemplates.length,
+  "health-wellness": healthWellnessTemplates.length,
+  "home-services": homeServicesTemplates.length
   // Add more industry counts as they are developed
 };
