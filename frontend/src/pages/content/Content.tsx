@@ -100,8 +100,8 @@ const Content = () => {
     }
   ];
   
-  // Mock navigation
-  const navigate = () => {};
+  // Get the navigate function from react-router-dom
+  const navigate = useNavigate();
   
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, contentId: string) => {
     setAnchorEl(event.currentTarget);
@@ -114,11 +114,8 @@ const Content = () => {
   };
   
   const handleCreateContent = () => {
-    // In a real app, this would navigate to the content generator
-    // navigate('/content/generator');
-    
-    // For demo purposes, we'll just open the ContentGenerator content in a new tab
-    window.open('#/content/generator', '_blank');
+    // Navigate to the content generator page
+    navigate('/content/generator');
   };
   
   const getStatusColor = (status: string) => {

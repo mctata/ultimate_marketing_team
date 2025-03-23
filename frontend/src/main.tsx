@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { BrowserRouter } from 'react-router-dom'
@@ -14,13 +14,6 @@ import CssBaseline from '@mui/material/CssBaseline'
 import theme from './theme'
 import GlobalErrorFallback from './components/common/GlobalErrorFallback'
 import ToastContainer from './components/common/ToastContainer'
-
-// Lazy load the devtools to prevent build issues
-const ReactQueryDevtools = lazy(() => 
-  import('@tanstack/react-query-devtools').then(({ ReactQueryDevtools }) => ({
-    default: ReactQueryDevtools,
-  }))
-)
 
 // Configure React Query with improved defaults
 const queryClient = new QueryClient({
@@ -52,11 +45,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                   <CssBaseline />
                   <ToastContainer />
                   <App />
-                  {import.meta.env.DEV && (
-                    <Suspense fallback={null}>
-                      <ReactQueryDevtools initialIsOpen={false} />
-                    </Suspense>
-                  )}
                 </ThemeProvider>
               </AuthProvider>
             </QueryClientProvider>

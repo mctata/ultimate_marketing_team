@@ -100,6 +100,11 @@ function App() {
           </PublicOnlyRoute>
         } />
         
+        {/* OAuth callback routes */}
+        <Route path="/auth/callback/google" element={<div>Processing Google Login...</div>} />
+        <Route path="/auth/callback/facebook" element={<div>Processing Facebook Login...</div>} />
+        <Route path="/auth/callback/linkedin" element={<div>Processing LinkedIn Login...</div>} />
+        
         {/* Protected routes with layout */}
         <Route path="/" element={
           <ProtectedRoute>
