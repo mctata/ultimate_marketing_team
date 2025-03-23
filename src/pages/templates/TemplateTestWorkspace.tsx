@@ -162,8 +162,72 @@ const TemplateTestWorkspace: React.FC = () => {
     if (viewMode === 'code') {
       return renderedContent;
     } else {
-      // For preview mode, show formatted content
-      return renderedContent;
+      // For emails or HTML content, we need to sanitize and render HTML
+      if (template?.format_id?.includes('email')) {
+        return (
+          <div 
+            dangerouslySetInnerHTML={{ __html: renderedContent }} 
+            style={{ maxWidth: '100%', overflow: 'auto' }}
+          />
+        );
+      } else if (template?.format_id?.includes('blog')) {
+        // For markdown content
+        return (
+          <div style={{ maxWidth: '100%', fontFamily: 'Georgia, serif', lineHeight: 1.6 }}>
+            {renderedContent.split('\n').map((line, i) => {
+              // Very basic markdown-like rendering
+              if (line.startsWith('# ')) {
+                return <h1 key={i} style={{ fontSize: '2em', marginBottom: '0.5em' }}>{line.substring(2)}</h1>;
+              } else if (line.startsWith('## ')) {
+                return <h2 key={i} style={{ fontSize: '1.5em', marginBottom: '0.5em', marginTop: '1em' }}>{line.substring(3)}</h2>;
+              } else if (line.startsWith('### ')) {
+                return <h3 key={i} style={{ fontSize: '1.25em', marginBottom: '0.5em', marginTop: '1em' }}>{line.substring(4)}</h3>;
+              } else if (line.startsWith('> ')) {
+                return <blockquote key={i} style={{ borderLeft: '4px solid #ccc', paddingLeft: '1em', fontStyle: 'italic' }}>{line.substring(2)}</blockquote>;
+              } else if (line.startsWith('* ')) {
+                return <li key={i} style={{ marginLeft: '1.5em' }}>{line.substring(2)}</li>;
+              } else if (line.startsWith('- ')) {
+                return <li key={i} style={{ marginLeft: '1.5em' }}>{line.substring(2)}</li>;
+              } else if (line.startsWith('![')) {
+                const altEndIndex = line.indexOf('](');
+                const srcEndIndex = line.indexOf(')');
+                if (altEndIndex > 0 && srcEndIndex > altEndIndex) {
+                  const alt = line.substring(2, altEndIndex);
+                  const src = line.substring(altEndIndex + 2, srcEndIndex);
+                  return <img key={i} src={src} alt={alt} style={{ maxWidth: '100%', margin: '1em 0' }} />;
+                }
+              }
+              return line ? <p key={i} style={{ marginBottom: '1em' }}>{line}</p> : <br key={i} />;
+            })}
+          </div>
+        );
+      } else if (template?.format_id?.includes('social')) {
+        // For social media content
+        return (
+          <div style={{ 
+            maxWidth: '100%',
+            padding: '16px',
+            borderRadius: '8px',
+            backgroundColor: template?.format_id?.includes('instagram') ? '#fafafa' : 
+                             template?.format_id?.includes('facebook') ? '#f0f2f5' : 
+                             template?.format_id?.includes('twitter') ? '#f5f8fa' : '#f0f0f0',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+          }}>
+            {renderedContent.split('\n').map((line, i) => (
+              line ? <p key={i} style={{ marginBottom: '0.75em' }}>{line}</p> : <br key={i} />
+            ))}
+          </div>
+        );
+      } else {
+        // For other content types
+        return (
+          <div>
+            {renderedContent.split('\n').map((line, i) => (
+              line ? <p key={i}>{line}</p> : <br key={i} />
+            ))}
+          </div>
+        );
+      }
     }
   };
   
@@ -378,10 +442,122 @@ const TemplateTestWorkspace: React.FC = () => {
                   fontFamily: viewMode === 'code' ? 'monospace' : 'inherit',
                   minHeight: '400px',
                   maxHeight: '600px',
-                  overflow: 'auto'
+                  overflow: 'auto',
+                  backgroundColor: viewMode === 'preview' && template?.format_id?.includes('social') ? 
+                    '#fafafa' : '#ffffff',
+                  border: viewMode === 'preview' && template?.format_id?.includes('social') ? 
+                    '1px solid #dbdbdb' : '1px solid rgba(0, 0, 0, 0.12)',
+                  borderRadius: viewMode === 'preview' && template?.format_id?.includes('social') ? 
+                    '8px' : '4px',
+                  boxShadow: viewMode === 'preview' && !template?.format_id?.includes('email') ? 
+                    '0 2px 10px rgba(0, 0, 0, 0.05)' : 'none',
                 }}
               >
+                {viewMode === 'preview' && template?.format_id?.includes('social-instagram') && (
+                  <Box sx={{ 
+                    mb: 2, 
+                    pb: 2, 
+                    borderBottom: '1px solid #efefef',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <Box 
+                      sx={{ 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: '50%', 
+                        bgcolor: 'primary.main',
+                        mr: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      B
+                    </Box>
+                    <Typography variant="subtitle2">Your Business</Typography>
+                  </Box>
+                )}
+                
+                {viewMode === 'preview' && template?.format_id?.includes('social-facebook') && (
+                  <Box sx={{ 
+                    mb: 2, 
+                    pb: 2, 
+                    borderBottom: '1px solid #e4e6eb',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <Box 
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: '50%', 
+                        bgcolor: 'primary.main',
+                        mr: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      B
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2">Your Business</Typography>
+                      <Typography variant="caption" color="text.secondary">Sponsored · </Typography>
+                    </Box>
+                  </Box>
+                )}
+                
+                {viewMode === 'preview' && template?.format_id?.includes('social-twitter') && (
+                  <Box sx={{ 
+                    mb: 2, 
+                    pb: 2, 
+                    borderBottom: '1px solid #e6ecf0',
+                    display: 'flex',
+                  }}>
+                    <Box 
+                      sx={{ 
+                        width: 48, 
+                        height: 48, 
+                        borderRadius: '50%', 
+                        bgcolor: 'primary.main',
+                        mr: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      B
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2">Your Business</Typography>
+                      <Typography variant="caption" color="text.secondary">@YourBusiness</Typography>
+                    </Box>
+                  </Box>
+                )}
+                
                 {getDisplayContent()}
+                
+                {viewMode === 'preview' && template?.format_id?.includes('social') && (
+                  <Box sx={{ 
+                    mt: 2, 
+                    pt: 2, 
+                    borderTop: '1px solid #efefef',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-around'
+                  }}>
+                    <Typography variant="caption" color="text.secondary">Like</Typography>
+                    <Typography variant="caption" color="text.secondary">Comment</Typography>
+                    <Typography variant="caption" color="text.secondary">Share</Typography>
+                  </Box>
+                )}
               </Paper>
             </TabPanel>
           </Paper>
@@ -455,16 +631,29 @@ const TemplateTestWorkspace: React.FC = () => {
             </Typography>
             
             <Typography variant="body2" paragraph>
-              Customize the template using the Edit tab on the left. All fields marked with curly braces {'{like_this}'} can be edited.
+              <strong>1. Customize content:</strong> Use the Edit tab to personalize all fields marked with {'{curly_braces}'}. The template will update in real-time.
             </Typography>
             
             <Typography variant="body2" paragraph>
-              Try different tones to see how the template changes. Some templates have significant tone variations.
+              <strong>2. Try different tones:</strong> Select from the available tone options to see how they change your content's voice and style.
             </Typography>
             
-            <Typography variant="body2">
-              Preview the final result before copying or saving. You can view it in Preview mode for a cleaner look or in Raw mode to see the underlying text.
+            <Typography variant="body2" paragraph>
+              <strong>3. Preview formats:</strong> Switch between Preview and Raw modes to see how your content will look when published versus the actual text.
             </Typography>
+            
+            <Typography variant="body2" paragraph>
+              <strong>4. Copy or download:</strong> When you're satisfied with your template, use the Copy or Download buttons to save your work.
+            </Typography>
+            
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom color="info.dark">
+                Pro Tip
+              </Typography>
+              <Typography variant="body2" color="info.dark">
+                For the best results, customize all fields to match your brand voice and target audience. Don't forget to preview across different devices before publishing!
+              </Typography>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
