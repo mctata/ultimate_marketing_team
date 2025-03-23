@@ -42,6 +42,9 @@ import {
   DataUsage as DataUsageIcon,
   Settings as SettingsIcon,
   FormatQuote as FormatQuoteIcon,
+  Psychology as PsychologyIcon,
+  Assessment as AssessmentIcon,
+  Bookmarks as BookmarksIcon,
 } from '@mui/icons-material';
 import { AppDispatch } from '../../store';
 import {
@@ -55,6 +58,9 @@ import {
   selectTemplatesError,
 } from '../../store/slices/templateSlice';
 import { Template, TemplateCategory, TemplateIndustry } from '../../services/templateService';
+import AIPersonalizationPanel from '../../components/content/AIPersonalizationPanel';
+import TemplateAnalytics from '../../components/analytics/TemplateAnalytics';
+import TemplateCollectionsManager from '../../components/content/TemplateCollectionsManager';
 
 // Tab panel component
 interface TabPanelProps {
@@ -343,6 +349,24 @@ const TemplateDetail: React.FC = () => {
                   id="template-tab-2" 
                   aria-controls="template-tabpanel-2" 
                 />
+                <Tab 
+                  icon={<PsychologyIcon />} 
+                  label="AI Assist" 
+                  id="template-tab-3" 
+                  aria-controls="template-tabpanel-3" 
+                />
+                <Tab 
+                  icon={<AssessmentIcon />} 
+                  label="Analytics" 
+                  id="template-tab-4" 
+                  aria-controls="template-tabpanel-4" 
+                />
+                <Tab 
+                  icon={<BookmarksIcon />} 
+                  label="Collections" 
+                  id="template-tab-5" 
+                  aria-controls="template-tabpanel-5" 
+                />
               </Tabs>
             </Box>
             
@@ -448,6 +472,35 @@ const TemplateDetail: React.FC = () => {
                     This template has no tone variations.
                   </Typography>
                 )}
+              </Box>
+            </TabPanel>
+            
+            {/* AI Assist tab */}
+            <TabPanel value={selectedTab} index={3}>
+              <Box sx={{ p: 2 }}>
+                <AIPersonalizationPanel
+                  templateId={template.id}
+                  industryId={template.industries.length > 0 ? template.industries[0].id : undefined}
+                  currentValues={customizations}
+                  onPersonalizationApplied={(field, value) => handleCustomizationChange(field, value)}
+                  onToneSelected={(toneId) => setSelectedTone(toneId)}
+                />
+              </Box>
+            </TabPanel>
+            
+            {/* Analytics tab */}
+            <TabPanel value={selectedTab} index={4}>
+              <Box sx={{ p: 2 }}>
+                <TemplateAnalytics />
+              </Box>
+            </TabPanel>
+            
+            {/* Collections tab */}
+            <TabPanel value={selectedTab} index={5}>
+              <Box sx={{ p: 2 }}>
+                <TemplateCollectionsManager
+                  selectedTemplateId={template.id}
+                />
               </Box>
             </TabPanel>
           </Paper>
