@@ -187,123 +187,8 @@ const Content = () => {
         </Box>
       </Box>
       
-      <Grid container spacing={3}>
-        {contentItems.map((item) => (
-          <Grid item xs={12} md={6} lg={4} key={item.id}>
-            <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Chip 
-                    label={item.type} 
-                    size="small" 
-                    sx={{ 
-                      bgcolor: getTypeColor(item.type), 
-                      color: 'white',
-                      textTransform: 'capitalize'
-                    }} 
-                  />
-                  <Chip 
-                    label={item.status} 
-                    size="small" 
-                    sx={{ 
-                      bgcolor: getStatusColor(item.status), 
-                      color: 'white',
-                      textTransform: 'capitalize'
-                    }} 
-                  />
-                </Box>
-                
-                <Typography variant="h6" gutterBottom>
-                  {item.title}
-                </Typography>
-                
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Created by {item.author} on {item.date}
-                </Typography>
-                
-                {item.status === 'published' && (
-                  <Box sx={{ mt: 2 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Views
-                        </Typography>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          {item.performance.views.toLocaleString()}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Engagement
-                        </Typography>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          {item.performance.engagement}%
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Conversion
-                        </Typography>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          {item.performance.conversion}%
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                )}
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Quality Score:
-                  </Typography>
-                  <Box 
-                    sx={{ 
-                      display: 'inline-block',
-                      ml: 1,
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: 1,
-                      bgcolor: getScoreColor(item.score),
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {item.score}/100
-                  </Box>
-                </Box>
-              </CardContent>
-              
-              <Divider />
-              
-              <CardActions>
-                <Button 
-                  size="small"
-                  startIcon={<VisibilityIcon />}
-                >
-                  View
-                </Button>
-                <Button 
-                  size="small"
-                  startIcon={<EditIcon />}
-                >
-                  Edit
-                </Button>
-                <IconButton 
-                  size="small" 
-                  sx={{ ml: 'auto' }}
-                  onClick={(e) => handleMenuOpen(e, item.id)}
-                >
-                  <MoreVertIcon />
-                </IconButton>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-      
-      {/* Featured AI Tools Section */}
-      <Paper sx={{ p: 3, mt: 4 }}>
+      {/* AI Content Tools Section MOVED ABOVE content items */}
+      <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           AI Content Tools
         </Typography>
@@ -427,6 +312,125 @@ const Content = () => {
           </Grid>
         </Grid>
       </Paper>
+      
+      <Typography variant="h5" component="h2" fontWeight="medium" sx={{ mb: 2 }}>
+        Content Library
+      </Typography>
+      
+      <Grid container spacing={3}>
+        {contentItems.map((item) => (
+          <Grid item xs={12} md={6} lg={4} key={item.id}>
+            <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Chip 
+                    label={item.type} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: getTypeColor(item.type), 
+                      color: 'white',
+                      textTransform: 'capitalize'
+                    }} 
+                  />
+                  <Chip 
+                    label={item.status} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: getStatusColor(item.status), 
+                      color: 'white',
+                      textTransform: 'capitalize'
+                    }} 
+                  />
+                </Box>
+                
+                <Typography variant="h6" gutterBottom>
+                  {item.title}
+                </Typography>
+                
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Created by {item.author} on {item.date}
+                </Typography>
+                
+                {item.status === 'published' && (
+                  <Box sx={{ mt: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={4}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Views
+                        </Typography>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {item.performance.views.toLocaleString()}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={4}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Engagement
+                        </Typography>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {item.performance.engagement}%
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={4}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Conversion
+                        </Typography>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {item.performance.conversion}%
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Quality Score:
+                  </Typography>
+                  <Box 
+                    sx={{ 
+                      display: 'inline-block',
+                      ml: 1,
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      bgcolor: getScoreColor(item.score),
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    {item.score}/100
+                  </Box>
+                </Box>
+              </CardContent>
+              
+              <Divider />
+              
+              <CardActions>
+                <Button 
+                  size="small"
+                  startIcon={<VisibilityIcon />}
+                >
+                  View
+                </Button>
+                <Button 
+                  size="small"
+                  startIcon={<EditIcon />}
+                >
+                  Edit
+                </Button>
+                <IconButton 
+                  size="small" 
+                  sx={{ ml: 'auto' }}
+                  onClick={(e) => handleMenuOpen(e, item.id)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
       
       {/* Content Menu */}
       <Menu
