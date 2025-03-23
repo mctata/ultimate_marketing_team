@@ -413,8 +413,24 @@ const BrandNew = () => {
                   variant="outlined" 
                   size="small"
                   startIcon={<EditIcon />}
+                  component="label"
                 >
                   Change Logo
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setLogo(event.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
                 </Button>
               </Box>
             </Paper>
@@ -424,28 +440,59 @@ const BrandNew = () => {
                 Contact Information
               </Typography>
               
-              {analysisResult?.contactInfo && (
-                <Box>
-                  {analysisResult.contactInfo.email && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <EmailIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="body2">{analysisResult.contactInfo.email}</Typography>
-                    </Box>
-                  )}
-                  
-                  {analysisResult.contactInfo.phone && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="body2">{analysisResult.contactInfo.phone}</Typography>
-                    </Box>
-                  )}
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <LanguageIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                    <Typography variant="body2">{url}</Typography>
-                  </Box>
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <EmailIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={analysisResult?.contactInfo?.email || ''}
+                    placeholder="Email address"
+                    onChange={(e) => {
+                      if (analysisResult) {
+                        setAnalysisResult({
+                          ...analysisResult,
+                          contactInfo: {
+                            ...analysisResult.contactInfo,
+                            email: e.target.value
+                          }
+                        });
+                      }
+                    }}
+                  />
                 </Box>
-              )}
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={analysisResult?.contactInfo?.phone || ''}
+                    placeholder="Phone number"
+                    onChange={(e) => {
+                      if (analysisResult) {
+                        setAnalysisResult({
+                          ...analysisResult,
+                          contactInfo: {
+                            ...analysisResult.contactInfo,
+                            phone: e.target.value
+                          }
+                        });
+                      }
+                    }}
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LanguageIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                  />
+                </Box>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
@@ -492,22 +539,42 @@ const BrandNew = () => {
                     Primary Color
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 1, 
-                        mr: 2,
-                        border: '1px solid #ddd',
-                        bgcolor: primaryColor
-                      }} 
-                    />
-                    <TextField
-                      size="small"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      sx={{ width: 120 }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box 
+                        sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          borderRadius: 1, 
+                          mr: 2,
+                          border: '1px solid #ddd',
+                          bgcolor: primaryColor,
+                          cursor: 'pointer',
+                        }}
+                        onClick={(e) => {
+                          const colorInput = document.getElementById('primary-color-input');
+                          if (colorInput) colorInput.click();
+                        }}
+                      />
+                      <TextField
+                        size="small"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        sx={{ width: 120, mr: 1 }}
+                      />
+                      <input
+                        id="primary-color-input"
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        style={{ 
+                          width: 0, 
+                          height: 0, 
+                          padding: 0, 
+                          border: 'none',
+                          visibility: 'hidden' 
+                        }}
+                      />
+                    </Box>
                   </Box>
                 </Grid>
                 
@@ -516,22 +583,42 @@ const BrandNew = () => {
                     Secondary Color
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: 1, 
-                        mr: 2,
-                        border: '1px solid #ddd',
-                        bgcolor: secondaryColor
-                      }} 
-                    />
-                    <TextField
-                      size="small"
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      sx={{ width: 120 }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box 
+                        sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          borderRadius: 1, 
+                          mr: 2,
+                          border: '1px solid #ddd',
+                          bgcolor: secondaryColor,
+                          cursor: 'pointer',
+                        }}
+                        onClick={(e) => {
+                          const colorInput = document.getElementById('secondary-color-input');
+                          if (colorInput) colorInput.click();
+                        }}
+                      />
+                      <TextField
+                        size="small"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        sx={{ width: 120, mr: 1 }}
+                      />
+                      <input
+                        id="secondary-color-input"
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        style={{ 
+                          width: 0, 
+                          height: 0, 
+                          padding: 0, 
+                          border: 'none',
+                          visibility: 'hidden' 
+                        }}
+                      />
+                    </Box>
                   </Box>
                 </Grid>
               </Grid>
@@ -566,12 +653,37 @@ const BrandNew = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Content Tone
               </Typography>
+              <Box sx={{ mb: 2 }}>
+                {contentTone.split(',').filter(tone => tone.trim()).map((tone, index) => (
+                  <Chip 
+                    key={index}
+                    label={tone.trim()}
+                    onDelete={() => {
+                      const tones = contentTone.split(',').filter(t => t.trim());
+                      tones.splice(index, 1);
+                      setContentTone(tones.join(', '));
+                    }}
+                    sx={{ m: 0.5 }}
+                  />
+                ))}
+              </Box>
               <TextField
                 fullWidth
                 value={contentTone}
                 onChange={(e) => setContentTone(e.target.value)}
                 size="small"
                 placeholder="e.g., Professional, Friendly, Authoritative"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.currentTarget.value) {
+                    if (contentTone) {
+                      setContentTone(contentTone + ', ' + e.currentTarget.value);
+                    } else {
+                      setContentTone(e.currentTarget.value);
+                    }
+                    e.currentTarget.value = '';
+                    e.preventDefault();
+                  }
+                }}
               />
             </Paper>
           </Grid>
@@ -725,9 +837,23 @@ const BrandNew = () => {
                   if (e.key === 'Enter' && e.currentTarget.value) {
                     setTargetAudience([...targetAudience, e.currentTarget.value]);
                     e.currentTarget.value = '';
+                    e.preventDefault();
                   }
                 }}
               />
+              <Button 
+                size="small" 
+                sx={{ mt: 1 }}
+                onClick={() => {
+                  const input = document.querySelector('input[placeholder="Add audience segment (press Enter)"]') as HTMLInputElement;
+                  if (input && input.value) {
+                    setTargetAudience([...targetAudience, input.value]);
+                    input.value = '';
+                  }
+                }}
+              >
+                Add Audience
+              </Button>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
@@ -806,6 +932,40 @@ const BrandNew = () => {
                   />
                 ))}
               </Box>
+              
+              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <TextField
+                  size="small"
+                  placeholder="Add custom time (e.g., Monday 3:00 PM)"
+                  fullWidth
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value) {
+                      setSchedule({
+                        ...schedule,
+                        bestTimes: [...schedule.bestTimes, e.currentTarget.value]
+                      });
+                      e.currentTarget.value = '';
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    const input = document.querySelector('input[placeholder="Add custom time (e.g., Monday 3:00 PM)"]') as HTMLInputElement;
+                    if (input && input.value) {
+                      setSchedule({
+                        ...schedule,
+                        bestTimes: [...schedule.bestTimes, input.value]
+                      });
+                      input.value = '';
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Paper>
           </Grid>
           
@@ -824,7 +984,9 @@ const BrandNew = () => {
                         <Switch
                           checked={true}
                           onChange={() => {
-                            setContentTypes(contentTypes.filter((_, i) => i !== index));
+                            const updatedTypes = [...contentTypes];
+                            updatedTypes.splice(index, 1);
+                            setContentTypes(updatedTypes);
                           }}
                         />
                       }
@@ -833,6 +995,34 @@ const BrandNew = () => {
                   </Grid>
                 ))}
               </Grid>
+              
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Add content type (press Enter)"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value) {
+                      setContentTypes([...contentTypes, e.currentTarget.value]);
+                      e.currentTarget.value = '';
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  size="small" 
+                  sx={{ mt: 1 }}
+                  onClick={() => {
+                    const input = document.querySelector('input[placeholder="Add content type (press Enter)"]') as HTMLInputElement;
+                    if (input && input.value) {
+                      setContentTypes([...contentTypes, input.value]);
+                      input.value = '';
+                    }
+                  }}
+                >
+                  Add Content Type
+                </Button>
+              </Box>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
@@ -881,7 +1071,9 @@ const BrandNew = () => {
                         <Switch
                           checked={true}
                           onChange={() => {
-                            setMarketingGoals(marketingGoals.filter((_, i) => i !== index));
+                            const updatedGoals = [...marketingGoals];
+                            updatedGoals.splice(index, 1);
+                            setMarketingGoals(updatedGoals);
                           }}
                         />
                       }
@@ -890,6 +1082,34 @@ const BrandNew = () => {
                   </Grid>
                 ))}
               </Grid>
+              
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Add a marketing goal (press Enter)"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value) {
+                      setMarketingGoals([...marketingGoals, e.currentTarget.value]);
+                      e.currentTarget.value = '';
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  size="small" 
+                  sx={{ mt: 1 }}
+                  onClick={() => {
+                    const input = document.querySelector('input[placeholder="Add a marketing goal (press Enter)"]') as HTMLInputElement;
+                    if (input && input.value) {
+                      setMarketingGoals([...marketingGoals, input.value]);
+                      input.value = '';
+                    }
+                  }}
+                >
+                  Add Goal
+                </Button>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
@@ -1107,7 +1327,7 @@ const BrandNew = () => {
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Social Media</Typography>
-                <IconButton size="small" onClick={() => setActiveStep(3)}>
+                <IconButton size="small" onClick={() => setActiveStep(1)}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -1198,9 +1418,19 @@ const BrandNew = () => {
           alternativeLabel
           sx={{ mb: 5 }}
         >
-          {steps.map((label) => (
+          {steps.map((label, index) => (
             <Step key={label}>
-              <StepLabel>{label}</StepLabel>
+              <StepLabel 
+                onClick={() => index <= activeStep && setActiveStep(index)}
+                sx={{ 
+                  cursor: index <= activeStep ? 'pointer' : 'default',
+                  '&:hover': { 
+                    textDecoration: index <= activeStep ? 'underline' : 'none' 
+                  }
+                }}
+              >
+                {label}
+              </StepLabel>
             </Step>
           ))}
         </Stepper>
