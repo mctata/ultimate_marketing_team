@@ -36,15 +36,10 @@ const tokenKey = 'auth_token';
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    // Create form data for token endpoint (OAuth2 format)
-    const formData = new URLSearchParams();
-    formData.append('username', credentials.email);
-    formData.append('password', credentials.password);
-    
-    const response = await api.post<AuthResponse>('/auth/token', formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+    // Use the login endpoint with JSON body
+    const response = await api.post<AuthResponse>('/auth/login', {
+      email: credentials.email,
+      password: credentials.password
     });
     
     // Store token in localStorage
