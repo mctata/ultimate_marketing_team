@@ -127,6 +127,7 @@ const BrandNew = () => {
   const [hashtagInput, setHashtagInput] = useState<string>('');
   const [topicInput, setTopicInput] = useState<string>('');
   const [marketingGoalInput, setMarketingGoalInput] = useState<string>('');
+  const [customGoalInput, setCustomGoalInput] = useState<string>(''); // Separate state for marketing goals
   
   // Modal & confetti state
   const [openSuccessModal, setOpenSuccessModal] = useState<boolean>(false);
@@ -1150,8 +1151,11 @@ const BrandNew = () => {
                 <option value="Source Sans Pro">Source Sans Pro</option>
               </TextField>
               
-              <Typography variant="subtitle2" gutterBottom>
-                Content Tone (AI Writing Style Calibration)
+              <Typography variant="h6" gutterBottom>
+                Content Tone
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Select the writing style for your brand's AI-generated content
               </Typography>
               <Box sx={{ mb: 2 }}>
                 {contentTone && contentTone.split(',').filter(tone => tone.trim()).map((tone, index) => (
@@ -1478,11 +1482,13 @@ const BrandNew = () => {
                 <Typography variant="h6">Posting Schedule</Typography>
               </Box>
               
-              <Typography variant="subtitle2" gutterBottom>
-                Recommended Frequency
+              <Typography variant="h6" gutterBottom>
+                Recommended Posting Frequency
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Based on your industry and target audience, we recommend the following posting frequency.
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                Based on your industry and {socialMediaAccounts.length > 0 ? 
+                  `${socialMediaAccounts.map(sm => sm.platform).join(', ')} accounts` : 
+                  'social media'}, we recommend the following posting frequency.
               </Typography>
               <TextField
                 select
@@ -1499,7 +1505,6 @@ const BrandNew = () => {
                 <option value="Weekly">Weekly</option>
                 <option value="Bi-weekly">Bi-weekly</option>
                 <option value="Monthly">Monthly</option>
-                <option value="Custom">Custom</option>
               </TextField>
               
               <Typography variant="subtitle2" gutterBottom>
@@ -1551,103 +1556,6 @@ const BrandNew = () => {
                 )}
               </Box>
               
-              {schedule.frequency === 'Custom' && (
-                <>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Custom Posting Frequency
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    For {socialMediaAccounts.length > 0 ? 
-                      `${socialMediaAccounts.map(sm => sm.platform).join(', ')} accounts` : 
-                      'social media'}, we recommend posting at least 2-3 times per week.
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <TextField
-                      select
-                      fullWidth
-                      label="Select a custom frequency"
-                      size="small"
-                      value={schedule.customFrequency || ''}
-                      onChange={(e) => {
-                        setSchedule({
-                          ...schedule,
-                          customFrequency: e.target.value
-                        });
-                        if (formErrors.customFrequency) {
-                          setFormErrors({...formErrors, customFrequency: ''});
-                        }
-                      }}
-                      error={!!formErrors.customFrequency}
-                      helperText={formErrors.customFrequency || "Select how often you want to post content"}
-                      SelectProps={{
-                        native: true,
-                      }}
-                    >
-                      <option value="">Select frequency</option>
-                      <option value="2-3 times per day">2-3 times per day</option>
-                      <option value="Once a day">Once a day</option>
-                      <option value="2-3 times per week">2-3 times per week</option>
-                      <option value="Once a week">Once a week</option>
-                      <option value="Every two weeks">Every two weeks</option>
-                      <option value="Once a month">Once a month</option>
-                      <option value="On special occasions only">On special occasions only</option>
-                    </TextField>
-                  </Box>
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Custom Posting Schedule
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                      Schedule additional custom times that work best for your content.
-                    </Typography>
-                    
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="datetime-local"
-                      label="Select exact date and time (EST)"
-                      InputLabelProps={{ shrink: true }}
-                      value={schedule.customTime || ''}
-                      onChange={(e) => {
-                        // Convert datetime-local value to a readable format
-                        const dateObj = new Date(e.target.value);
-                        const day = dateObj.toLocaleString('en-US', { weekday: 'long' });
-                        const time = dateObj.toLocaleString('en-US', { 
-                          hour: 'numeric', 
-                          minute: 'numeric', 
-                          hour12: true 
-                        });
-                        
-                        const formattedDateTime = `${day} ${time}`;
-                        
-                        setSchedule({
-                          ...schedule,
-                          customTime: formattedDateTime
-                        });
-                      }}
-                    />
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                      <Button 
-                        variant="contained" 
-                        size="small"
-                        disabled={!schedule.customTime}
-                        onClick={() => {
-                          if (schedule.customTime) {
-                            setSchedule({
-                              ...schedule,
-                              bestTimes: [...schedule.bestTimes, schedule.customTime],
-                              customTime: ''
-                            });
-                          }
-                        }}
-                      >
-                        Add Time
-                      </Button>
-                    </Box>
-                  </Box>
-                </>
-              )}
             </Paper>
           </Grid>
           
@@ -1804,9 +1712,9 @@ const BrandNew = () => {
                     id="marketing-goal-input"
                     size="small"
                     placeholder="Add a custom marketing goal"
-                    value={marketingGoalInput}
+                    value={customGoalInput}
                     onChange={(e) => {
-                      setMarketingGoalInput(e.target.value);
+                      setCustomGoalInput(e.target.value);
                       // Clear any error when user starts typing
                       if (formErrors.marketingGoals) {
                         setFormErrors({...formErrors, marketingGoals: ''});
@@ -1815,13 +1723,13 @@ const BrandNew = () => {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault(); // Always prevent default to avoid form submission
-                        const trimmedGoal = marketingGoalInput.trim();
+                        const trimmedGoal = customGoalInput.trim();
                         if (trimmedGoal !== '') {
                           // Make sure we're not adding a duplicate
                           if (!marketingGoals.includes(trimmedGoal)) {
                             setMarketingGoals(prevGoals => [...prevGoals, trimmedGoal]);
                           }
-                          setMarketingGoalInput('');
+                          setCustomGoalInput('');
                         }
                       }
                     }}
@@ -1829,9 +1737,9 @@ const BrandNew = () => {
                   <Button 
                     variant="contained"
                     size="small"
-                    disabled={marketingGoalInput.trim() === ''}
+                    disabled={customGoalInput.trim() === ''}
                     onClick={() => {
-                      const trimmedGoal = marketingGoalInput.trim();
+                      const trimmedGoal = customGoalInput.trim();
                       if (trimmedGoal !== '') {
                         // Make sure we're not adding a duplicate
                         if (!marketingGoals.includes(trimmedGoal)) {
@@ -1842,7 +1750,7 @@ const BrandNew = () => {
                             setFormErrors({...formErrors, marketingGoals: ''});
                           }
                         }
-                        setMarketingGoalInput('');
+                        setCustomGoalInput('');
                       }
                     }}
                   >
@@ -2164,12 +2072,21 @@ const BrandNew = () => {
               </Box>
               
               <Box sx={{ mb: 3, p: 3, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
-                <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
-                  {industry === 'Technology' ? 'Tech Announcement Post' : 
-                   industry === 'E-commerce' ? 'New Collection Announcement' : 
-                   'Welcome Blog Post'}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                    Announcement Post
+                  </Typography>
+                  
+                  <Chip 
+                    label={industry === 'Technology' ? 'Tech' : 
+                           industry === 'E-commerce' ? 'Product' : 
+                           'Welcome'} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                  />
+                </Box>
                 
                 <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
                   <Typography variant="body2" paragraph sx={{ color: primaryColor || 'inherit', fontWeight: 'medium' }}>
@@ -2404,10 +2321,11 @@ const BrandNew = () => {
               
               <Button 
                 fullWidth
-                variant="outlined"
-                onClick={() => navigate(`/content?brandId=${createdBrandId}`)}
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/content/new?brandId=${createdBrandId}`)}
               >
-                Go to Content Library
+                Edit & Schedule
               </Button>
             </Paper>
           </Grid>
@@ -2584,6 +2502,7 @@ const BrandNew = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 2100 // Higher than confetti
           }}
         >
           <Fade in={openSuccessModal}>
