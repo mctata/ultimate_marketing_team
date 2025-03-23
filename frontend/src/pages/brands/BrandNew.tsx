@@ -1146,7 +1146,7 @@ const BrandNew = () => {
                 Content Tone (AI Writing Style Calibration)
               </Typography>
               <Box sx={{ mb: 2 }}>
-                {contentTone.split(',').filter(tone => tone.trim()).map((tone, index) => (
+                {contentTone && contentTone.split(',').filter(tone => tone.trim()).map((tone, index) => (
                   <Chip 
                     key={index}
                     label={tone.trim()}
@@ -1165,23 +1165,28 @@ const BrandNew = () => {
               </Typography>
               
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {['Professional', 'Friendly', 'Authoritative', 'Casual', 'Technical', 'Inspirational', 'Humorous'].map(
-                  (toneExample) => (
-                    <Chip
-                      key={toneExample}
-                      label={toneExample}
-                      onClick={() => {
-                        const currentTones = contentTone ? contentTone.split(',').map(t => t.trim()) : [];
-                        if (!currentTones.includes(toneExample)) {
-                          const newTones = [...currentTones, toneExample];
-                          setContentTone(newTones.join(', '));
-                        }
-                      }}
-                      variant={contentTone.includes(toneExample) ? "filled" : "outlined"}
-                      color={contentTone.includes(toneExample) ? "primary" : "default"}
-                      size="small"
-                    />
-                  )
+                {['Professional', 'Analytical', 'Friendly', 'Authoritative', 'Casual', 'Technical', 'Inspirational', 'Humorous'].map(
+                  (toneExample) => {
+                    // Check if the tone is actually in the list, not just a substring
+                    const currentTones = contentTone ? contentTone.split(',').map(t => t.trim()) : [];
+                    const isSelected = currentTones.includes(toneExample);
+                    
+                    return (
+                      <Chip
+                        key={toneExample}
+                        label={toneExample}
+                        onClick={() => {
+                          if (!isSelected) {
+                            const newTones = [...currentTones, toneExample];
+                            setContentTone(newTones.join(', '));
+                          }
+                        }}
+                        variant={isSelected ? "filled" : "outlined"}
+                        color={isSelected ? "primary" : "default"}
+                        size="small"
+                      />
+                    );
+                  }
                 )}
               </Box>
               
