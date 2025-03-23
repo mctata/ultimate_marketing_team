@@ -2092,64 +2092,8 @@ const BrandNew = () => {
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6">Quick-Start Content</Typography>
+                <Typography variant="h6">Preview Slider</Typography>
               </Box>
-              
-              <Box sx={{ mb: 3, p: 3, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
-                    <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
-                    Announcement Post
-                  </Typography>
-                  
-                  <Chip 
-                    label={industry === 'Technology' ? 'Tech' : 
-                           industry === 'E-commerce' ? 'Product' : 
-                           'Welcome'} 
-                    size="small" 
-                    color="primary" 
-                    variant="outlined"
-                  />
-                </Box>
-                
-                <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
-                  <Typography variant="body2" paragraph sx={{ color: primaryColor || 'inherit', fontWeight: 'medium' }}>
-                    {industry === 'Technology' ? (
-                      `Introducing the latest innovation from ${brandName}!`
-                    ) : industry === 'E-commerce' ? (
-                      `Discover our newest collection at ${brandName}`
-                    ) : (
-                      `Welcome to ${brandName}!`
-                    )}
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    {industry === 'Technology' ? (
-                      `We're excited to announce our newest solution designed to transform how you ${contentTypes[0] || 'work'}.`
-                    ) : industry === 'E-commerce' ? (
-                      `We're thrilled to unveil our latest collection featuring ${suggestedTopics[0] || 'exciting new products'}.`
-                    ) : (
-                      `We're delighted to welcome you to our community where we share insights about ${suggestedTopics[0] || 'our industry'}.`
-                    )}
-                  </Typography>
-                  <Typography variant="body2">
-                    {`Learn more about how ${brandName} can help you achieve ${marketingGoals[0] || 'your goals'}.`}
-                  </Typography>
-                </Paper>
-                
-                <Chip 
-                  label={industry === 'Technology' ? 'Tech Announcement' : 
-                         industry === 'E-commerce' ? 'Product Launch' : 
-                         'Welcome Post'} 
-                  size="small" 
-                  color="primary" 
-                  variant="outlined"
-                  sx={{ mt: 2 }}
-                />
-              </Box>
-              
-              <Typography variant="caption" color="text.secondary" paragraph sx={{ display: 'block', mb: 2 }}>
-                This draft is tailored to your brand's style and industry. Preview how it will look on different platforms.
-              </Typography>
               
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ mb: 2 }}>
