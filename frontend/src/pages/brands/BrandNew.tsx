@@ -50,6 +50,8 @@ import {
   Pinterest as PinterestIcon,
   YouTube as YouTubeIcon,
   Domain as DomainIcon,
+  Close as CloseIcon,
+  PlayArrow as PlayArrowIcon,
 } from '@mui/icons-material';
 import brandService, { WebsiteAnalysisResult } from '../../services/brandService';
 import { useBrands } from '../../hooks/useBrands';
@@ -62,7 +64,8 @@ const steps = [
   'Review Company Info',
   'Brand Settings',
   'Content Strategy',
-  'Confirmation'
+  'Confirmation',
+  'Success & Next Steps'
 ];
 
 // Animation keyframes for the pulse effect
@@ -110,6 +113,9 @@ const BrandNew = () => {
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [marketingGoals, setMarketingGoals] = useState<string[]>([]);
+  
+  // State for tracking the created brand
+  const [createdBrandId, setCreatedBrandId] = useState<string>('');
   
   // Animation ref for the analysis animation
   const animationRef = useRef<NodeJS.Timeout | null>(null);
@@ -239,7 +245,11 @@ const BrandNew = () => {
       hashtags: hashtags
     }, {
       onSuccess: (data) => {
-        navigate(`/brands/${data.id}`);
+        // Show success screen (step 5)
+        setActiveStep(5);
+        
+        // Store the created brand ID for reference
+        setCreatedBrandId(data.id);
       },
       onError: (error) => {
         console.error('Error creating brand:', error);
@@ -683,7 +693,7 @@ const BrandNew = () => {
                                     setSocialMediaAccounts(updatedAccounts);
                                   }}
                                 >
-                                  <ErrorIcon fontSize="small" />
+                                  <CloseIcon fontSize="small" />
                                 </IconButton>
                               </>
                             )
@@ -914,6 +924,17 @@ const BrandNew = () => {
                 select
                 fullWidth
                 value={analysisResult?.fonts?.primary || 'Roboto'}
+                onChange={(e) => {
+                  if (analysisResult) {
+                    setAnalysisResult({
+                      ...analysisResult,
+                      fonts: {
+                        ...analysisResult.fonts,
+                        primary: e.target.value
+                      }
+                    });
+                  }
+                }}
                 size="small"
                 sx={{ mb: 3 }}
                 SelectProps={{
@@ -928,7 +949,7 @@ const BrandNew = () => {
               </TextField>
               
               <Typography variant="subtitle2" gutterBottom>
-                Content Tone
+                Content Tone (AI Writing Style Calibration)
               </Typography>
               <Box sx={{ mb: 2 }}>
                 {contentTone.split(',').filter(tone => tone.trim()).map((tone, index) => (
@@ -944,21 +965,48 @@ const BrandNew = () => {
                   />
                 ))}
               </Box>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Select tone examples or enter your own:
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {['Professional', 'Friendly', 'Authoritative', 'Casual', 'Technical', 'Inspirational', 'Humorous'].map(
+                  (toneExample) => (
+                    <Chip
+                      key={toneExample}
+                      label={toneExample}
+                      onClick={() => {
+                        const currentTones = contentTone ? contentTone.split(',').map(t => t.trim()) : [];
+                        if (!currentTones.includes(toneExample)) {
+                          const newTones = [...currentTones, toneExample];
+                          setContentTone(newTones.join(', '));
+                        }
+                      }}
+                      variant={contentTone.includes(toneExample) ? "filled" : "outlined"}
+                      color={contentTone.includes(toneExample) ? "primary" : "default"}
+                      size="small"
+                    />
+                  )
+                )}
+              </Box>
+              
               <TextField
                 fullWidth
-                value={contentTone}
-                onChange={(e) => setContentTone(e.target.value)}
+                placeholder="Add custom tone (press Enter)"
                 size="small"
-                placeholder="e.g., Professional, Friendly, Authoritative"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.currentTarget.value) {
-                    if (contentTone) {
-                      setContentTone(contentTone + ', ' + e.currentTarget.value);
-                    } else {
-                      setContentTone(e.currentTarget.value);
+                    const customTone = e.currentTarget.value.trim();
+                    if (customTone) {
+                      if (contentTone) {
+                        setContentTone(contentTone + ', ' + customTone);
+                      } else {
+                        setContentTone(customTone);
+                      }
+                      e.currentTarget.value = '';
+                      e.preventDefault();
                     }
-                    e.currentTarget.value = '';
-                    e.preventDefault();
                   }
                 }}
               />
@@ -1111,8 +1159,8 @@ const BrandNew = () => {
                 size="small"
                 placeholder="Add audience segment (press Enter)"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    setTargetAudience([...targetAudience, e.currentTarget.value]);
+                  if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
+                    setTargetAudience([...targetAudience, e.currentTarget.value.trim()]);
                     e.currentTarget.value = '';
                     e.preventDefault();
                   }
@@ -1147,6 +1195,7 @@ const BrandNew = () => {
                   if (e.key === 'Enter' && e.currentTarget.value) {
                     setHashtags([...hashtags, e.currentTarget.value]);
                     e.currentTarget.value = '';
+                    e.preventDefault();
                   }
                 }}
               />
@@ -1179,22 +1228,6 @@ const BrandNew = () => {
                 <option value="Custom">Custom</option>
               </TextField>
               
-              {schedule.frequency === 'Custom' && (
-                <TextField
-                  fullWidth
-                  placeholder="Specify custom frequency"
-                  size="small"
-                  sx={{ mb: 3 }}
-                  value={schedule.frequency === 'Custom' ? schedule.customFrequency || '' : ''}
-                  onChange={(e) => {
-                    setSchedule({
-                      ...schedule,
-                      customFrequency: e.target.value
-                    });
-                  }}
-                />
-              )}
-              
               <Typography variant="subtitle2" gutterBottom>
                 Best Times to Post
               </Typography>
@@ -1218,6 +1251,7 @@ const BrandNew = () => {
                 size="small"
                 placeholder="Add custom time (e.g., Monday 3:00 PM)"
                 fullWidth
+                sx={{ mb: 2 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.currentTarget.value) {
                     setSchedule({
@@ -1229,6 +1263,31 @@ const BrandNew = () => {
                   }
                 }}
               />
+              
+              {schedule.frequency === 'Custom' && (
+                <>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Custom Posting Frequency
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    placeholder="Specify custom frequency"
+                    size="small"
+                    value={schedule.frequency === 'Custom' ? schedule.customFrequency || '' : ''}
+                    onChange={(e) => {
+                      setSchedule({
+                        ...schedule,
+                        customFrequency: e.target.value
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                </>
+              )}
             </Paper>
           </Grid>
           
@@ -1240,28 +1299,33 @@ const BrandNew = () => {
               </Box>
               
               <Grid container spacing={2}>
-                {contentTypes.map((type, index) => (
+                {/* Default content types that are always shown */}
+                {[
+                  'Blog Posts',
+                  'Social Media Content',
+                  'Email Newsletters', 
+                  'Infographics',
+                  'Video Content',
+                  'Case Studies'
+                ].map((type) => (
                   <Grid item xs={6} key={type}>
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={true}
-                          onChange={() => {
-                            // Instead of removing, we'll toggle active state
-                            const updatedTypes = contentTypes.filter((_, i) => i !== index);
-                            setContentTypes(updatedTypes);
+                          checked={contentTypes.includes(type)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              // Add to content types
+                              setContentTypes([...contentTypes, type]);
+                            } else {
+                              // Remove from content types
+                              setContentTypes(contentTypes.filter(t => t !== type));
+                            }
                           }}
                         />
                       }
                       label={type}
                     />
-                  </Grid>
-                ))}
-                
-                {/* This adds empty slots for removed content types */}
-                {Array.from({ length: Math.max(0, 6 - contentTypes.length) }).map((_, i) => (
-                  <Grid item xs={6} key={`empty-${i}`}>
-                    <Box sx={{ height: 42 }}></Box>
                   </Grid>
                 ))}
               </Grid>
@@ -1270,10 +1334,10 @@ const BrandNew = () => {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Add content type (press Enter)"
+                  placeholder="Add custom content type (press Enter)"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value) {
-                      setContentTypes([...contentTypes, e.currentTarget.value]);
+                    if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
+                      setContentTypes([...contentTypes, e.currentTarget.value.trim()]);
                       e.currentTarget.value = '';
                       e.preventDefault();
                     }
@@ -1309,6 +1373,7 @@ const BrandNew = () => {
                   if (e.key === 'Enter' && e.currentTarget.value) {
                     setSuggestedTopics([...suggestedTopics, e.currentTarget.value]);
                     e.currentTarget.value = '';
+                    e.preventDefault();
                   }
                 }}
               />
@@ -1321,27 +1386,32 @@ const BrandNew = () => {
               </Box>
               
               <Grid container spacing={2}>
-                {marketingGoals.map((goal, index) => (
+                {[
+                  'Increase Brand Awareness',
+                  'Generate Quality Leads',
+                  'Improve Customer Engagement',
+                  'Boost Website Traffic',
+                  'Increase Social Media Following',
+                  'Drive Conversions and Sales'
+                ].map((goal) => (
                   <Grid item xs={12} key={goal}>
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={true}
-                          onChange={() => {
-                            const updatedGoals = marketingGoals.filter((_, i) => i !== index);
-                            setMarketingGoals(updatedGoals);
+                          checked={marketingGoals.includes(goal)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              // Add to marketing goals
+                              setMarketingGoals([...marketingGoals, goal]);
+                            } else {
+                              // Remove from marketing goals
+                              setMarketingGoals(marketingGoals.filter(g => g !== goal));
+                            }
                           }}
                         />
                       }
                       label={goal}
                     />
-                  </Grid>
-                ))}
-                
-                {/* This adds empty slots for removed marketing goals */}
-                {Array.from({ length: Math.max(0, 4 - marketingGoals.length) }).map((_, i) => (
-                  <Grid item xs={12} key={`empty-${i}`}>
-                    <Box sx={{ height: 42 }}></Box>
                   </Grid>
                 ))}
               </Grid>
@@ -1350,10 +1420,10 @@ const BrandNew = () => {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Add a marketing goal (press Enter)"
+                  placeholder="Add a custom marketing goal (press Enter)"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value) {
-                      setMarketingGoals([...marketingGoals, e.currentTarget.value]);
+                    if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
+                      setMarketingGoals([...marketingGoals, e.currentTarget.value.trim()]);
                       e.currentTarget.value = '';
                       e.preventDefault();
                     }
@@ -1642,6 +1712,190 @@ const BrandNew = () => {
     );
   };
   
+  // Render the success and next steps screen
+  const renderSuccessStep = () => {
+    return (
+      <Box>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          mb: 5,
+          textAlign: 'center' 
+        }}>
+          <Avatar 
+            sx={{ 
+              width: 100, 
+              height: 100, 
+              bgcolor: 'success.main',
+              mb: 2
+            }}
+          >
+            <CheckIcon sx={{ fontSize: 60 }} />
+          </Avatar>
+          
+          <Typography variant="h4" gutterBottom fontWeight="bold">
+            Congratulations!
+          </Typography>
+          
+          <Typography variant="h6" paragraph>
+            Your brand "{brandName}" has been successfully created.
+          </Typography>
+          
+          <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 600 }}>
+            You're all set to start creating amazing content. We've prepared some next steps to help you get the most out of your marketing platform.
+          </Typography>
+        </Box>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6">Quick-Start Content</Typography>
+              </Box>
+              
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
+                <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                  {industry === 'Technology' ? 'Product Announcement Post' : 
+                   industry === 'E-commerce' ? 'New Collection Announcement' :
+                   'Welcome Blog Post'}
+                </Typography>
+                
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  We've prepared a draft based on your industry and brand style. This content is ready for review and can be published with one click.
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button 
+                    variant="contained" 
+                    size="small"
+                    onClick={() => navigate(`/content/new?brandId=${createdBrandId}`)}
+                  >
+                    Edit Content
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small"
+                  >
+                    Schedule Post
+                  </Button>
+                </Box>
+              </Box>
+              
+              <Typography variant="subtitle2" gutterBottom>
+                Preview Across Platforms
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+                {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
+                  <Chip 
+                    key={platform}
+                    label={platform}
+                    size="small"
+                    onClick={() => {}}
+                  />
+                ))}
+              </Box>
+              
+              <Button 
+                fullWidth
+                variant="outlined"
+                onClick={() => navigate(`/content?brandId=${createdBrandId}`)}
+              >
+                Go to Content Library
+              </Button>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6">Onboarding Checklist</Typography>
+              </Box>
+              
+              <Box sx={{ mb: 3 }}>
+                {[
+                  { label: 'Brand Setup Completed', done: true },
+                  { label: 'Create First Content Piece', done: false },
+                  { label: 'Connect Social Media Accounts', done: socialMediaAccounts.length > 0 },
+                  { label: 'Set Up Email Campaign', done: false },
+                  { label: 'Review Analytics Dashboard', done: false },
+                  { label: 'Invite Team Members', done: false }
+                ].map((item, index) => (
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      mb: 2,
+                      p: 1,
+                      borderRadius: 1,
+                      bgcolor: item.done ? 'success.light' : 'background.default',
+                      opacity: item.done ? 0.8 : 1
+                    }}
+                  >
+                    <Box 
+                      sx={{ 
+                        width: 24, 
+                        height: 24, 
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        bgcolor: item.done ? 'success.main' : 'grey.200',
+                        color: item.done ? 'white' : 'text.secondary'
+                      }}
+                    >
+                      {item.done ? <CheckIcon fontSize="small" /> : (index + 1)}
+                    </Box>
+                    <Typography 
+                      variant="body2"
+                      sx={{ 
+                        textDecoration: item.done ? 'line-through' : 'none',
+                        color: item.done ? 'text.secondary' : 'text.primary'
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                    {!item.done && (
+                      <Box sx={{ flexGrow: 1, textAlign: 'right' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {index === 1 ? '2 min' : 
+                           index === 2 ? '5 min' : 
+                           index === 3 ? '10 min' : 
+                           index === 4 ? '3 min' : '1 min'}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+              
+              <Box sx={{ textAlign: 'center' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate(`/brands/${createdBrandId}`)}
+                >
+                  Go to Brand Dashboard
+                </Button>
+              </Box>
+            </Paper>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <Button
+                startIcon={<PlayArrowIcon />}
+                onClick={() => {}}
+              >
+                Watch 2-minute demo video
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
   // Render content based on active step
   const getStepContent = (step: number) => {
     switch (step) {
@@ -1655,6 +1909,8 @@ const BrandNew = () => {
         return renderContentStrategyStep();
       case 4:
         return renderConfirmationStep();
+      case 5:
+        return renderSuccessStep();
       default:
         return 'Unknown step';
     }
@@ -1664,18 +1920,18 @@ const BrandNew = () => {
     <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
       <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
         <Stepper 
-          activeStep={activeStep} 
+          activeStep={activeStep > 4 ? 4 : activeStep} 
           alternativeLabel
-          sx={{ mb: 5 }}
+          sx={{ mb: 5, display: activeStep > 5 ? 'none' : 'flex' }}
         >
-          {steps.map((label, index) => (
+          {steps.slice(0, 5).map((label, index) => (
             <Step key={label}>
               <StepLabel 
-                onClick={() => index <= activeStep && setActiveStep(index)}
+                onClick={() => index <= activeStep && activeStep < 5 && setActiveStep(index)}
                 sx={{ 
-                  cursor: index <= activeStep ? 'pointer' : 'default',
+                  cursor: (index <= activeStep && activeStep < 5) ? 'pointer' : 'default',
                   '&:hover': { 
-                    textDecoration: index <= activeStep ? 'underline' : 'none' 
+                    textDecoration: (index <= activeStep && activeStep < 5) ? 'underline' : 'none' 
                   }
                 }}
               >

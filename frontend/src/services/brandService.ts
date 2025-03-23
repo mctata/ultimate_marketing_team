@@ -198,7 +198,8 @@ class BrandService {
       const mockId = Date.now().toString();
       const currentDate = new Date().toISOString();
       
-      return Promise.resolve({
+      // Create a complete mock brand with all the properties
+      const mockBrand: Brand = {
         id: mockId,
         name: brandData.name,
         description: brandData.description,
@@ -216,7 +217,13 @@ class BrandService {
         socialMediaAccounts: brandData.socialMediaAccounts,
         suggestedTopics: brandData.suggestedTopics,
         recommendedContentTypes: brandData.recommendedContentTypes
-      });
+      };
+      
+      // Store the newly created mock brand in the mock brands array
+      // so it can be retrieved later when redirecting to the brand page
+      mockBrands.push(mockBrand);
+      
+      return Promise.resolve(mockBrand);
     }
   }
 
@@ -254,20 +261,75 @@ class BrandService {
     // Create mock data based on domain
     let industry = 'Technology';
     let colors = { primary: '#3498db', secondary: '#2ecc71' };
-    let tone = 'Professional';
+    let tone = 'Professional, Analytical';
     let products = ['Software', 'Cloud Services', 'Consulting'];
+    let targetAudience = ['Business Professionals', 'IT Decision Makers', 'Software Developers', 'Technology Enthusiasts'];
+    let contentTypes = ['Blog Posts', 'Case Studies', 'Whitepapers', 'Video Tutorials'];
+    let hashtags = [`#${name}`, '#TechSolutions', '#Innovation', '#DigitalTransformation', '#CloudComputing'];
+    let topics = ['Technology Trends', 'Industry News', 'Product Updates', 'Case Studies'];
+    let schedule = { frequency: 'Weekly', bestTimes: ['Tuesday 10:00 AM', 'Thursday 2:00 PM'] };
+    let marketingGoals = ['Increase Brand Awareness', 'Generate Quality Leads', 'Establish Thought Leadership', 'Drive Product Adoption'];
     
-    // Adjust mock data based on TLD
-    if (domainParts.includes('eco') || domain.includes('green')) {
+    // Adjust mock data based on domain cues
+    if (domainParts.includes('eco') || domain.includes('green') || domain.includes('sustain')) {
       industry = 'Sustainability';
       colors = { primary: '#27ae60', secondary: '#2ecc71' };
-      tone = 'Passionate';
+      tone = 'Passionate, Educational, Inspirational';
       products = ['Sustainable Products', 'Environmental Services', 'Green Solutions'];
-    } else if (domainParts.includes('shop') || domain.includes('store')) {
+      contentTypes = ['Blog Posts', 'Impact Reports', 'Infographics', 'Success Stories'];
+      targetAudience = ['Environmentally Conscious Consumers', 'Corporate Sustainability Officers', 'Green Investors', 'Policy Makers'];
+      hashtags = [`#${name}`, '#Sustainability', '#GreenLiving', '#ClimateAction', '#EcoFriendly'];
+      topics = ['Sustainability Trends', 'Environmental Impact', 'Green Living Tips', 'Success Stories'];
+      schedule = { frequency: 'Weekly', bestTimes: ['Monday 9:00 AM', 'Wednesday 2:00 PM'] };
+      marketingGoals = ['Raise Environmental Awareness', 'Grow Community Engagement', 'Drive Sustainable Practices', 'Increase Brand Trust'];
+    } 
+    else if (domainParts.includes('shop') || domain.includes('store') || domain.includes('buy')) {
       industry = 'E-commerce';
       colors = { primary: '#f39c12', secondary: '#e74c3c' };
-      tone = 'Friendly';
+      tone = 'Friendly, Conversational, Persuasive';
       products = ['Online Store', 'Physical Products', 'Subscription Services'];
+      contentTypes = ['Product Features', 'Customer Reviews', 'Shopping Guides', 'Promotional Content'];
+      targetAudience = ['Online Shoppers', 'Millennial Consumers', 'Deal Seekers', 'Loyal Customers'];
+      hashtags = [`#${name}Products`, '#ShopNow', '#NewArrivals', '#SaleAlert', '#CustomerFavorites'];
+      topics = ['Product Showcases', 'Shopping Guides', 'Seasonal Collections', 'Customer Spotlights'];
+      schedule = { frequency: 'Daily', bestTimes: ['Monday 12:00 PM', 'Friday 3:00 PM', 'Saturday 10:00 AM'] };
+      marketingGoals = ['Increase Online Sales', 'Reduce Cart Abandonment', 'Improve Customer Retention', 'Expand Product Awareness'];
+    }
+    else if (domainParts.includes('health') || domain.includes('med') || domain.includes('care') || domain.includes('wellness')) {
+      industry = 'Healthcare';
+      colors = { primary: '#3498db', secondary: '#1abc9c' };
+      tone = 'Caring, Trustworthy, Informative';
+      products = ['Healthcare Services', 'Wellness Programs', 'Medical Solutions'];
+      contentTypes = ['Educational Articles', 'Expert Interviews', 'Patient Stories', 'Health Tips'];
+      targetAudience = ['Patients', 'Healthcare Professionals', 'Caregivers', 'Wellness Enthusiasts'];
+      hashtags = [`#${name}Care`, '#HealthTips', '#WellnessMatters', '#HealthcareInnovation'];
+      topics = ['Preventative Health', 'Medical Advances', 'Wellness Practices', 'Patient Experiences'];
+      schedule = { frequency: 'Weekly', bestTimes: ['Monday 8:00 AM', 'Wednesday 12:00 PM'] };
+      marketingGoals = ['Build Patient Trust', 'Educate Target Audience', 'Highlight Expertise', 'Improve Community Health'];
+    }
+    else if (domainParts.includes('edu') || domain.includes('learn') || domain.includes('academy')) {
+      industry = 'Education';
+      colors = { primary: '#9b59b6', secondary: '#3498db' };
+      tone = 'Educational, Encouraging, Supportive';
+      products = ['Courses', 'Educational Resources', 'Learning Programs'];
+      contentTypes = ['Tutorials', 'Course Previews', 'Student Success Stories', 'Educational Resources'];
+      targetAudience = ['Students', 'Parents', 'Educators', 'Lifelong Learners'];
+      hashtags = [`#${name}Learning`, '#Education', '#StudentSuccess', '#LearningTips'];
+      topics = ['Learning Techniques', 'Education Trends', 'Student Highlights', 'Course Information'];
+      schedule = { frequency: 'Weekly', bestTimes: ['Sunday 7:00 PM', 'Tuesday 3:00 PM'] };
+      marketingGoals = ['Increase Enrollment', 'Highlight Student Success', 'Establish Educational Authority', 'Build Learning Community'];
+    }
+    else if (domainParts.includes('food') || domain.includes('restaurant') || domain.includes('eat') || domain.includes('kitchen')) {
+      industry = 'Food & Beverage';
+      colors = { primary: '#e74c3c', secondary: '#f1c40f' };
+      tone = 'Appetizing, Friendly, Enthusiastic';
+      products = ['Food Items', 'Restaurant Services', 'Culinary Experiences'];
+      contentTypes = ['Recipes', 'Food Photography', 'Chef Interviews', 'Culinary Tips'];
+      targetAudience = ['Food Enthusiasts', 'Home Cooks', 'Dining Patrons', 'Health-Conscious Eaters'];
+      hashtags = [`#${name}Eats`, '#FoodLover', '#Delicious', '#FreshIngredients'];
+      topics = ['Seasonal Dishes', 'Food Stories', 'Cooking Tips', 'Menu Highlights'];
+      schedule = { frequency: 'Daily', bestTimes: ['Tuesday 11:00 AM', 'Friday 5:00 PM', 'Sunday 10:00 AM'] };
+      marketingGoals = ['Increase Restaurant Visits', 'Build Food Community', 'Showcase Culinary Expertise', 'Drive Online Orders'];
     }
     
     return {
@@ -290,42 +352,15 @@ class BrandService {
       socialMedia: [
         { platform: 'Twitter', url: `https://twitter.com/${domainParts[0]}` },
         { platform: 'LinkedIn', url: `https://linkedin.com/company/${domainParts[0]}` },
-        { platform: 'Instagram', url: `https://instagram.com/${domainParts[0]}` }
+        { platform: 'Instagram', url: `https://instagram.com/${domainParts[0]}` },
+        { platform: 'Facebook', url: `https://facebook.com/${domainParts[0]}` }
       ],
-      topics: [
-        `${industry} Trends`,
-        'Industry News',
-        'Product Updates',
-        'Customer Success Stories'
-      ],
-      contentTypes: [
-        'Blog Posts',
-        'Case Studies',
-        'Infographics',
-        'Video Tutorials'
-      ],
-      schedule: {
-        frequency: 'Weekly',
-        bestTimes: ['Tuesday 10:00 AM', 'Thursday 2:00 PM']
-      },
-      targetAudience: [
-        'Business Professionals',
-        'Industry Experts',
-        'Decision Makers',
-        'Technology Enthusiasts'
-      ],
-      hashtags: [
-        `#${name}`,
-        `#${industry}`,
-        '#Innovation',
-        '#Growth'
-      ],
-      marketingGoals: [
-        'Increase Brand Awareness',
-        'Generate Quality Leads',
-        'Improve Customer Engagement',
-        'Boost Website Traffic'
-      ]
+      topics: topics,
+      contentTypes: contentTypes,
+      schedule: schedule,
+      targetAudience: targetAudience,
+      hashtags: hashtags,
+      marketingGoals: marketingGoals
     };
   }
 }
