@@ -23,6 +23,11 @@ const CampaignEditor = lazy(() => import('./pages/campaigns/CampaignEditor'));
 const CampaignMetrics = lazy(() => import('./pages/campaigns/CampaignMetrics'));
 const AdSetDetail = lazy(() => import('./pages/campaigns/AdSetDetail'));
 
+// Template Management
+const Templates = lazy(() => import('./pages/templates/Templates'));
+const TemplateDetail = lazy(() => import('./pages/templates/TemplateDetail'));
+const TemplateTestWorkspace = lazy(() => import('./pages/templates/TemplateTestWorkspace'));
+
 // Loading component
 const LoadingScreen = () => (
   <Box
@@ -67,6 +72,11 @@ function App() {
               <Route path="/campaigns/:id" element={<CampaignEditor />} />
               <Route path="/campaigns/:id/metrics" element={<CampaignMetrics />} />
               <Route path="/campaigns/:campaignId/adsets/:adSetId" element={<AdSetDetail />} />
+              
+              {/* Template Management Routes */}
+              <Route path="/templates" element={<Templates />} />
+              <Route path="/templates/:id" element={<TemplateDetail />} />
+              <Route path="/templates/:id/test" element={<TemplateTestWorkspace />} />
             </Route>
           </Route>
 

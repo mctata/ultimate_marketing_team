@@ -308,6 +308,15 @@ const TemplateDetail: React.FC = () => {
           </Button>
           
           <Button
+            variant="outlined"
+            color="info"
+            onClick={() => navigate(`/templates/${template.id}/test`)}
+            aria-label="Test template"
+          >
+            Test Template
+          </Button>
+          
+          <Button
             variant="contained"
             color="primary"
             onClick={() => setUseDialogOpen(true)}

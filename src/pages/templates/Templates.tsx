@@ -96,6 +96,7 @@ interface TemplateCardProps {
   isFavorite: boolean;
   onViewDetails: () => void;
   onUseTemplate: () => void;
+  onTestTemplate?: () => void;
 }
 
 const TemplateCard: React.FC<TemplateCardProps> = ({
@@ -104,8 +105,19 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   isFavorite,
   onViewDetails,
   onUseTemplate,
+  onTestTemplate,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
+
+  const handleTestTemplate = () => {
+    // If onTestTemplate is provided use that, otherwise navigate directly
+    if (onTestTemplate) {
+      onTestTemplate();
+    } else {
+      navigate(`/templates/${template.id}/test`);
+    }
+  };
 
   return (
     <Card 
@@ -221,7 +233,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
         </Box>
       </CardContent>
       
-      <CardActions sx={{ p: 2, pt: 0 }}>
+      <CardActions sx={{ p: 2, pt: 0, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         <Button 
           size="small" 
           onClick={onViewDetails}
@@ -229,6 +241,16 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
         >
           Details
         </Button>
+        
+        <Button 
+          size="small"
+          onClick={handleTestTemplate}
+          color="info"
+          aria-label={`Test ${template.title} template`}
+        >
+          Test
+        </Button>
+        
         <Button 
           size="small" 
           color="primary" 
