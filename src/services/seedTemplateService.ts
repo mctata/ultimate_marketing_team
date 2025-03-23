@@ -144,8 +144,9 @@ export const seedTemplateLibrary = async () => {
  */
 export const templatesExist = async (): Promise<boolean> => {
   try {
-    const templates = await templateService.getTemplates({ limit: 1 });
-    return templates.length > 0;
+    // Use the check endpoint from the seed templates API
+    const response = await api.get('/seed-templates/check');
+    return response.data.exists;
   } catch (error) {
     console.error('Error checking if templates exist:', error);
     return false;
@@ -161,7 +162,16 @@ export const seedTemplatesIfNeeded = async (): Promise<void> => {
     
     if (!hasTemplates) {
       console.log('No templates found in database. Starting seeding process...');
-      await seedTemplateLibrary();
+      try {
+        // Call the seed templates API endpoint
+        await api.post('/seed-templates');
+        console.log('Template seeding initiated on server.');
+      } catch (error) {
+        console.error('Error calling seed templates API:', error);
+        // Fall back to client-side seeding if API fails
+        console.log('Falling back to client-side seeding...');
+        await seedTemplateLibrary();
+      }
     } else {
       console.log('Templates already exist in database. Skipping seeding process.');
     }

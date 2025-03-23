@@ -48,12 +48,16 @@ app.add_middleware(
 # Import routers
 from src.api.routers import health
 from src.api import templates  # Import template router
+from src.api import seed_templates  # Import seed templates router
 
 # Add health router for basic functionality
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
 
 # Add templates router
 app.include_router(templates.router, prefix=f"{settings.API_PREFIX}", tags=["Templates"])
+
+# Add seed templates router
+app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}", tags=["Templates"])
 
 # Root endpoint
 @app.get("/")

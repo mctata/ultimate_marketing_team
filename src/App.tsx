@@ -27,6 +27,7 @@ const AdSetDetail = lazy(() => import('./pages/campaigns/AdSetDetail'));
 const Templates = lazy(() => import('./pages/templates/Templates'));
 const TemplateDetail = lazy(() => import('./pages/templates/TemplateDetail'));
 const TemplateTestWorkspace = lazy(() => import('./pages/templates/TemplateTestWorkspace'));
+const AdminTemplatesUtility = lazy(() => import('./pages/templates/AdminTemplatesUtility'));
 
 // Loading component
 const LoadingScreen = () => (
@@ -77,6 +78,7 @@ function App() {
               <Route path="/templates" element={<Templates />} />
               <Route path="/templates/:id" element={<TemplateDetail />} />
               <Route path="/templates/:id/test" element={<TemplateTestWorkspace />} />
+              <Route path="/templates/admin" element={<AdminTemplatesUtility />} />
             </Route>
           </Route>
 

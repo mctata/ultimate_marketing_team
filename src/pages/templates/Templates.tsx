@@ -64,6 +64,7 @@ import {
   selectTemplatesError,
 } from '../../store/slices/templateSlice';
 import { Template, TemplateCategory, TemplateIndustry } from '../../services/templateService';
+import useAuth from '../../hooks/useAuth';
 
 // Tab panel component
 interface TabPanelProps {
@@ -375,6 +376,7 @@ const Templates: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { user } = useAuth();
   
   // Redux state
   const templates = useSelector(selectTemplates);
@@ -543,9 +545,22 @@ const Templates: React.FC = () => {
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Templates Library
-        </Typography>
+        <Box>
+          <Typography variant="h4" component="h1" fontWeight="bold">
+            Templates Library
+          </Typography>
+          {user?.is_admin && (
+            <Button
+              variant="text"
+              size="small"
+              color="secondary"
+              onClick={() => navigate('/templates/admin')}
+              sx={{ mt: 0.5 }}
+            >
+              Admin Tools
+            </Button>
+          )}
+        </Box>
         
         <Button
           variant="contained"
