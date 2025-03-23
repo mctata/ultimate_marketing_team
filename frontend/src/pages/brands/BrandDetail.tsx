@@ -33,41 +33,7 @@ import {
   BarChart as BarChartIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
-
-// Mock data for brand detail
-const brandData = {
-  id: 1,
-  name: 'Tech Solutions Inc.',
-  description: 'Enterprise software and cloud solutions provider specializing in AI-driven business applications and cloud infrastructure management. Serving enterprise clients across finance, healthcare, and manufacturing sectors.',
-  logo: null,
-  industry: 'Technology',
-  website: 'https://techsolutions.example.com',
-  email: 'contact@techsolutions.example.com',
-  phone: '+1 (555) 123-4567',
-  address: '123 Tech Park, San Francisco, CA 94103',
-  socialMedia: {
-    linkedin: 'https://linkedin.com/company/techsolutions',
-    twitter: 'https://twitter.com/techsolutions',
-    facebook: 'https://facebook.com/techsolutions',
-  },
-  projects: [
-    { id: 1, name: 'Q3 Product Launch', status: 'In Progress', deadline: '2025-09-30' },
-    { id: 2, name: 'Annual SaaS Conference', status: 'Planning', deadline: '2025-11-15' },
-    { id: 3, name: 'Website Redesign', status: 'Completed', deadline: '2025-06-01' },
-  ],
-  contacts: [
-    { id: 1, name: 'John Smith', position: 'CEO', email: 'john@techsolutions.example.com', phone: '+1 (555) 111-1111' },
-    { id: 2, name: 'Sarah Johnson', position: 'Marketing Director', email: 'sarah@techsolutions.example.com', phone: '+1 (555) 222-2222' },
-  ],
-  recentContent: [
-    { id: 1, title: 'Cloud Migration Whitepaper', type: 'Document', status: 'Published', date: '2025-06-15' },
-    { id: 2, title: 'Tech Solutions Product Announcement', type: 'Press Release', status: 'Draft', date: '2025-07-10' },
-  ],
-  recentCampaigns: [
-    { id: 1, name: 'Summer SaaS Promotion', platform: 'Multi-channel', status: 'Active', startDate: '2025-06-01', endDate: '2025-08-31' },
-    { id: 2, name: 'Cloud Services Webinar Series', platform: 'Email & LinkedIn', status: 'Planning', startDate: '2025-09-01', endDate: '2025-11-30' },
-  ],
-};
+import { useBrands } from '../../hooks/useBrands';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -99,16 +65,21 @@ const BrandDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [value, setValue] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const { getBrandById } = useBrands();
   
-  // Simulate loading data
+  // Fetch brand data using the hook
+  const { 
+    data: brandData, 
+    isLoading, 
+    isError 
+  } = getBrandById(id || '');
+  
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    // Prefetch the brand data when component mounts
+    if (id) {
+      console.log("Fetching brand with ID:", id);
+    }
+  }, [id]);
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
@@ -116,6 +87,23 @@ const BrandDetail = () => {
   
   if (isLoading) {
     return <LinearProgress />;
+  }
+  
+  if (isError || !brandData) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h6" color="error" gutterBottom>
+          Error loading brand details
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => navigate('/brands')}
+          sx={{ mt: 2 }}
+        >
+          Back to Brands
+        </Button>
+      </Box>
+    );
   }
   
   const getInitials = (name: string) => {
@@ -164,15 +152,17 @@ const BrandDetail = () => {
                   color="primary"
                   size="small" 
                 />
-                <Chip 
-                  icon={<LanguageIcon fontSize="small" />}
-                  label={brandData.website.replace('https://', '')}
-                  component="a"
-                  href={brandData.website}
-                  target="_blank"
-                  clickable
-                  size="small"
-                />
+                {brandData.website && (
+                  <Chip 
+                    icon={<LanguageIcon fontSize="small" />}
+                    label={brandData.website.replace(/^https?:\/\//, '')}
+                    component="a"
+                    href={brandData.website.startsWith('http') ? brandData.website : `https://${brandData.website}`}
+                    target="_blank"
+                    clickable
+                    size="small"
+                  />
+                )}
               </Box>
             </Box>
           </Box>
@@ -244,9 +234,17 @@ const BrandDetail = () => {
                       <ListItemText 
                         primary="Website" 
                         secondary={
-                          <a href={brandData.website} target="_blank" rel="noopener noreferrer">
-                            {brandData.website}
-                          </a>
+                          brandData.website ? (
+                            <a 
+                              href={brandData.website.startsWith('http') ? brandData.website : `https://${brandData.website}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              {brandData.website}
+                            </a>
+                          ) : (
+                            "Not provided"
+                          )
                         } 
                       />
                     </ListItem>
@@ -257,9 +255,13 @@ const BrandDetail = () => {
                       <ListItemText 
                         primary="Email" 
                         secondary={
-                          <a href={`mailto:${brandData.email}`}>
-                            {brandData.email}
-                          </a>
+                          brandData.contactInfo?.email ? (
+                            <a href={`mailto:${brandData.contactInfo.email}`}>
+                              {brandData.contactInfo.email}
+                            </a>
+                          ) : (
+                            "Not provided"
+                          )
                         } 
                       />
                     </ListItem>
@@ -270,9 +272,13 @@ const BrandDetail = () => {
                       <ListItemText 
                         primary="Phone" 
                         secondary={
-                          <a href={`tel:${brandData.phone}`}>
-                            {brandData.phone}
-                          </a>
+                          brandData.contactInfo?.phone ? (
+                            <a href={`tel:${brandData.contactInfo.phone}`}>
+                              {brandData.contactInfo.phone}
+                            </a>
+                          ) : (
+                            "Not provided"
+                          )
                         } 
                       />
                     </ListItem>
@@ -282,7 +288,7 @@ const BrandDetail = () => {
                       </ListItemIcon>
                       <ListItemText 
                         primary="Address" 
-                        secondary={brandData.address} 
+                        secondary={brandData.contactInfo?.address || "Not provided"} 
                       />
                     </ListItem>
                   </List>
@@ -299,28 +305,36 @@ const BrandDetail = () => {
                   </Box>
                   
                   <Grid container spacing={2}>
-                    {brandData.contacts.map(contact => (
-                      <Grid item xs={12} md={6} key={contact.id}>
-                        <Card variant="outlined">
-                          <CardContent>
-                            <Typography variant="subtitle1" fontWeight="medium">
-                              {contact.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                              {contact.position}
-                            </Typography>
-                            <Typography variant="body2">
-                              <EmailIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 1, fontSize: 16 }} />
-                              {contact.email}
-                            </Typography>
-                            <Typography variant="body2">
-                              <PhoneIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 1, fontSize: 16 }} />
-                              {contact.phone}
-                            </Typography>
-                          </CardContent>
-                        </Card>
+                    {(brandData.contacts || []).length > 0 ? (
+                      (brandData.contacts || []).map(contact => (
+                        <Grid item xs={12} md={6} key={contact.id}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Typography variant="subtitle1" fontWeight="medium">
+                                {contact.name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" gutterBottom>
+                                {contact.position}
+                              </Typography>
+                              <Typography variant="body2">
+                                <EmailIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 1, fontSize: 16 }} />
+                                {contact.email}
+                              </Typography>
+                              <Typography variant="body2">
+                                <PhoneIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 1, fontSize: 16 }} />
+                                {contact.phone}
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))
+                    ) : (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" align="center">
+                          No contacts added yet. Click "Add Contact" to create one.
+                        </Typography>
                       </Grid>
-                    ))}
+                    )}
                   </Grid>
                 </Box>
               </Grid>
@@ -341,42 +355,50 @@ const BrandDetail = () => {
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                   
-                  {brandData.projects.slice(0, 3).map((project, index) => (
-                    <Box key={project.id}>
-                      <Box 
-                        sx={{ 
-                          py: 1, 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium">
-                            {project.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                            <Chip 
-                              label={project.status} 
-                              size="small"
-                              color={
-                                project.status === 'Completed' ? 'success' :
-                                project.status === 'In Progress' ? 'primary' : 'default'
-                              }
-                              sx={{ mr: 1 }}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              Due: {new Date(project.deadline).toLocaleDateString()}
+                  {(brandData.projects || []).length > 0 ? (
+                    (brandData.projects || []).slice(0, 3).map((project, index) => (
+                      <Box key={project.id}>
+                        <Box 
+                          sx={{ 
+                            py: 1, 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {project.name}
                             </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                              <Chip 
+                                label={project.status} 
+                                size="small"
+                                color={
+                                  project.status === 'Completed' ? 'success' :
+                                  project.status === 'In Progress' ? 'primary' : 'default'
+                                }
+                                sx={{ mr: 1 }}
+                              />
+                              {project.deadline && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Due: {new Date(project.deadline).toLocaleDateString()}
+                                </Typography>
+                              )}
+                            </Box>
                           </Box>
+                          <IconButton size="small">
+                            <ArticleIcon fontSize="small" />
+                          </IconButton>
                         </Box>
-                        <IconButton size="small">
-                          <ArticleIcon fontSize="small" />
-                        </IconButton>
+                        {index < (brandData.projects?.length || 0) - 1 && <Divider />}
                       </Box>
-                      {index < brandData.projects.length - 1 && <Divider />}
-                    </Box>
-                  ))}
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
+                      No projects yet. Create your first project to see it here.
+                    </Typography>
+                  )}
                   
                   <Button 
                     fullWidth 

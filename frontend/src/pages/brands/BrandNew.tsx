@@ -23,7 +23,11 @@ import {
   Avatar,
   FormControlLabel,
   Switch,
+  Modal,
+  Fade,
+  Backdrop,
 } from '@mui/material';
+import ReactConfetti from 'react-confetti';
 import {
   Search as SearchIcon,
   ArrowForward as ArrowForwardIcon,
@@ -106,16 +110,28 @@ const BrandNew = () => {
   const [socialMediaAccounts, setSocialMediaAccounts] = useState<{platform: string; url: string}[]>([]);
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
   const [contentTypes, setContentTypes] = useState<string[]>([]);
-  const [schedule, setSchedule] = useState<{frequency: string; customFrequency?: string; bestTimes: string[]}>({
+  const [schedule, setSchedule] = useState<{frequency: string; customFrequency?: string; bestTimes: string[]; customTime: string}>({
     frequency: '',
     customFrequency: '',
-    bestTimes: []
+    bestTimes: [],
+    customTime: ''
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [marketingGoals, setMarketingGoals] = useState<string[]>([]);
   
   // State for tracking the created brand
   const [createdBrandId, setCreatedBrandId] = useState<string>('');
+  
+  // Input fields state
+  const [targetAudienceInput, setTargetAudienceInput] = useState<string>('');
+  const [hashtagInput, setHashtagInput] = useState<string>('');
+  const [topicInput, setTopicInput] = useState<string>('');
+  const [marketingGoalInput, setMarketingGoalInput] = useState<string>('');
+  
+  // Modal & confetti state
+  const [openSuccessModal, setOpenSuccessModal] = useState<boolean>(false);
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  const [activePlatformPreview, setActivePlatformPreview] = useState<string>('Instagram');
   
   // Animation ref for the analysis animation
   const animationRef = useRef<NodeJS.Timeout | null>(null);
@@ -245,11 +261,15 @@ const BrandNew = () => {
       hashtags: hashtags
     }, {
       onSuccess: (data) => {
-        // Show success screen (step 5)
-        setActiveStep(5);
-        
         // Store the created brand ID for reference
         setCreatedBrandId(data.id);
+        
+        // Start confetti and open modal
+        setShowConfetti(true);
+        setOpenSuccessModal(true);
+        
+        // Move to success screen (step 5)
+        setActiveStep(5);
       },
       onError: (error) => {
         console.error('Error creating brand:', error);
@@ -455,13 +475,31 @@ const BrandNew = () => {
                     }}
                     InputProps={{
                       endAdornment: analysisResult?.contactInfo?.email && (
-                        <IconButton 
-                          size="small" 
-                          href={`mailto:${analysisResult.contactInfo.email}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
+                        <>
+                          <IconButton 
+                            size="small" 
+                            href={`mailto:${analysisResult.contactInfo.email}`}
+                            target="_blank"
+                          >
+                            <ArrowForwardIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small"
+                            onClick={() => {
+                              if (analysisResult) {
+                                setAnalysisResult({
+                                  ...analysisResult,
+                                  contactInfo: {
+                                    ...analysisResult.contactInfo,
+                                    email: ''
+                                  }
+                                });
+                              }
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </>
                       )
                     }}
                   />
@@ -487,13 +525,31 @@ const BrandNew = () => {
                     }}
                     InputProps={{
                       endAdornment: analysisResult?.contactInfo?.phone && (
-                        <IconButton 
-                          size="small" 
-                          href={`tel:${analysisResult.contactInfo.phone}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
+                        <>
+                          <IconButton 
+                            size="small" 
+                            href={`tel:${analysisResult.contactInfo.phone}`}
+                            target="_blank"
+                          >
+                            <ArrowForwardIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small"
+                            onClick={() => {
+                              if (analysisResult) {
+                                setAnalysisResult({
+                                  ...analysisResult,
+                                  contactInfo: {
+                                    ...analysisResult.contactInfo,
+                                    phone: ''
+                                  }
+                                });
+                              }
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </>
                       )
                     }}
                   />
@@ -508,13 +564,21 @@ const BrandNew = () => {
                     onChange={(e) => setUrl(e.target.value)}
                     InputProps={{
                       endAdornment: url && (
-                        <IconButton 
-                          size="small" 
-                          href={url.startsWith('http') ? url : `https://${url}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
+                        <>
+                          <IconButton 
+                            size="small" 
+                            href={url.startsWith('http') ? url : `https://${url}`}
+                            target="_blank"
+                          >
+                            <ArrowForwardIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => setUrl('')}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </>
                       )
                     }}
                   />
@@ -1154,18 +1218,36 @@ const BrandNew = () => {
                 ))}
               </Box>
               
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Add audience segment (press Enter)"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
-                    setTargetAudience([...targetAudience, e.currentTarget.value.trim()]);
-                    e.currentTarget.value = '';
-                    e.preventDefault();
-                  }
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  id="audience-input"
+                  size="small"
+                  placeholder="Add audience segment"
+                  value={targetAudienceInput}
+                  onChange={(e) => setTargetAudienceInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && targetAudienceInput.trim() !== '') {
+                      setTargetAudience([...targetAudience, targetAudienceInput.trim()]);
+                      setTargetAudienceInput('');
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  variant="contained"
+                  size="small"
+                  disabled={targetAudienceInput.trim() === ''}
+                  onClick={() => {
+                    if (targetAudienceInput.trim() !== '') {
+                      setTargetAudience([...targetAudience, targetAudienceInput.trim()]);
+                      setTargetAudienceInput('');
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
@@ -1187,18 +1269,38 @@ const BrandNew = () => {
                 ))}
               </Box>
               
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Add hashtag (press Enter)"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    setHashtags([...hashtags, e.currentTarget.value]);
-                    e.currentTarget.value = '';
-                    e.preventDefault();
-                  }
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  id="hashtag-input"
+                  size="small"
+                  placeholder="Add hashtag"
+                  value={hashtagInput}
+                  onChange={(e) => setHashtagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && hashtagInput.trim() !== '') {
+                      const tag = hashtagInput.trim().startsWith('#') ? hashtagInput.trim() : `#${hashtagInput.trim()}`;
+                      setHashtags([...hashtags, tag]);
+                      setHashtagInput('');
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  variant="contained"
+                  size="small"
+                  disabled={hashtagInput.trim() === ''}
+                  onClick={() => {
+                    if (hashtagInput.trim() !== '') {
+                      const tag = hashtagInput.trim().startsWith('#') ? hashtagInput.trim() : `#${hashtagInput.trim()}`;
+                      setHashtags([...hashtags, tag]);
+                      setHashtagInput('');
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -1247,45 +1349,140 @@ const BrandNew = () => {
                 ))}
               </Box>
               
-              <TextField
-                size="small"
-                placeholder="Add custom time (e.g., Monday 3:00 PM)"
-                fullWidth
-                sx={{ mb: 2 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    setSchedule({
-                      ...schedule,
-                      bestTimes: [...schedule.bestTimes, e.currentTarget.value]
-                    });
-                    e.currentTarget.value = '';
-                    e.preventDefault();
-                  }
-                }}
-              />
+              {/* Predefined times */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {['Monday 9:00 AM', 'Tuesday 12:00 PM', 'Wednesday 3:00 PM', 'Thursday 5:00 PM', 'Friday 10:00 AM'].map(
+                  (timeOption) => (
+                    <Chip
+                      key={timeOption}
+                      label={timeOption}
+                      onClick={() => {
+                        if (!schedule.bestTimes.includes(timeOption)) {
+                          setSchedule({
+                            ...schedule,
+                            bestTimes: [...schedule.bestTimes, timeOption]
+                          });
+                        }
+                      }}
+                      variant={schedule.bestTimes.includes(timeOption) ? "filled" : "outlined"}
+                      color={schedule.bestTimes.includes(timeOption) ? "primary" : "default"}
+                      size="small"
+                    />
+                  )
+                )}
+              </Box>
               
               {schedule.frequency === 'Custom' && (
                 <>
                   <Typography variant="subtitle2" gutterBottom>
                     Custom Posting Frequency
                   </Typography>
-                  <TextField
-                    fullWidth
-                    placeholder="Specify custom frequency"
-                    size="small"
-                    value={schedule.frequency === 'Custom' ? schedule.customFrequency || '' : ''}
-                    onChange={(e) => {
-                      setSchedule({
-                        ...schedule,
-                        customFrequency: e.target.value
-                      });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      placeholder="Specify custom frequency"
+                      size="small"
+                      value={schedule.customFrequency || ''}
+                      onChange={(e) => {
+                        setSchedule({
+                          ...schedule,
+                          customFrequency: e.target.value
+                        });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                  </Box>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Custom Posting Schedule
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          label="Day"
+                          value={schedule.customTime.split(' ')[0] || ''}
+                          onChange={(e) => {
+                            const day = e.target.value;
+                            const time = schedule.customTime.split(' ').slice(1).join(' ') || '';
+                            setSchedule({
+                              ...schedule,
+                              customTime: day ? `${day} ${time}` : time
+                            });
+                          }}
+                          SelectProps={{
+                            native: true,
+                          }}
+                        >
+                          <option value="">Select day</option>
+                          <option value="Monday">Monday</option>
+                          <option value="Tuesday">Tuesday</option>
+                          <option value="Wednesday">Wednesday</option>
+                          <option value="Thursday">Thursday</option>
+                          <option value="Friday">Friday</option>
+                          <option value="Saturday">Saturday</option>
+                          <option value="Sunday">Sunday</option>
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          label="Time"
+                          value={schedule.customTime.split(' ').slice(1).join(' ') || ''}
+                          onChange={(e) => {
+                            const day = schedule.customTime.split(' ')[0] || '';
+                            const time = e.target.value;
+                            setSchedule({
+                              ...schedule,
+                              customTime: `${day} ${time}`.trim()
+                            });
+                          }}
+                          SelectProps={{
+                            native: true,
+                          }}
+                        >
+                          <option value="">Select time</option>
+                          <option value="9:00 AM">9:00 AM</option>
+                          <option value="10:00 AM">10:00 AM</option>
+                          <option value="11:00 AM">11:00 AM</option>
+                          <option value="12:00 PM">12:00 PM</option>
+                          <option value="1:00 PM">1:00 PM</option>
+                          <option value="2:00 PM">2:00 PM</option>
+                          <option value="3:00 PM">3:00 PM</option>
+                          <option value="4:00 PM">4:00 PM</option>
+                          <option value="5:00 PM">5:00 PM</option>
+                          <option value="6:00 PM">6:00 PM</option>
+                        </TextField>
+                      </Grid>
+                    </Grid>
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button 
+                        variant="contained" 
+                        size="small"
+                        disabled={!schedule.customTime || schedule.customTime.split(' ').length < 2}
+                        onClick={() => {
+                          if (schedule.customTime && schedule.customTime.split(' ').length >= 2) {
+                            setSchedule({
+                              ...schedule,
+                              bestTimes: [...schedule.bestTimes, schedule.customTime],
+                              customTime: ''
+                            });
+                          }
+                        }}
+                      >
+                        Add Time
+                      </Button>
+                    </Box>
+                  </Box>
                 </>
               )}
             </Paper>
@@ -1365,18 +1562,36 @@ const BrandNew = () => {
                 ))}
               </Box>
               
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Add topic (press Enter)"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    setSuggestedTopics([...suggestedTopics, e.currentTarget.value]);
-                    e.currentTarget.value = '';
-                    e.preventDefault();
-                  }
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  id="topic-input"
+                  size="small"
+                  placeholder="Add topic"
+                  value={topicInput}
+                  onChange={(e) => setTopicInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && topicInput.trim() !== '') {
+                      setSuggestedTopics([...suggestedTopics, topicInput.trim()]);
+                      setTopicInput('');
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <Button 
+                  variant="contained"
+                  size="small"
+                  disabled={topicInput.trim() === ''}
+                  onClick={() => {
+                    if (topicInput.trim() !== '') {
+                      setSuggestedTopics([...suggestedTopics, topicInput.trim()]);
+                      setTopicInput('');
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -1417,18 +1632,36 @@ const BrandNew = () => {
               </Grid>
               
               <Box sx={{ mt: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Add a custom marketing goal (press Enter)"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
-                      setMarketingGoals([...marketingGoals, e.currentTarget.value.trim()]);
-                      e.currentTarget.value = '';
-                      e.preventDefault();
-                    }
-                  }}
-                />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    id="marketing-goal-input"
+                    size="small"
+                    placeholder="Add a custom marketing goal"
+                    value={marketingGoalInput}
+                    onChange={(e) => setMarketingGoalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && marketingGoalInput.trim() !== '') {
+                        setMarketingGoals([...marketingGoals, marketingGoalInput.trim()]);
+                        setMarketingGoalInput('');
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  <Button 
+                    variant="contained"
+                    size="small"
+                    disabled={marketingGoalInput.trim() === ''}
+                    onClick={() => {
+                      if (marketingGoalInput.trim() !== '') {
+                        setMarketingGoals([...marketingGoals, marketingGoalInput.trim()]);
+                        setMarketingGoalInput('');
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Box>
               </Box>
             </Paper>
           </Grid>
@@ -1754,31 +1987,81 @@ const BrandNew = () => {
                 <Typography variant="h6">Quick-Start Content</Typography>
               </Box>
               
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
-                <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-                  {industry === 'Technology' ? 'Product Announcement Post' : 
-                   industry === 'E-commerce' ? 'New Collection Announcement' :
-                   'Welcome Blog Post'}
+              <Box sx={{ mb: 3, p: 3, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
+                <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
+                  {industry === 'Technology' ? (
+                    <>
+                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                      Product Announcement Post
+                    </>
+                  ) : industry === 'E-commerce' ? (
+                    <>
+                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                      New Collection Announcement
+                    </>
+                  ) : (
+                    <>
+                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                      Welcome Blog Post
+                    </>
+                  )}
                 </Typography>
                 
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  We've prepared a draft based on your industry and brand style. This content is ready for review and can be published with one click.
+                <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
+                  <Typography variant="body2" paragraph sx={{ color: primaryColor || 'inherit', fontWeight: 'medium' }}>
+                    {industry === 'Technology' ? (
+                      `Introducing the latest innovation from ${brandName}!`
+                    ) : industry === 'E-commerce' ? (
+                      `Discover our newest collection at ${brandName}`
+                    ) : (
+                      `Welcome to ${brandName}!`
+                    )}
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    {industry === 'Technology' ? (
+                      `We're excited to announce our newest solution designed to transform how you ${contentTypes[0] || 'work'}.`
+                    ) : industry === 'E-commerce' ? (
+                      `We're thrilled to unveil our latest collection featuring ${suggestedTopics[0] || 'exciting new products'}.`
+                    ) : (
+                      `We're delighted to welcome you to our community where we share insights about ${suggestedTopics[0] || 'our industry'}.`
+                    )}
+                  </Typography>
+                  <Typography variant="body2">
+                    {`Learn more about how ${brandName} can help you achieve ${marketingGoals[0] || 'your goals'}.`}
+                  </Typography>
+                </Paper>
+                
+                <Typography variant="caption" color="text.secondary" paragraph sx={{ display: 'block', mb: 2 }}>
+                  This draft is tailored to your brand's style and industry. Edit and schedule it now to start engaging your audience immediately.
                 </Typography>
                 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button 
-                    variant="contained" 
-                    size="small"
-                    onClick={() => navigate(`/content/new?brandId=${createdBrandId}`)}
-                  >
-                    Edit Content
-                  </Button>
-                  <Button 
-                    variant="outlined" 
-                    size="small"
-                  >
-                    Schedule Post
-                  </Button>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button 
+                      variant="contained" 
+                      size="small"
+                      onClick={() => navigate(`/content/new?brandId=${createdBrandId}`)}
+                      startIcon={<EditIcon />}
+                    >
+                      Edit & Schedule
+                    </Button>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      startIcon={<ContentCopyIcon />}
+                    >
+                      Create Similar
+                    </Button>
+                  </Box>
+                  
+                  <Chip 
+                    label={industry === 'Technology' ? 'Tech Announcement' : 
+                           industry === 'E-commerce' ? 'Product Launch' : 
+                           'Welcome Post'} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                  />
                 </Box>
               </Box>
               
@@ -1786,15 +2069,186 @@ const BrandNew = () => {
                 Preview Across Platforms
               </Typography>
               
-              <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-                {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
-                  <Chip 
-                    key={platform}
-                    label={platform}
-                    size="small"
-                    onClick={() => {}}
-                  />
-                ))}
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
+                    <Chip 
+                      key={platform}
+                      label={platform}
+                      size="small"
+                      color={activePlatformPreview === platform ? "primary" : "default"}
+                      onClick={() => setActivePlatformPreview(platform)}
+                    />
+                  ))}
+                </Box>
+                
+                <Box sx={{ position: 'relative', height: 320, overflow: 'hidden', borderRadius: 2, border: '1px solid #eee' }}>
+                  {/* Instagram Preview */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      transition: 'opacity 0.3s ease, transform 0.3s ease',
+                      opacity: activePlatformPreview === 'Instagram' ? 1 : 0,
+                      transform: activePlatformPreview === 'Instagram' ? 'translateX(0)' : 'translateX(-20px)',
+                      pointerEvents: activePlatformPreview === 'Instagram' ? 'auto' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: '1px solid #eee' }}>
+                      <Avatar sx={{ width: 36, height: 36, mr: 1.5 }} src={logo}>
+                        {brandName.slice(0, 1)}
+                      </Avatar>
+                      <Typography variant="subtitle2">{brandName}</Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, bgcolor: '#fafafa', overflow: 'hidden' }}>
+                      <Card sx={{ height: '100%', boxShadow: 'none', bgcolor: '#fff' }}>
+                        <Box sx={{ height: 160, bgcolor: primaryColor || '#f2f2f2' }} />
+                        <CardContent>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+                            {industry === 'Technology' ? (
+                              `Introducing our latest innovation! #${brandName.replace(' ', '')}`
+                            ) : industry === 'E-commerce' ? (
+                              `Just dropped: Our new collection! #${brandName.replace(' ', '')}`
+                            ) : (
+                              `Welcome to our page! #${brandName.replace(' ', '')}`
+                            )}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  </Box>
+                  
+                  {/* Twitter Preview */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      transition: 'opacity 0.3s ease, transform 0.3s ease',
+                      opacity: activePlatformPreview === 'Twitter' ? 1 : 0,
+                      transform: activePlatformPreview === 'Twitter' ? 'translateX(0)' : 'translateX(-20px)',
+                      pointerEvents: activePlatformPreview === 'Twitter' ? 'auto' : 'none',
+                      p: 2,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', mb: 2 }}>
+                      <Avatar sx={{ width: 48, height: 48, mr: 2 }} src={logo}>
+                        {brandName.slice(0, 1)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{brandName}</Typography>
+                        <Typography variant="caption" color="text.secondary">@{brandName.toLowerCase().replace(/\s+/g, '')}</Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" paragraph>
+                      {industry === 'Technology' ? (
+                        `We're excited to announce our newest solution designed to transform how you ${contentTypes[0] || 'work'}. Check it out! ${hashtags[0] || '#Innovation'}`
+                      ) : industry === 'E-commerce' ? (
+                        `Just launched: our latest collection featuring ${suggestedTopics[0] || 'exciting new products'}! Shop now ${hashtags[0] || '#ShopNow'}`
+                      ) : (
+                        `Hello world! We're ${brandName} and we're here to share insights about ${suggestedTopics[0] || 'our industry'}. ${hashtags[0] || '#Welcome'}`
+                      )}
+                    </Typography>
+                  </Box>
+                  
+                  {/* LinkedIn Preview */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      transition: 'opacity 0.3s ease, transform 0.3s ease',
+                      opacity: activePlatformPreview === 'LinkedIn' ? 1 : 0,
+                      transform: activePlatformPreview === 'LinkedIn' ? 'translateX(0)' : 'translateX(-20px)',
+                      pointerEvents: activePlatformPreview === 'LinkedIn' ? 'auto' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', p: 2, borderBottom: '1px solid #eee' }}>
+                      <Avatar sx={{ width: 48, height: 48, mr: 2 }} src={logo}>
+                        {brandName.slice(0, 1)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2">{brandName}</Typography>
+                        <Typography variant="caption" color="text.secondary">{industry} · {new Date().toLocaleDateString()}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'medium', mb: 1 }}>
+                        {industry === 'Technology' ? (
+                          `Announcing Our Latest Innovation`
+                        ) : industry === 'E-commerce' ? (
+                          `Introducing Our New Collection`
+                        ) : (
+                          `Welcome to ${brandName}`
+                        )}
+                      </Typography>
+                      <Typography variant="body2" paragraph>
+                        {industry === 'Technology' ? (
+                          `We're excited to share our newest solution designed specifically for professionals in ${targetAudience[0] || 'your industry'}.`
+                        ) : industry === 'E-commerce' ? (
+                          `We're thrilled to unveil our latest collection featuring premium ${suggestedTopics[0] || 'products'} for our discerning customers.`
+                        ) : (
+                          `We're delighted to join the LinkedIn community and share valuable insights about ${suggestedTopics[0] || 'our industry'}.`
+                        )}
+                      </Typography>
+                      <Typography variant="body2">
+                        {`Learn more about how ${brandName} can help you achieve ${marketingGoals[0] || 'your goals'}.`}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  {/* Facebook Preview */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      transition: 'opacity 0.3s ease, transform 0.3s ease',
+                      opacity: activePlatformPreview === 'Facebook' ? 1 : 0,
+                      transform: activePlatformPreview === 'Facebook' ? 'translateX(0)' : 'translateX(-20px)',
+                      pointerEvents: activePlatformPreview === 'Facebook' ? 'auto' : 'none',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', p: 2, borderBottom: '1px solid #eee' }}>
+                      <Avatar sx={{ width: 40, height: 40, mr: 1.5 }} src={logo}>
+                        {brandName.slice(0, 1)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2">{brandName}</Typography>
+                        <Typography variant="caption" color="text.secondary">Sponsored · {new Date().toLocaleDateString()}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 160, bgcolor: primaryColor || '#f2f2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography sx={{ color: '#fff', fontWeight: 'bold' }}>
+                        {brandName} {industry === 'Technology' ? 'Tech' : industry === 'E-commerce' ? 'Collection' : 'Brand'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="body2" paragraph>
+                        {industry === 'Technology' ? (
+                          `Introducing our latest innovation! Check out how ${brandName} is transforming ${targetAudience[0] || 'businesses'}. ${hashtags[0] || '#Innovation'}`
+                        ) : industry === 'E-commerce' ? (
+                          `New arrivals just dropped! Explore our latest collection at ${brandName}. ${hashtags[0] || '#ShopNow'}`
+                        ) : (
+                          `Welcome to our Facebook page! Follow us for the latest updates on ${suggestedTopics[0] || 'our industry'}. ${hashtags[0] || '#Welcome'}`
+                        )}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
               
               <Button 
@@ -1916,9 +2370,32 @@ const BrandNew = () => {
     }
   };
   
+  // Function to get window dimensions for confetti
+  const getWindowDimensions = () => {
+    const { innerWidth: width, innerHeight: height } = window;
+    return { width, height };
+  };
+  
+  // Reference for rendering the confetti
+  const windowSize = useRef(getWindowDimensions());
+  
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
       <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+        {showConfetti && (
+          <ReactConfetti
+            width={windowSize.current.width}
+            height={windowSize.current.height}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.1}
+            style={{ position: 'fixed', top: 0, left: 0, zIndex: 2000 }}
+            onConfettiComplete={() => {
+              setTimeout(() => setShowConfetti(false), 3000);
+            }}
+          />
+        )}
+        
         <Stepper 
           activeStep={activeStep > 4 ? 4 : activeStep} 
           alternativeLabel
@@ -1942,6 +2419,71 @@ const BrandNew = () => {
         </Stepper>
         
         {getStepContent(activeStep)}
+        
+        {/* Success Modal */}
+        <Modal
+          open={openSuccessModal}
+          onClose={() => setOpenSuccessModal(false)}
+          closeAfterTransition
+          BackdropComponent={Backdrop}
+          BackdropProps={{
+            timeout: 500,
+          }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Fade in={openSuccessModal}>
+            <Paper
+              elevation={6}
+              sx={{
+                padding: 4,
+                borderRadius: 2,
+                maxWidth: 480,
+                textAlign: 'center',
+                outline: 'none',
+              }}
+            >
+              <Box sx={{ mb: 2 }}>
+                <Avatar
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    bgcolor: 'success.main',
+                    margin: '0 auto 16px',
+                  }}
+                >
+                  <CheckIcon sx={{ fontSize: 50 }} />
+                </Avatar>
+                <Typography variant="h4" gutterBottom fontWeight="bold">
+                  Congratulations!
+                </Typography>
+                <Typography variant="h6" sx={{ mb: 3 }}>
+                  {brandName} has been created successfully!
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph>
+                  Let's start creating content that resonates with your audience. We've prepared a customized marketing strategy based on your brand profile.
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 3 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setOpenSuccessModal(false)}
+                >
+                  Back to Setup
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate(`/brands/${createdBrandId}`)}
+                >
+                  Go to Brand Dashboard
+                </Button>
+              </Box>
+            </Paper>
+          </Fade>
+        </Modal>
       </Box>
     </ErrorBoundary>
   );
