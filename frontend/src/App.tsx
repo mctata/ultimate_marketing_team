@@ -191,9 +191,9 @@ function App() {
         } />
         
         {/* OAuth callback routes */}
-        <Route path="/auth/callback/google" element={<OAuthCallback provider="google" />} />
-        <Route path="/auth/callback/facebook" element={<OAuthCallback provider="facebook" />} />
-        <Route path="/auth/callback/linkedin" element={<OAuthCallback provider="linkedin" />} />
+        <Route path="/api/v1/auth/callback/google" element={<OAuthCallback provider="google" />} />
+        <Route path="/api/v1/auth/callback/facebook" element={<OAuthCallback provider="facebook" />} />
+        <Route path="/api/v1/auth/callback/linkedin" element={<OAuthCallback provider="linkedin" />} />
         
         {/* Protected routes with layout */}
         <Route path="/" element={

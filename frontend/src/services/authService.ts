@@ -41,7 +41,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     formData.append('username', credentials.email);
     formData.append('password', credentials.password);
     
-    const response = await api.post<AuthResponse>('/auth/token', formData, {
+    const response = await api.post<AuthResponse>('/api/v1/auth/token', formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -67,7 +67,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
  */
 export const register = async (userData: RegisterData): Promise<UserProfile> => {
   try {
-    const response = await api.post<UserProfile>('/auth/register', userData);
+    const response = await api.post<UserProfile>('/api/v1/auth/register', userData);
     return response.data;
   } catch (error) {
     console.error('Registration error:', error);
@@ -81,7 +81,7 @@ export const register = async (userData: RegisterData): Promise<UserProfile> => 
  */
 export const getUserProfile = async (): Promise<UserProfile> => {
   try {
-    const response = await api.get<UserProfile>('/auth/me');
+    const response = await api.get<UserProfile>('/api/v1/auth/me');
     return response.data;
   } catch (error) {
     console.error('Error fetching user profile:', error);
@@ -125,7 +125,7 @@ setupTokenFromStorage();
 // OAuth methods
 export const getOAuthUrl = async (provider: string, redirectUri: string): Promise<string> => {
   try {
-    const response = await api.post<{ auth_url: string }>('/auth/oauth', {
+    const response = await api.post<{ auth_url: string }>('/api/v1/auth/oauth', {
       provider,
       redirect_uri: redirectUri
     });
@@ -142,7 +142,7 @@ export const handleOAuthCallback = async (
   state?: string
 ): Promise<AuthResponse> => {
   try {
-    const response = await api.post<AuthResponse>('/auth/oauth/callback', {
+    const response = await api.post<AuthResponse>('/api/v1/auth/oauth/callback', {
       provider,
       code,
       state
