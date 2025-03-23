@@ -171,7 +171,7 @@ const BrandDetail = () => {
             <Button 
               variant="outlined" 
               startIcon={<EditIcon />}
-              onClick={() => navigate(`/brands/${id}/edit`)}
+              onClick={() => navigate(`/brands/${id}`)}
               sx={{ mr: 1 }}
             >
               Edit Brand
@@ -260,7 +260,19 @@ const BrandDetail = () => {
                               {brandData.contactInfo.email}
                             </a>
                           ) : (
-                            "Not provided"
+                            <Typography 
+                              component="span" 
+                              sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                color: 'text.secondary',
+                                '&:hover': { color: 'primary.main' },
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => navigate(`/brands/${id}/edit`)}
+                            >
+                              Add email <EditIcon fontSize="small" sx={{ ml: 0.5 }} />
+                            </Typography>
                           )
                         } 
                       />
@@ -277,7 +289,19 @@ const BrandDetail = () => {
                               {brandData.contactInfo.phone}
                             </a>
                           ) : (
-                            "Not provided"
+                            <Typography 
+                              component="span" 
+                              sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                color: 'text.secondary',
+                                '&:hover': { color: 'primary.main' },
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => navigate(`/brands/${id}/edit`)}
+                            >
+                              Add phone <EditIcon fontSize="small" sx={{ ml: 0.5 }} />
+                            </Typography>
                           )
                         } 
                       />
@@ -288,7 +312,23 @@ const BrandDetail = () => {
                       </ListItemIcon>
                       <ListItemText 
                         primary="Address" 
-                        secondary={brandData.contactInfo?.address || "Not provided"} 
+                        secondary={
+                        brandData.contactInfo?.address || (
+                          <Typography 
+                            component="span" 
+                            sx={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              color: 'text.secondary',
+                              '&:hover': { color: 'primary.main' },
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => navigate(`/brands/${id}/edit`)}
+                          >
+                            Add address <EditIcon fontSize="small" sx={{ ml: 0.5 }} />
+                          </Typography>
+                        )
+                      } 
                       />
                     </ListItem>
                   </List>
