@@ -41,15 +41,15 @@ Want to start your own transformation journey? {cta_text}
         multiline: false
       },
       program_name: {
-        label: \"Program Name\",
-        description: \"Your program, service, or method name\",
-        default: \"our 12-Week Total Body Transformation Program\",
+        label: \"Programme Name\",
+        description: \"Your programme, service, or method name\",
+        default: \"our 12-Week Total Body Transformation Programme\",
         multiline: false
       },
       transformation_description: {
         label: \"Transformation Description\",
         description: \"Describe the client's journey and transformation\",
-        default: \"Sarah came to us feeling exhausted, struggling with chronic pain, and unhappy with her fitness level. After 12 weeks of personalized training, nutrition guidance, and unwavering dedication, she's completely transformed not just her body, but her entire lifestyle!\",
+        default: \"Sarah came to us feeling exhausted, struggling with chronic pain, and unhappy with her fitness level. After 12 weeks of personalised training, nutrition guidance, and unwavering dedication, she's completely transformed not just her body, but her entire lifestyle!\",
         multiline: true
       },
       result_1: {
@@ -73,7 +73,7 @@ Want to start your own transformation journey? {cta_text}
       client_quote: {
         label: \"Client Quote\",
         description: \"Quote from the client about their experience\",
-        default: \"\\\"This program changed my life! Not only do I look better, but I feel stronger and more confident than ever before. The coaches provided the perfect balance of challenge and support.\\\" - Sarah\",
+        default: \"\\\"This programme changed my life! Not only do I look better, but I feel stronger and more confident than ever before. The coaches provided the perfect balance of challenge and support.\\\" - Sarah\",
         multiline: true
       },
       cta_text: {
@@ -116,7 +116,7 @@ Want to start your own transformation journey? {cta_text}
           content: `📊 CLIENT OUTCOME: {transformation_achievement} 📊
 
 Case Study: {client_first_name}
-Program: {program_name}
+Programme: {program_name}
 
 {transformation_description}
 
@@ -238,7 +238,7 @@ Let's clear up some common misunderstandings:
 
 ## Key Takeaways
 
-To summarize what we've covered:
+To summarise what we've covered:
 
 * {takeaway_1}
 * {takeaway_2}
@@ -264,7 +264,7 @@ To summarize what we've covered:
       benefit: {
         label: \"Benefit\",
         description: \"The main benefit readers will gain\",
-        default: \"How to Optimize Your Water Intake for Better Health\",
+        default: \"How to Optimise Your Water Intake for Better Health\",
         multiline: false
       },
       introduction_paragraph: {
@@ -312,7 +312,7 @@ To summarize what we've covered:
       subsection_1b_content: {
         label: \"Subsection 1B Content\",
         description: \"Content for the second subsection of section 1\",
-        default: \"Recognizing dehydration early is important. Common signs include thirst (which is actually a late indicator), dark yellow urine, dry mouth, fatigue, dizziness, and headaches. In athletes, even mild dehydration can reduce endurance and strength. For everyday activities, it can affect concentration and mood. Monitoring urine color is one of the simplest ways to assess hydration status—aim for a pale straw color rather than dark yellow.\",
+        default: \"Recognising dehydration early is important. Common signs include thirst (which is actually a late indicator), dark yellow urine, dry mouth, fatigue, dizziness, and headaches. In athletes, even mild dehydration can reduce endurance and strength. For everyday activities, it can affect concentration and mood. Monitoring urine colour is one of the simplest ways to assess hydration status—aim for a pale straw colour rather than dark yellow.\",
         multiline: true
       },
       expert_tip_1: {
@@ -330,7 +330,7 @@ To summarize what we've covered:
       section_2_content: {
         label: \"Section 2 Content\",
         description: \"Content for the second main section\",
-        default: \"The old advice to drink eight 8-ounce glasses of water daily (about 2 liters) is a reasonable starting point, but individual needs vary significantly. Several factors influence your hydration requirements, including your size, activity level, environment, and diet.\",
+        default: \"The old advice to drink eight 8-ounce glasses of water daily (about 2 litres) is a reasonable starting point, but individual needs vary significantly. Several factors influence your hydration requirements, including your size, activity level, environment, and diet.\",
         multiline: true
       },
       subsection_2a_heading: {
@@ -342,7 +342,7 @@ To summarize what we've covered:
       subsection_2a_content: {
         label: \"Subsection 2A Content\",
         description: \"Content for the first subsection of section 2\",
-        default: \"A more personalized approach is to drink 30-35ml of water per kilogram of body weight daily. For someone weighing 70kg (154 lbs), this equals about 2.1-2.5 liters per day. However, if you're physically active, live in a hot climate, are pregnant or breastfeeding, or are recovering from illness, you'll need more. During intense exercise, you may need an additional 400-800ml per hour of activity.\",
+        default: \"A more personalised approach is to drink 30-35ml of water per kilogram of body weight daily. For someone weighing 70kg (154 lbs), this equals about 2.1-2.5 litres per day. However, if you're physically active, live in a hot climate, are pregnant or breastfeeding, or are recovering from illness, you'll need more. During intense exercise, you may need an additional 400-800ml per hour of activity.\",
         multiline: true
       },
       subsection_2b_heading: {
@@ -450,7 +450,7 @@ To summarize what we've covered:
       takeaway_1: {
         label: \"Takeaway 1\",
         description: \"First key takeaway from the article\",
-        default: \"Hydration needs are individual—customize your intake based on your body size, activity level, climate, and health factors.\",
+        default: \"Hydration needs are individual—customise your intake based on your body size, activity level, climate, and health factors.\",
         multiline: true
       },
       takeaway_2: {
@@ -468,7 +468,7 @@ To summarize what we've covered:
       takeaway_4: {
         label: \"Takeaway 4\",
         description: \"Fourth key takeaway from the article\",
-        default: \"Monitoring urine color is a simple but effective way to assess your hydration status throughout the day.\",
+        default: \"Monitoring urine colour is a simple but effective way to assess your hydration status throughout the day.\",
         multiline: true
       },
       next_steps_paragraph: {
@@ -486,13 +486,13 @@ To summarize what we've covered:
       author_bio: {
         label: \"Author Bio\",
         description: \"Brief bio of the article author\",
-        default: \"Dr. Emily Johnson is a board-certified nutritionist with over 15 years of experience in preventive health and wellness. She specializes in hydration science, sports nutrition, and integrative health approaches. Dr. Johnson holds a PhD in Nutritional Sciences and regularly contributes to peer-reviewed journals in the field of preventive medicine.\",
+        default: \"Dr. Emily Johnson is a board-certified nutritionist with over 15 years of experience in preventive health and wellness. She specialises in hydration science, sports nutrition, and integrative health approaches. Dr. Johnson holds a PhD in Nutritional Sciences and regularly contributes to peer-reviewed journals in the field of preventive medicine.\",
         multiline: true
       },
       disclaimer_text: {
         label: \"Disclaimer Text\",
         description: \"Legal disclaimer for health content\",
-        default: \"This article is for informational purposes only and does not constitute medical advice. Always consult with a qualified healthcare provider for personalized recommendations, especially if you have pre-existing health conditions or take medications that may affect your hydration needs.\",
+        default: \"This article is for informational purposes only and does not constitute medical advice. Always consult with a qualified healthcare provider for personalised recommendations, especially if you have pre-existing health conditions or take medications that may affect your hydration needs.\",
         multiline: true
       }
     },
@@ -650,7 +650,7 @@ If you're skimming (we've all been there!), here are the key points:
 
 {subsection_3a_content}
 
-### 3.2 {subsection_3b_heading}: Optimization Parameters
+### 3.2 {subsection_3b_heading}: Optimisation Parameters
 
 {subsection_3b_content}
 
@@ -775,8 +775,7 @@ Preheader: Limited spaces available for our {class_name} on {class_date}. Regist
         
         <div style=\"text-align: center; margin: 30px 0;\">
             <a href=\"{registration_link}\" style=\"background-color: {primary_color}; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px;\">SECURE YOUR SPOT</a>
-        </div>
-        
-        <p style=\"font-size: 16px;\">{closing_`
-} 
-]
+        </div> 
+  }
+  }
+  ]
