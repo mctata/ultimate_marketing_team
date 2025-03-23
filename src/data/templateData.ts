@@ -1,6 +1,10 @@
 // Template seed data for the Ultimate Marketing Team platform
 // This data will be used to populate the templates library in development/demo environments
 
+// Import industry-specific templates
+import { professionalServicesTemplates } from './professionalServicesTemplates';
+import { foodBeverageTemplates } from './foodBeverageTemplates';
+
 // Industry definitions
 export const industries = [
   {
@@ -343,9 +347,8 @@ export const formats = [
   }
 ];
 
-// Template definitions
-export const templates = [
-  // Retail/E-commerce Templates
+// Retail/E-commerce Templates
+const retailEcommerceTemplates = [
   {
     id: "retail-product-launch-social",
     title: "New Product Launch - Social Media",
@@ -735,8 +738,24 @@ Preheader: {seasonal_theme} savings start now! Shop our biggest sale of the seas
     is_featured: true,
     is_premium: true,
     categories: ["seasonal-promotions", "customer-acquisition"],
-    industries: ["retail-ecommerce", "fashion-apparel"],
+    industries: ["retail-ecommerce"],
     created_at: "2025-03-02T10:00:00Z",
     updated_at: "2025-03-02T10:00:00Z"
   }
 ];
+
+// Combine all templates
+export const templates = [
+  ...retailEcommerceTemplates,
+  ...professionalServicesTemplates,
+  ...foodBeverageTemplates,
+  // Add more industry templates as they are developed
+];
+
+// Export the template count for various industries
+export const templateCounts = {
+  "retail-ecommerce": retailEcommerceTemplates.length,
+  "professional-services": professionalServicesTemplates.length,
+  "food-beverage": foodBeverageTemplates.length,
+  // Add more industry counts as they are developed
+};
