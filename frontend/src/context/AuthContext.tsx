@@ -155,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       // Initiate OAuth flow
-      const redirectUri = window.location.origin + '/api/v1/auth/callback/google';
+      const redirectUri = window.location.origin + '/auth/callback/google';
       const authUrl = await authService.getOAuthUrl('google', redirectUri);
       
       // Redirect to Google OAuth
@@ -172,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       // Initiate OAuth flow
-      const redirectUri = window.location.origin + '/api/v1/auth/callback/facebook';
+      const redirectUri = window.location.origin + '/auth/callback/facebook';
       const authUrl = await authService.getOAuthUrl('facebook', redirectUri);
       
       // Redirect to Facebook OAuth
@@ -189,7 +189,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       // Initiate OAuth flow
-      const redirectUri = window.location.origin + '/api/v1/auth/callback/linkedin';
+      const redirectUri = window.location.origin + '/auth/callback/linkedin';
       const authUrl = await authService.getOAuthUrl('linkedin', redirectUri);
       
       // Redirect to LinkedIn OAuth
