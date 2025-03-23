@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { viteCommonjs } from '@originjs/vite-plugin-commonjs';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    viteCommonjs({
+      // Explicitly include prop-types for special handling
+      include: ['prop-types', 'node_modules/prop-types/**'],
+    }),
     react({
       babel: {
         plugins: [
@@ -17,9 +22,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Fix for prop-types ESM/CJS compatibility issue
-      'prop-types': path.resolve(__dirname, 'src/utils/propTypesCompat.js'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     port: 3000,
@@ -60,26 +64,11 @@ export default defineConfig({
           ],
           charts: [
             'chart.js',
-            'react-chartjs-2',
             'recharts',
           ],
         },
       },
     },
     chunkSizeWarningLimit: 1000,
-  },
-  optimizeDeps: {
-    include: [
-      'react', 
-      'react-dom', 
-      'react-router-dom',
-      'use-sync-external-store',
-      'use-sync-external-store/shim',
-      'prop-types'
-    ],
-    esbuildOptions: {
-      preserveSymlinks: true,
-    },
-    exclude: ['@tanstack/react-query-devtools', '@mui/x-date-pickers-pro'],
   },
 });
