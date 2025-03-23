@@ -5,6 +5,7 @@ for performance optimization
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 import time
 import uuid
 import os
@@ -131,3 +132,56 @@ async def test_templates():
         "message": "Direct templates test endpoint is working",
         "timestamp": time.time()
     }
+
+@app.get("/api/templates-test")
+async def templates_test_page(request: Request):
+    """Test page for template API endpoints"""
+    # List of endpoints to test
+    endpoints = [
+        "/",
+        "/api/health",
+        "/api/debug/routes",
+        "/api/debug/router-status",
+        "/api/v1/templates/test",
+        "/api/v1/templates/categories",
+        "/api/v1/templates/industries",
+        "/api/v1/templates/formats",
+        "/api/v1/templates",
+        "/api/v1/templates/popular",
+        "/api/v1/templates/recommended",
+        "/api/v1/seed-templates/test",
+        "/api/v1/seed-templates/check",
+    ]
+    
+    # Create simple HTML with links
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Template API Test</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            h1 {{ color: #333; }}
+            ul {{ list-style-type: none; padding: 0; }}
+            li {{ margin: 10px 0; }}
+            a {{ color: #0066cc; text-decoration: none; }}
+            a:hover {{ text-decoration: underline; }}
+        </style>
+    </head>
+    <body>
+        <h1>Template API Test Links</h1>
+        <p>Click on the links below to test API endpoints. Non-authenticated endpoints should work directly, authenticated ones will return 401.</p>
+        <ul>
+    """
+    
+    # Add links for each endpoint
+    for endpoint in endpoints:
+        html_content += f'<li><a href="{endpoint}" target="_blank">{endpoint}</a></li>\n'
+    
+    html_content += """
+        </ul>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
