@@ -49,10 +49,8 @@ import {
   LinkedIn as LinkedInIcon,
   Pinterest as PinterestIcon,
   YouTube as YouTubeIcon,
-  TikTok as TikTokIcon,
   Domain as DomainIcon,
 } from '@mui/icons-material';
-import { TikTok } from '@mui/icons-material';
 import brandService, { WebsiteAnalysisResult } from '../../services/brandService';
 import { useBrands } from '../../hooks/useBrands';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -1123,7 +1121,7 @@ const BrandNew = () => {
                     {account.platform === 'LinkedIn' && <LinkedInIcon sx={{ mr: 1.5, color: '#0077B5' }} fontSize="small" />}
                     {account.platform === 'Pinterest' && <PinterestIcon sx={{ mr: 1.5, color: '#E60023' }} fontSize="small" />}
                     {account.platform === 'YouTube' && <YouTubeIcon sx={{ mr: 1.5, color: '#FF0000' }} fontSize="small" />}
-                    {account.platform === 'TikTok' && <TikTokIcon sx={{ mr: 1.5 }} fontSize="small" />}
+                    {account.platform === 'TikTok' && <Domain sx={{ mr: 1.5 }} fontSize="small" />}
                     <Typography variant="body2">{account.url}</Typography>
                   </Box>
                 ))}
