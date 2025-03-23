@@ -213,23 +213,56 @@ const BrandNew = () => {
     }
   };
   
+  // Form validation
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Validate form fields
+  const validateForm = () => {
+    const errors: {[key: string]: string} = {};
+    
+    // Required fields validation
+    if (!brandName.trim()) errors.brandName = "Brand name is required";
+    if (!industry.trim()) errors.industry = "Industry is required";
+    if (!brandDescription.trim()) errors.brandDescription = "Description is required";
+    
+    // Content strategy validation
+    if (contentTypes.length === 0) errors.contentTypes = "At least one content type must be selected";
+    if (marketingGoals.length === 0) errors.marketingGoals = "At least one marketing goal must be selected";
+    if (schedule.frequency === 'Custom' && !schedule.customFrequency) {
+      errors.customFrequency = "Custom frequency description is required";
+    }
+    if (schedule.bestTimes.length === 0) {
+      errors.bestTimes = "At least one posting time must be selected";
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Handle form submission to create brand
   const handleCreateBrand = () => {
+    // Validate form before submission
+    if (!validateForm()) {
+      // Show error message
+      setAnalyzeError("Please correct the form errors before submitting");
+      return;
+    }
+    
     // Get the actual frequency to use
     const actualFrequency = schedule.frequency === 'Custom' && schedule.customFrequency 
       ? schedule.customFrequency 
       : schedule.frequency;
       
-    // Log the data being sent
-    console.log('Creating brand with data:', {
-      name: brandName,
-      description: brandDescription,
-      industry: industry,
+    // Prepare data for submission
+    const brandData = {
+      name: brandName.trim(),
+      description: brandDescription.trim(),
+      industry: industry.trim(),
       website: url,
       logo: logo,
       active: true,
-      primaryColor: primaryColor,
-      secondaryColor: secondaryColor,
+      primaryColor: primaryColor || '#000000',
+      secondaryColor: secondaryColor || '#ffffff',
       contentTone: contentTone,
       targetAudience: targetAudience,
       socialMediaAccounts: socialMediaAccounts,
@@ -239,27 +272,21 @@ const BrandNew = () => {
       postingTimes: schedule.bestTimes,
       marketingGoals: marketingGoals,
       hashtags: hashtags
-    });
+    };
     
-    createBrand.mutate({
-      name: brandName,
-      description: brandDescription,
-      industry: industry,
-      website: url,
-      logo: logo,
-      active: true,
-      primaryColor: primaryColor,
-      secondaryColor: secondaryColor,
-      contentTone: contentTone,
-      targetAudience: targetAudience,
-      socialMediaAccounts: socialMediaAccounts,
-      suggestedTopics: suggestedTopics,
-      recommendedContentTypes: contentTypes,
-      postingFrequency: actualFrequency,
-      postingTimes: schedule.bestTimes,
-      marketingGoals: marketingGoals,
-      hashtags: hashtags
-    }, {
+    // Log the data being sent
+    console.log('Creating brand with data:', brandData);
+    
+    // Attempt to save to localStorage for persistence
+    try {
+      const existingBrands = JSON.parse(localStorage.getItem('brands') || '[]');
+      localStorage.setItem('brands', JSON.stringify([...existingBrands, {...brandData, id: Date.now().toString()}]));
+    } catch (error) {
+      console.warn('Failed to store brand data in localStorage:', error);
+    }
+    
+    // Submit to API
+    createBrand.mutate(brandData, {
       onSuccess: (data) => {
         // Store the created brand ID for reference
         setCreatedBrandId(data.id);
@@ -273,7 +300,7 @@ const BrandNew = () => {
       },
       onError: (error) => {
         console.error('Error creating brand:', error);
-        // You could add error handling here, like showing a toast notification
+        setAnalyzeError("Failed to create brand. Please try again.");
       }
     });
   };
@@ -422,8 +449,15 @@ const BrandNew = () => {
               label="Company Name"
               variant="outlined"
               value={brandName}
-              onChange={(e) => setBrandName(e.target.value)}
+              onChange={(e) => {
+                setBrandName(e.target.value);
+                if (formErrors.brandName) {
+                  setFormErrors({...formErrors, brandName: ''});
+                }
+              }}
               required
+              error={!!formErrors.brandName}
+              helperText={formErrors.brandName}
               sx={{ mb: 3 }}
             />
             
@@ -432,10 +466,17 @@ const BrandNew = () => {
               label="Company Description"
               variant="outlined"
               value={brandDescription}
-              onChange={(e) => setBrandDescription(e.target.value)}
+              onChange={(e) => {
+                setBrandDescription(e.target.value);
+                if (formErrors.brandDescription) {
+                  setFormErrors({...formErrors, brandDescription: ''});
+                }
+              }}
               required
               multiline
               rows={4}
+              error={!!formErrors.brandDescription}
+              helperText={formErrors.brandDescription}
               sx={{ mb: 3 }}
             />
             
@@ -444,8 +485,15 @@ const BrandNew = () => {
               label="Industry"
               variant="outlined"
               value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
+              onChange={(e) => {
+                setIndustry(e.target.value);
+                if (formErrors.industry) {
+                  setFormErrors({...formErrors, industry: ''});
+                }
+              }}
               required
+              error={!!formErrors.industry}
+              helperText={formErrors.industry}
               sx={{ mb: 3 }}
             />
             
@@ -1331,7 +1379,11 @@ const BrandNew = () => {
               </TextField>
               
               <Typography variant="subtitle2" gutterBottom>
-                Best Times to Post
+                Best Times to Post {formErrors.bestTimes && 
+                  <Typography component="span" color="error" variant="caption">
+                    ({formErrors.bestTimes})
+                  </Typography>
+                }
               </Typography>
               <Box sx={{ mb: 1 }}>
                 {schedule.bestTimes.map((time, index) => (
@@ -1388,12 +1440,17 @@ const BrandNew = () => {
                           ...schedule,
                           customFrequency: e.target.value
                         });
+                        if (formErrors.customFrequency) {
+                          setFormErrors({...formErrors, customFrequency: ''});
+                        }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
                         }
                       }}
+                      error={!!formErrors.customFrequency}
+                      helperText={formErrors.customFrequency}
                     />
                   </Box>
                   
@@ -1408,10 +1465,11 @@ const BrandNew = () => {
                           fullWidth
                           size="small"
                           label="Day"
-                          value={schedule.customTime.split(' ')[0] || ''}
+                          value={schedule.customTime ? schedule.customTime.split(' ')[0] || '' : ''}
                           onChange={(e) => {
                             const day = e.target.value;
-                            const time = schedule.customTime.split(' ').slice(1).join(' ') || '';
+                            const time = schedule.customTime && schedule.customTime.includes(' ') ? 
+                              schedule.customTime.split(' ').slice(1).join(' ') : '';
                             setSchedule({
                               ...schedule,
                               customTime: day ? `${day} ${time}` : time
@@ -1437,9 +1495,10 @@ const BrandNew = () => {
                           fullWidth
                           size="small"
                           label="Time"
-                          value={schedule.customTime.split(' ').slice(1).join(' ') || ''}
+                          value={schedule.customTime && schedule.customTime.includes(' ') ? 
+                            schedule.customTime.split(' ').slice(1).join(' ') : ''}
                           onChange={(e) => {
-                            const day = schedule.customTime.split(' ')[0] || '';
+                            const day = schedule.customTime ? schedule.customTime.split(' ')[0] || '' : '';
                             const time = e.target.value;
                             setSchedule({
                               ...schedule,
@@ -1503,7 +1562,11 @@ const BrandNew = () => {
                   'Email Newsletters', 
                   'Infographics',
                   'Video Content',
-                  'Case Studies'
+                  'Case Studies',
+                  'Landing Pages',
+                  'Whitepapers',
+                  'Ebooks',
+                  'Product Descriptions'
                 ].map((type) => (
                   <Grid item xs={6} key={type}>
                     <FormControlLabel
@@ -1526,21 +1589,6 @@ const BrandNew = () => {
                   </Grid>
                 ))}
               </Grid>
-              
-              <Box sx={{ mt: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Add custom content type (press Enter)"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value && e.currentTarget.value.trim() !== '') {
-                      setContentTypes([...contentTypes, e.currentTarget.value.trim()]);
-                      e.currentTarget.value = '';
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </Box>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
@@ -1641,10 +1689,16 @@ const BrandNew = () => {
                     value={marketingGoalInput}
                     onChange={(e) => setMarketingGoalInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && marketingGoalInput.trim() !== '') {
-                        setMarketingGoals([...marketingGoals, marketingGoalInput.trim()]);
-                        setMarketingGoalInput('');
-                        e.preventDefault();
+                      if (e.key === 'Enter') {
+                        const trimmedGoal = marketingGoalInput.trim();
+                        if (trimmedGoal !== '') {
+                          // Make sure we're not adding a duplicate
+                          if (!marketingGoals.includes(trimmedGoal)) {
+                            setMarketingGoals(prevGoals => [...prevGoals, trimmedGoal]);
+                          }
+                          setMarketingGoalInput('');
+                          e.preventDefault();
+                        }
                       }
                     }}
                   />
@@ -1653,8 +1707,12 @@ const BrandNew = () => {
                     size="small"
                     disabled={marketingGoalInput.trim() === ''}
                     onClick={() => {
-                      if (marketingGoalInput.trim() !== '') {
-                        setMarketingGoals([...marketingGoals, marketingGoalInput.trim()]);
+                      const trimmedGoal = marketingGoalInput.trim();
+                      if (trimmedGoal !== '') {
+                        // Make sure we're not adding a duplicate
+                        if (!marketingGoals.includes(trimmedGoal)) {
+                          setMarketingGoals(prevGoals => [...prevGoals, trimmedGoal]);
+                        }
                         setMarketingGoalInput('');
                       }
                     }}
