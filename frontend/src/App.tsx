@@ -28,6 +28,9 @@ const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail')
 import Analytics from './pages/analytics/Analytics';
 const AnalyticsPage = () => <Analytics />;
 const Settings = lazyPage(() => import('./pages/settings/Settings'));
+const Templates = lazyPage(() => import('./pages/templates/Templates'));
+const TemplateDetail = lazyPage(() => import('./pages/templates/TemplateDetail'));
+const AdminTemplatesUtility = lazyPage(() => import('./pages/templates/AdminTemplatesUtility'));
 const NotFound = lazyPage(() => import('./pages/NotFound'));
 
 // Protected route component
@@ -216,6 +219,11 @@ function App() {
           <Route path="campaigns/:id" element={<CampaignDetail />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="templates" element={<Templates />} />
+          <Route path="templates/admin" element={<AdminTemplatesUtility />} />
+          <Route path="templates/:id" element={<TemplateDetail />} />
+          <Route path="templates/:id/test" element={<TemplateDetail testMode={true} />} />
+          <Route path="templates/:id/use" element={<TemplateDetail useMode={true} />} />
         </Route>
         
         {/* 404 route */}

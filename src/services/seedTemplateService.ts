@@ -1,5 +1,6 @@
 import * as templateService from './templateService';
 import { industries, categories, formats, templates, templateCounts } from '../data/templateData';
+import api from './api';
 
 /**
  * Service for seeding and initializing the templates library with predefined templates
@@ -145,7 +146,7 @@ export const seedTemplateLibrary = async () => {
 export const templatesExist = async (): Promise<boolean> => {
   try {
     // Use the check endpoint from the seed templates API
-    const response = await api.get('/seed-templates/check');
+    const response = await api.get('/api/v1/seed-templates/check');
     return response.data.exists;
   } catch (error) {
     console.error('Error checking if templates exist:', error);
@@ -164,7 +165,7 @@ export const seedTemplatesIfNeeded = async (): Promise<void> => {
       console.log('No templates found in database. Starting seeding process...');
       try {
         // Call the seed templates API endpoint
-        await api.post('/seed-templates');
+        await api.post('/api/v1/seed-templates');
         console.log('Template seeding initiated on server.');
       } catch (error) {
         console.error('Error calling seed templates API:', error);

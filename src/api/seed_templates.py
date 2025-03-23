@@ -16,7 +16,6 @@ from src.models.template import (
 )
 
 router = APIRouter(
-    prefix="/seed-templates",
     tags=["templates"]
 )
 

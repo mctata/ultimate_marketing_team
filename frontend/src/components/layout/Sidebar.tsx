@@ -41,9 +41,16 @@ interface SidebarProps {
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Brands', icon: <BusinessIcon />, path: '/brands' },
-  { text: 'Content', icon: <ArticleIcon />, path: '/content' },
-  { text: 'Templates', icon: <TemplateIcon />, path: '/templates' },
-  { text: 'Calendar', icon: <CalendarIcon />, path: '/content/calendar' },
+  { 
+    text: 'Content', 
+    icon: <ArticleIcon />, 
+    path: '/content',
+    subItems: [
+      { text: 'Content Library', path: '/content' },
+      { text: 'Content Calendar', path: '/content/calendar' },
+      { text: 'Templates Library', path: '/templates' }
+    ]
+  },
   { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
@@ -124,43 +131,77 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
       
       <List component="nav" sx={{ px: 2 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
-            <ListItemButton
-              onClick={() => handleNavigation(item.path)}
-              selected={location.pathname === item.path}
-              sx={{
-                minHeight: 48,
-                justifyContent: open ? 'initial' : 'center',
-                borderRadius: 1,
-                px: 2.5,
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.light',
-                  color: 'primary.contrastText',
-                  '& .MuiListItemIcon-root': {
-                    color: 'primary.contrastText',
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 102, 204, 0.08)',
-                },
-              }}
-            >
-              <ListItemIcon
+          <React.Fragment key={item.text}>
+            <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
+              <ListItemButton
+                onClick={() => item.subItems ? null : handleNavigation(item.path)}
+                selected={location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path))}
                 sx={{
-                  minWidth: 0,
-                  mr: open ? 2 : 'auto',
-                  justifyContent: 'center',
-                  color: location.pathname === item.path ? 'primary.contrastText' : 'inherit',
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  borderRadius: 1,
+                  px: 2.5,
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.light',
+                    color: 'primary.contrastText',
+                    '& .MuiListItemIcon-root': {
+                      color: 'primary.contrastText',
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                  },
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                sx={{ opacity: open ? 1 : 0 }}
-              />
-            </ListItemButton>
-          </ListItem>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 2 : 'auto',
+                    justifyContent: 'center',
+                    color: location.pathname === item.path ? 'primary.contrastText' : 'inherit',
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.text}
+                  sx={{ opacity: open ? 1 : 0 }}
+                />
+              </ListItemButton>
+            </ListItem>
+            
+            {/* Sub-items */}
+            {item.subItems && open && (
+              <Box sx={{ pl: 4 }}>
+                {item.subItems.map((subItem) => (
+                  <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => handleNavigation(subItem.path)}
+                      selected={location.pathname === subItem.path}
+                      sx={{
+                        minHeight: 36,
+                        justifyContent: 'initial',
+                        borderRadius: 1,
+                        px: 2,
+                        '&.Mui-selected': {
+                          backgroundColor: 'primary.light',
+                          color: 'primary.contrastText',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                        },
+                      }}
+                    >
+                      <ListItemText
+                        primary={subItem.text}
+                        primaryTypographyProps={{ fontSize: '0.875rem' }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </Box>
+            )}
+          </React.Fragment>
         ))}
       </List>
       

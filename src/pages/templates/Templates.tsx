@@ -652,8 +652,33 @@ const Templates: React.FC = () => {
       
       {/* Error message */}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert 
+          severity="error" 
+          sx={{ mt: 2, mb: 2 }} 
+          action={
+            <Button color="inherit" size="small" onClick={handleClearFilters}>
+              Clear Filters
+            </Button>
+          }
+        >
           {error}
+          {error.includes("Failed to fetch") && (
+            <Box mt={1}>
+              <Typography variant="body2">
+                This could be due to a connection issue or because the template database hasn't been seeded yet.
+              </Typography>
+              {user?.is_admin && (
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => navigate('/templates/admin')}
+                  sx={{ mt: 1 }}
+                >
+                  Go to Admin Tools
+                </Button>
+              )}
+            </Box>
+          )}
         </Alert>
       )}
       

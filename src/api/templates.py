@@ -17,7 +17,6 @@ from src.schemas.template import (
 )
 
 router = APIRouter(
-    prefix="/templates",
     tags=["templates"]
 )
 

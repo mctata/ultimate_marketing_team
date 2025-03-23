@@ -86,7 +86,12 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const TemplateDetail: React.FC = () => {
+interface TemplateDetailProps {
+  testMode?: boolean;
+  useMode?: boolean;
+}
+
+const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMode = false }) => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -115,6 +120,19 @@ const TemplateDetail: React.FC = () => {
       dispatch(fetchFavoriteTemplates());
     }
   }, [dispatch, id]);
+  
+  // Handle test and use modes
+  useEffect(() => {
+    if (testMode && template) {
+      // Automatically select the customization tab when in test mode
+      setSelectedTab(1);
+    }
+    
+    if (useMode && template) {
+      // Automatically open the use dialog when in use mode
+      setUseDialogOpen(true);
+    }
+  }, [testMode, useMode, template]);
   
   // Initialize customization fields when template loads
   useEffect(() => {

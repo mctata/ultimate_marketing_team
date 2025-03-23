@@ -54,10 +54,10 @@ from src.api import seed_templates  # Import seed templates router
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
 
 # Add templates router
-app.include_router(templates.router, prefix=f"{settings.API_PREFIX}", tags=["Templates"])
+app.include_router(templates.router, prefix=f"{settings.API_PREFIX}/templates", tags=["Templates"])
 
 # Add seed templates router
-app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}", tags=["Templates"])
+app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-templates", tags=["Templates"])
 
 # Root endpoint
 @app.get("/")
