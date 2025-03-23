@@ -513,16 +513,23 @@ def get_recommended_templates(
             desc(Template.usage_count)
         ).limit(limit).all()
     
-    # Get templates in the same categories, but not used by the user
-    templates = db.query(Template).join(
-        template_category_association,
-        Template.id == template_category_association.c.template_id
-    ).filter(
-        template_category_association.c.template_category_id.in_(category_ids),
-        ~Template.id.in_(used_template_ids)
-    ).order_by(
-        desc(Template.community_rating), 
-        desc(Template.usage_count)
-    ).limit(limit).all()
+    try:
+        # Get templates in the same categories, but not used by the user
+        templates = db.query(Template).join(
+            template_category_association,
+            Template.id == template_category_association.c.template_id
+        ).filter(
+            template_category_association.c.template_category_id.in_(category_ids),
+            ~Template.id.in_(used_template_ids)
+        ).order_by(
+            desc(Template.community_rating), 
+            desc(Template.usage_count)
+        ).limit(limit).all()
+    except Exception as e:
+        # If there's an error, return a fallback set of templates
+        templates = db.query(Template).order_by(
+            desc(Template.community_rating),
+            desc(Template.usage_count)
+        ).limit(limit).all()
     
     return templates
