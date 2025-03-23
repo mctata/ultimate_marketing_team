@@ -27,21 +27,83 @@ def test_templates_endpoint():
     """Simple test endpoint to verify the templates router is working."""
     return {"status": "ok", "message": "Templates router is working"}
 
+# Add test endpoints without auth for debugging
+@router.get("/categories-test", response_model=dict)
+def test_categories_endpoint(db: Session = Depends(get_db)):
+    """Test endpoint to verify database connectivity for template categories."""
+    try:
+        categories_count = db.query(TemplateCategory).count()
+        return {
+            "status": "ok", 
+            "message": "Template categories database connection successful",
+            "categories_count": categories_count,
+            "db_session": str(type(db)),
+            "db_info": {
+                "url": str(db.bind.url).replace("postgresql://", "postgresql://*****:*****@"),
+                "is_connected": db.bind.pool.checkedin() > 0 or db.bind.pool.checkedout() > 0,
+                "pool_size": db.bind.pool.size(),
+                "overflow": db.bind.pool.overflow(),
+                "checkedin": db.bind.pool.checkedin(),
+                "checkedout": db.bind.pool.checkedout()
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Database connection error: {str(e)}",
+            "error_type": str(type(e)),
+            "db_session": str(type(db)) if db else "None"
+        }
+
+# Add test endpoint for getting templates without auth
+@router.get("/all-test", response_model=dict)
+def test_all_templates_endpoint(db: Session = Depends(get_db)):
+    """Test endpoint to get all templates without authentication."""
+    try:
+        templates = db.query(Template).limit(5).all()
+        return {
+            "status": "ok",
+            "message": "Templates retrieved successfully",
+            "count": len(templates),
+            "templates": [{
+                "id": template.id,
+                "title": template.title,
+                "description": template.description,
+                "format": template.format.name if template.format else None,
+                "categories": [c.name for c in template.categories] if template.categories else [],
+                "industries": [i.name for i in template.industries] if template.industries else []
+            } for template in templates]
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error retrieving templates: {str(e)}",
+            "error_type": str(type(e))
+        }
+
 # Template Categories
 @router.get("/categories", response_model=List[Dict[str, Any]])
 def get_template_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all template categories."""
-    categories = db.query(TemplateCategory).all()
-    return [{
-        "id": category.id,
-        "name": category.name,
-        "description": category.description,
-        "icon": category.icon,
-        "template_count": len(category.templates)
-    } for category in categories]
+    """Get all template categories with counts."""
+    try:
+        categories = db.query(TemplateCategory).all()
+        return [{
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "icon": category.icon,
+            "template_count": len(category.templates)
+        } for category in categories]
+    except Exception as e:
+        # Log the error and return a meaningful message
+        print(f"Error in get_template_categories: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch template categories: {str(e)}"
+        )
 
 @router.post("/categories", response_model=Dict[str, Any])
 def create_template_category(
