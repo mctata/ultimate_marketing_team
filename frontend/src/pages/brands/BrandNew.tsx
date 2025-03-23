@@ -2123,34 +2123,13 @@ const BrandNew = () => {
   const renderSuccessStep = () => {
     return (
       <Box>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          mb: 5,
-          textAlign: 'center' 
-        }}>
-          <Avatar 
-            sx={{ 
-              width: 100, 
-              height: 100, 
-              bgcolor: 'success.main',
-              mb: 2
-            }}
-          >
-            <CheckIcon sx={{ fontSize: 60 }} />
-          </Avatar>
-          
-          <Typography variant="h4" gutterBottom fontWeight="bold">
-            Congratulations!
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="h5" gutterBottom fontWeight="bold">
+            Brand Setup Complete
           </Typography>
           
-          <Typography variant="h6" paragraph>
-            Your brand "{brandName}" has been successfully created.
-          </Typography>
-          
-          <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 600 }}>
-            You're all set to start creating amazing content. We've prepared some next steps to help you get the most out of your marketing platform.
+          <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 700 }}>
+            Your brand "{brandName}" is ready to go. Get started with the resources below, or explore your brand dashboard for more options.
           </Typography>
         </Box>
         
@@ -2219,13 +2198,6 @@ const BrandNew = () => {
                     >
                       Edit & Schedule
                     </Button>
-                    <Button 
-                      variant="outlined" 
-                      size="small"
-                      startIcon={<ContentCopyIcon />}
-                    >
-                      Create Similar
-                    </Button>
                   </Box>
                   
                   <Chip 
@@ -2244,16 +2216,26 @@ const BrandNew = () => {
               </Typography>
               
               <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                  {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
-                    <Chip 
-                      key={platform}
-                      label={platform}
-                      size="small"
-                      color={activePlatformPreview === platform ? "primary" : "default"}
-                      onClick={() => setActivePlatformPreview(platform)}
-                    />
-                  ))}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
+                      <Chip 
+                        key={platform}
+                        label={platform}
+                        size="small"
+                        color={activePlatformPreview === platform ? "primary" : "default"}
+                        onClick={() => setActivePlatformPreview(platform)}
+                      />
+                    ))}
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    size="small"
+                    onClick={() => navigate(`/content/new?brandId=${createdBrandId}&platform=${activePlatformPreview}`)}
+                    startIcon={<EditIcon />}
+                  >
+                    Edit & Schedule
+                  </Button>
                 </Box>
                 
                 <Box sx={{ position: 'relative', height: 320, overflow: 'hidden', borderRadius: 2, border: '1px solid #eee' }}>
