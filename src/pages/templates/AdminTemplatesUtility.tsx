@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Typography, Box, Paper, CircularProgress, Alert } from '@mui/material';
-import { seedTemplatesIfNeeded, templatesExist, getTemplateStats } from '../../services/seedTemplateService';
+import templateService from '../../services/templateServiceFactory';
 import useAuth from '../../hooks/useAuth';
 
 /**
@@ -18,11 +18,11 @@ const AdminTemplatesUtility: React.FC = () => {
   useEffect(() => {
     const checkTemplates = async () => {
       try {
-        const exists = await templatesExist();
+        const exists = await templateService.templatesExist();
         setHasTemplates(exists);
         
         if (exists) {
-          const templateStats = await getTemplateStats();
+          const templateStats = await templateService.getTemplateStats();
           setStats(templateStats);
         }
       } catch (error) {
@@ -41,12 +41,12 @@ const AdminTemplatesUtility: React.FC = () => {
     setError('');
     
     try {
-      await seedTemplatesIfNeeded();
+      await templateService.seedTemplatesIfNeeded();
       setMessage('Templates seeded successfully!');
       setHasTemplates(true);
       
       // Get updated stats
-      const templateStats = await getTemplateStats();
+      const templateStats = await templateService.getTemplateStats();
       setStats(templateStats);
     } catch (error) {
       console.error('Error seeding templates:', error);

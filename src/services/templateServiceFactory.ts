@@ -80,6 +80,66 @@ export const getTemplateService = async (forceMock = false) => {
 // Export a combined service that automatically selects the implementation
 // This is a simpler API for components that don't need to handle the fallback logic
 export default {
+  // Seed templates functionality
+  templatesExist: async () => {
+    try {
+      const service = await getTemplateService();
+      // This function might not exist in the real service
+      if ('templatesExist' in service) {
+        return (service as any).templatesExist();
+      }
+      // Fallback: check if there are any templates
+      const templates = await service.getTemplates();
+      return templates && templates.length > 0;
+    } catch (error) {
+      console.warn('Error checking if templates exist:', error);
+      return false;
+    }
+  },
+  
+  seedTemplatesIfNeeded: async () => {
+    try {
+      const service = await getTemplateService();
+      // This function might not exist in the real service
+      if ('seedTemplatesIfNeeded' in service) {
+        return (service as any).seedTemplatesIfNeeded();
+      }
+      // No fallback implementation for seeding
+      console.warn('seedTemplatesIfNeeded not available in the selected service');
+      return { success: false, message: 'Seeding not supported' };
+    } catch (error) {
+      console.warn('Error seeding templates:', error);
+      return { success: false, message: String(error) };
+    }
+  },
+  
+  getTemplateStats: async () => {
+    try {
+      const service = await getTemplateService();
+      // This function might not exist in the real service
+      if ('getTemplateStats' in service) {
+        return (service as any).getTemplateStats();
+      }
+      // Fallback: build stats manually
+      const templates = await service.getTemplates();
+      const categories = await service.getTemplateCategories();
+      const industries = await service.getTemplateIndustries();
+      const formats = await service.getTemplateFormats();
+      
+      return {
+        categories,
+        industries,
+        formats,
+        totalTemplates: templates.length,
+        featuredCount: templates.filter(t => t.is_featured).length,
+        premiumCount: templates.filter(t => t.is_premium).length
+      };
+    } catch (error) {
+      console.warn('Error getting template stats:', error);
+      return null;
+    }
+  },
+  
   // Template Categories
   getTemplateCategories: async () => {
     const service = await getTemplateService();
