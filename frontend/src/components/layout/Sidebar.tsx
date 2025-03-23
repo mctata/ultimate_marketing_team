@@ -26,6 +26,7 @@ import {
   Event as CalendarIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Description as TemplateIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useSelector } from 'react-redux';
@@ -41,6 +42,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Brands', icon: <BusinessIcon />, path: '/brands' },
   { text: 'Content', icon: <ArticleIcon />, path: '/content' },
+  { text: 'Templates', icon: <TemplateIcon />, path: '/templates' },
   { text: 'Calendar', icon: <CalendarIcon />, path: '/content/calendar' },
   { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },

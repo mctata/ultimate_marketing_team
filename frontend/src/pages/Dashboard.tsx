@@ -20,6 +20,8 @@ import {
   Article as ArticleIcon,
   Campaign as CampaignIcon,
   Business as BusinessIcon,
+  Description as DescriptionIcon,
+  FormatListBulleted as FormatListBulletedIcon,
 } from '@mui/icons-material';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -50,6 +52,36 @@ const campaignPerformance = [
   { name: 'Email Nurture', engagement: 75, conversion: 23 },
   { name: 'Summer PPC', engagement: 60, conversion: 45 },
   { name: 'Social Contest', engagement: 90, conversion: 30 },
+];
+
+const popularTemplates = [
+  { 
+    id: 'wellness-transformation-instagram', 
+    title: 'Client Transformation - Instagram Post', 
+    type: 'Social Media',
+    format: 'Instagram Post',
+    category: 'Health & Wellness',
+    usageCount: 127,
+    rating: 4.8
+  },
+  { 
+    id: 'wellness-educational-blog', 
+    title: 'Educational Health Guide - Blog Post', 
+    type: 'Blog Post',
+    format: 'Blog Article',
+    category: 'Health & Wellness',
+    usageCount: 89,
+    rating: 4.5
+  },
+  { 
+    id: 'wellness-class-promotion-email', 
+    title: 'Class/Workshop Promotion - Email', 
+    type: 'Email',
+    format: 'Promotional Email',
+    category: 'Health & Wellness',
+    usageCount: 102,
+    rating: 4.6
+  },
 ];
 
 const Dashboard = () => {
@@ -96,7 +128,7 @@ const Dashboard = () => {
         <>
           {/* Summary Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
               <Paper
                 elevation={0}
                 sx={{
@@ -136,7 +168,7 @@ const Dashboard = () => {
               </Paper>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
               <Paper
                 elevation={0}
                 sx={{
@@ -176,7 +208,7 @@ const Dashboard = () => {
               </Paper>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
               <Paper
                 elevation={0}
                 sx={{
@@ -216,7 +248,47 @@ const Dashboard = () => {
               </Paper>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Typography variant="h6" component="h2" fontWeight="bold">
+                    Templates
+                  </Typography>
+                  <Box
+                    sx={{
+                      bgcolor: 'success.light',
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'success.contrastText',
+                    }}
+                  >
+                    <DescriptionIcon />
+                  </Box>
+                </Box>
+                <Typography variant="h3" component="p" fontWeight="bold" sx={{ my: 2 }}>
+                  42
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <span style={{ color: theme.palette.success.main }}>+5 new</span> this month
+                </Typography>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
               <Paper
                 elevation={0}
                 sx={{
@@ -524,6 +596,110 @@ const Dashboard = () => {
                     Create New Content
                   </Button>
                 </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+          
+          {/* Popular Templates */}
+          <Grid container spacing={3} sx={{ mt: 3 }}>
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                }}
+              >
+                <Box sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" component="h2" fontWeight="bold">
+                      Popular Templates
+                    </Typography>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/templates')}
+                      endIcon={<FormatListBulletedIcon />}
+                    >
+                      Browse All Templates
+                    </Button>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Ready-to-use templates for your marketing content. Click on a template to test it.
+                  </Typography>
+                </Box>
+                
+                <Divider />
+                
+                <Grid container spacing={2} sx={{ p: 2 }}>
+                  {popularTemplates.map((template) => (
+                    <Grid item xs={12} md={4} key={template.id}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+                          },
+                        }}
+                        onClick={() => navigate(`/templates/${template.id}/test`)}
+                      >
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography 
+                              variant="caption" 
+                              component="div"
+                              sx={{
+                                display: 'inline-block',
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: 'success.light',
+                                color: 'success.dark',
+                                mb: 1,
+                              }}
+                            >
+                              {template.type}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Typography variant="caption" sx={{ mr: 0.5, fontWeight: 'bold' }}>
+                                {template.rating}
+                              </Typography>
+                              <TrendingUpIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                            </Box>
+                          </Box>
+                          
+                          <Typography gutterBottom variant="subtitle1" component="div" fontWeight="medium">
+                            {template.title}
+                          </Typography>
+                          
+                          <Typography variant="body2" color="text.secondary">
+                            {template.format} • {template.category}
+                          </Typography>
+                        </CardContent>
+                        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Used {template.usageCount} times
+                          </Typography>
+                          <Button 
+                            size="small" 
+                            variant="outlined" 
+                            color="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/templates/${template.id}/test`);
+                            }}
+                          >
+                            Test
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
               </Paper>
             </Grid>
           </Grid>
