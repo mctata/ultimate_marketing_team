@@ -193,6 +193,32 @@ const BrandNew = () => {
   
   // Handle form submission to create brand
   const handleCreateBrand = () => {
+    // Get the actual frequency to use
+    const actualFrequency = schedule.frequency === 'Custom' && schedule.customFrequency 
+      ? schedule.customFrequency 
+      : schedule.frequency;
+      
+    // Log the data being sent
+    console.log('Creating brand with data:', {
+      name: brandName,
+      description: brandDescription,
+      industry: industry,
+      website: url,
+      logo: logo,
+      active: true,
+      primaryColor: primaryColor,
+      secondaryColor: secondaryColor,
+      contentTone: contentTone,
+      targetAudience: targetAudience,
+      socialMediaAccounts: socialMediaAccounts,
+      suggestedTopics: suggestedTopics,
+      recommendedContentTypes: contentTypes,
+      postingFrequency: actualFrequency,
+      postingTimes: schedule.bestTimes,
+      marketingGoals: marketingGoals,
+      hashtags: hashtags
+    });
+    
     createBrand.mutate({
       name: brandName,
       description: brandDescription,
@@ -207,9 +233,17 @@ const BrandNew = () => {
       socialMediaAccounts: socialMediaAccounts,
       suggestedTopics: suggestedTopics,
       recommendedContentTypes: contentTypes,
+      postingFrequency: actualFrequency,
+      postingTimes: schedule.bestTimes,
+      marketingGoals: marketingGoals,
+      hashtags: hashtags
     }, {
       onSuccess: (data) => {
         navigate(`/brands/${data.id}`);
+      },
+      onError: (error) => {
+        console.error('Error creating brand:', error);
+        // You could add error handling here, like showing a toast notification
       }
     });
   };

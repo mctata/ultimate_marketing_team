@@ -41,6 +41,10 @@ export interface CreateBrandInput {
   }[];
   suggestedTopics?: string[];
   recommendedContentTypes?: string[];
+  postingFrequency?: string;
+  postingTimes?: string[];
+  marketingGoals?: string[];
+  hashtags?: string[];
 }
 
 export interface UpdateBrandInput extends Partial<CreateBrandInput> {
