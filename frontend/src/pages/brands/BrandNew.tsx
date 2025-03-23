@@ -155,6 +155,52 @@ const BrandNew = () => {
     };
   }, []);
   
+  // Check for saved form data on component mount
+  useEffect(() => {
+    try {
+      // Check if there was a previous error during form submission
+      const hasError = localStorage.getItem('brandFormError') === 'true';
+      
+      if (hasError) {
+        // Try to recover form data
+        const savedData = localStorage.getItem('lastBrandFormData');
+        if (savedData) {
+          const formData = JSON.parse(savedData);
+          
+          // Inform user of recovery
+          setAnalyzeError("Your previous form data has been recovered due to a submission error");
+          
+          // Populate form fields
+          setBrandName(formData.name || '');
+          setBrandDescription(formData.description || '');
+          setIndustry(formData.industry || '');
+          setUrl(formData.website || '');
+          setLogo(formData.logo || '');
+          setPrimaryColor(formData.primaryColor || '');
+          setSecondaryColor(formData.secondaryColor || '');
+          setContentTone(formData.contentTone || '');
+          setTargetAudience(formData.targetAudience || []);
+          setSocialMediaAccounts(formData.socialMediaAccounts || []);
+          setSuggestedTopics(formData.suggestedTopics || []);
+          setContentTypes(formData.recommendedContentTypes || []);
+          setSchedule({
+            frequency: formData.postingFrequency || '',
+            customFrequency: formData.postingFrequency === 'Custom' ? formData.postingFrequency : '',
+            bestTimes: formData.postingTimes || [],
+            customTime: ''
+          });
+          setMarketingGoals(formData.marketingGoals || []);
+          setHashtags(formData.hashtags || []);
+          
+          // Start at the company info step
+          setActiveStep(1);
+        }
+      }
+    } catch (error) {
+      console.warn('Error recovering saved form data:', error);
+    }
+  }, []);
+  
   // Handle URL input change
   const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setUrl(event.target.value);
@@ -279,10 +325,25 @@ const BrandNew = () => {
     
     // Attempt to save to localStorage for persistence
     try {
+      // Generate a unique ID if not provided by the API
+      const brandId = Date.now().toString();
+      const brandWithId = {...brandData, id: brandId, createdAt: new Date().toISOString()};
+      
+      // Save to localStorage for persistence
       const existingBrands = JSON.parse(localStorage.getItem('brands') || '[]');
-      localStorage.setItem('brands', JSON.stringify([...existingBrands, {...brandData, id: Date.now().toString()}]));
+      localStorage.setItem('brands', JSON.stringify([...existingBrands, brandWithId]));
+      
+      // Also save form data in case of later error
+      localStorage.setItem('lastBrandFormData', JSON.stringify(brandWithId));
+      
+      // Remove any error flags
+      localStorage.removeItem('brandFormError');
+      
+      console.log('Brand data saved to localStorage for persistence');
     } catch (error) {
       console.warn('Failed to store brand data in localStorage:', error);
+      // Mark error for recovery
+      localStorage.setItem('brandFormError', 'true');
     }
     
     // Submit to API
@@ -300,7 +361,18 @@ const BrandNew = () => {
       },
       onError: (error) => {
         console.error('Error creating brand:', error);
-        setAnalyzeError("Failed to create brand. Please try again.");
+        
+        // Set error flag in localStorage to enable recovery on page reload
+        localStorage.setItem('brandFormError', 'true');
+        
+        // Show detailed error message
+        setAnalyzeError(
+          "Failed to create brand. Your data has been saved locally. " +
+          "You can try again or reload the page to recover your information."
+        );
+        
+        // Scroll to top to show error
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
   };
@@ -1551,7 +1623,14 @@ const BrandNew = () => {
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <ContentCopyIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                <Typography variant="h6">Content Types</Typography>
+                <Typography variant="h6">
+                  Content Types
+                  {formErrors.contentTypes && 
+                    <Typography component="span" color="error" variant="caption" sx={{ ml: 1 }}>
+                      ({formErrors.contentTypes})
+                    </Typography>
+                  }
+                </Typography>
               </Box>
               
               <Grid container spacing={2}>
@@ -1645,7 +1724,14 @@ const BrandNew = () => {
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <FlagIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                <Typography variant="h6">Marketing Goals</Typography>
+                <Typography variant="h6">
+                  Marketing Goals
+                  {formErrors.marketingGoals && 
+                    <Typography component="span" color="error" variant="caption" sx={{ ml: 1 }}>
+                      ({formErrors.marketingGoals})
+                    </Typography>
+                  }
+                </Typography>
               </Box>
               
               <Grid container spacing={2}>
