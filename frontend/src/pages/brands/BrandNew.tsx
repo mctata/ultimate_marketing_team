@@ -514,6 +514,16 @@ const BrandNew = () => {
           We've detected the following information from your website. Feel free to edit any details.
         </Typography>
         
+        {analyzeError && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            onClose={() => setAnalyzeError(null)}
+          >
+            {analyzeError}
+          </Alert>
+        )}
+        
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <TextField
