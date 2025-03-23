@@ -299,8 +299,14 @@ const BrandNew = () => {
               value={url}
               onChange={handleUrlChange}
               disabled={isAnalyzing}
-              helperText={!isValidUrl && url ? "Please enter a valid URL (e.g., https://example.com)" : ""}
+              helperText={!isValidUrl && url ? "Please enter a valid URL (e.g., https://example.com)" : "Press Enter to analyze"}
               error={!isValidUrl && url.length > 0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && isValidUrl) {
+                  handleAnalyzeWebsite();
+                  e.preventDefault();
+                }
+              }}
               InputProps={{
                 startAdornment: (
                   <SearchIcon color="action" sx={{ mr: 1 }} />
@@ -412,6 +418,99 @@ const BrandNew = () => {
               required
               sx={{ mb: 3 }}
             />
+            
+            <Paper sx={{ p: 2, borderRadius: 2, mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Contact Information
+              </Typography>
+              
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <EmailIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={analysisResult?.contactInfo?.email || ''}
+                    placeholder="Email address"
+                    onChange={(e) => {
+                      if (analysisResult) {
+                        setAnalysisResult({
+                          ...analysisResult,
+                          contactInfo: {
+                            ...analysisResult.contactInfo,
+                            email: e.target.value
+                          }
+                        });
+                      }
+                    }}
+                    InputProps={{
+                      endAdornment: analysisResult?.contactInfo?.email && (
+                        <IconButton 
+                          size="small" 
+                          href={`mailto:${analysisResult.contactInfo.email}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={analysisResult?.contactInfo?.phone || ''}
+                    placeholder="Phone number"
+                    onChange={(e) => {
+                      if (analysisResult) {
+                        setAnalysisResult({
+                          ...analysisResult,
+                          contactInfo: {
+                            ...analysisResult.contactInfo,
+                            phone: e.target.value
+                          }
+                        });
+                      }
+                    }}
+                    InputProps={{
+                      endAdornment: analysisResult?.contactInfo?.phone && (
+                        <IconButton 
+                          size="small" 
+                          href={`tel:${analysisResult.contactInfo.phone}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LanguageIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    InputProps={{
+                      endAdornment: url && (
+                        <IconButton 
+                          size="small" 
+                          href={url.startsWith('http') ? url : `https://${url}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Paper>
           </Grid>
           
           <Grid item xs={12} md={6}>
@@ -522,196 +621,99 @@ const BrandNew = () => {
               </Box>
             </Paper>
             
-            <Paper sx={{ p: 2, borderRadius: 2, mb: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Contact Information
-              </Typography>
-              
-              <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <EmailIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={analysisResult?.contactInfo?.email || ''}
-                    placeholder="Email address"
-                    onChange={(e) => {
-                      if (analysisResult) {
-                        setAnalysisResult({
-                          ...analysisResult,
-                          contactInfo: {
-                            ...analysisResult.contactInfo,
-                            email: e.target.value
-                          }
-                        });
-                      }
-                    }}
-                    InputProps={{
-                      endAdornment: analysisResult?.contactInfo?.email && (
-                        <IconButton 
-                          size="small" 
-                          href={`mailto:${analysisResult.contactInfo.email}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
-                      )
-                    }}
-                  />
-                </Box>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={analysisResult?.contactInfo?.phone || ''}
-                    placeholder="Phone number"
-                    onChange={(e) => {
-                      if (analysisResult) {
-                        setAnalysisResult({
-                          ...analysisResult,
-                          contactInfo: {
-                            ...analysisResult.contactInfo,
-                            phone: e.target.value
-                          }
-                        });
-                      }
-                    }}
-                    InputProps={{
-                      endAdornment: analysisResult?.contactInfo?.phone && (
-                        <IconButton 
-                          size="small" 
-                          href={`tel:${analysisResult.contactInfo.phone}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
-                      )
-                    }}
-                  />
-                </Box>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <LanguageIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    InputProps={{
-                      endAdornment: url && (
-                        <IconButton 
-                          size="small" 
-                          href={url.startsWith('http') ? url : `https://${url}`}
-                          target="_blank"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
-                      )
-                    }}
-                  />
-                </Box>
-              </Box>
-            </Paper>
-            
             <Paper sx={{ p: 2, borderRadius: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="subtitle1">Social Media Accounts</Typography>
-                <Button 
-                  size="small" 
-                  startIcon={<EditIcon />}
-                  onClick={() => {
-                    if (!socialMediaAccounts.length) {
+                {!socialMediaAccounts.length && (
+                  <Button 
+                    size="small" 
+                    onClick={() => {
                       setSocialMediaAccounts([
                         { platform: 'Facebook', url: '' }
                       ]);
-                    }
-                  }}
-                >
-                  {socialMediaAccounts.length ? 'Edit' : 'Add'}
-                </Button>
+                    }}
+                  >
+                    Add
+                  </Button>
+                )}
               </Box>
               
               {socialMediaAccounts.length > 0 ? (
                 <Box>
                   {socialMediaAccounts.map((account, index) => (
                     <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 140 }}>
-                        {account.platform === 'Twitter' && <TwitterIcon sx={{ mr: 1, color: '#1DA1F2' }} fontSize="small" />}
-                        {account.platform === 'Facebook' && <FacebookIcon sx={{ mr: 1, color: '#4267B2' }} fontSize="small" />}
-                        {account.platform === 'Instagram' && <InstagramIcon sx={{ mr: 1, color: '#C13584' }} fontSize="small" />}
-                        {account.platform === 'LinkedIn' && <LinkedInIcon sx={{ mr: 1, color: '#0077B5' }} fontSize="small" />}
-                        {account.platform === 'Pinterest' && <PinterestIcon sx={{ mr: 1, color: '#E60023' }} fontSize="small" />}
-                        {account.platform === 'YouTube' && <YouTubeIcon sx={{ mr: 1, color: '#FF0000' }} fontSize="small" />}
-                        {account.platform === 'TikTok' && <DomainIcon sx={{ mr: 1, color: '#000000' }} fontSize="small" />}
-                        
+                      {/* Social media icon */}
+                      {account.platform === 'Twitter' && <TwitterIcon sx={{ mr: 1, color: '#1DA1F2' }} fontSize="small" />}
+                      {account.platform === 'Facebook' && <FacebookIcon sx={{ mr: 1, color: '#4267B2' }} fontSize="small" />}
+                      {account.platform === 'Instagram' && <InstagramIcon sx={{ mr: 1, color: '#C13584' }} fontSize="small" />}
+                      {account.platform === 'LinkedIn' && <LinkedInIcon sx={{ mr: 1, color: '#0077B5' }} fontSize="small" />}
+                      {account.platform === 'Pinterest' && <PinterestIcon sx={{ mr: 1, color: '#E60023' }} fontSize="small" />}
+                      {account.platform === 'YouTube' && <YouTubeIcon sx={{ mr: 1, color: '#FF0000' }} fontSize="small" />}
+                      {account.platform === 'TikTok' && <DomainIcon sx={{ mr: 1, color: '#000000' }} fontSize="small" />}
+                      
+                      <Box sx={{ ml: 1, flexGrow: 1 }}>
                         <TextField
-                          select
                           size="small"
-                          value={account.platform}
+                          fullWidth
+                          placeholder={`${account.platform} URL`}
+                          value={account.url}
                           onChange={(e) => {
                             const updatedAccounts = [...socialMediaAccounts];
-                            updatedAccounts[index].platform = e.target.value;
+                            updatedAccounts[index].url = e.target.value;
                             setSocialMediaAccounts(updatedAccounts);
                           }}
-                          sx={{ minWidth: 100 }}
-                          SelectProps={{
-                            native: true,
+                          InputProps={{
+                            endAdornment: (
+                              <>
+                                {account.url && (
+                                  <IconButton 
+                                    size="small"
+                                    href={account.url.startsWith('http') ? account.url : `https://${account.url}`}
+                                    target="_blank"
+                                  >
+                                    <ArrowForwardIcon fontSize="small" />
+                                  </IconButton>
+                                )}
+                                <IconButton 
+                                  size="small"
+                                  onClick={() => {
+                                    // Remove this account
+                                    const updatedAccounts = [...socialMediaAccounts];
+                                    updatedAccounts.splice(index, 1);
+                                    setSocialMediaAccounts(updatedAccounts);
+                                  }}
+                                >
+                                  <ErrorIcon fontSize="small" />
+                                </IconButton>
+                              </>
+                            )
                           }}
-                        >
-                          <option value="Facebook">Facebook</option>
-                          <option value="Twitter">Twitter</option>
-                          <option value="Instagram">Instagram</option>
-                          <option value="LinkedIn">LinkedIn</option>
-                          <option value="Pinterest">Pinterest</option>
-                          <option value="YouTube">YouTube</option>
-                          <option value="TikTok">TikTok</option>
-                        </TextField>
+                        />
                       </Box>
-                      
-                      <TextField
-                        size="small"
-                        fullWidth
-                        placeholder="Social media URL"
-                        value={account.url}
-                        onChange={(e) => {
-                          const updatedAccounts = [...socialMediaAccounts];
-                          updatedAccounts[index].url = e.target.value;
-                          setSocialMediaAccounts(updatedAccounts);
-                        }}
-                        sx={{ ml: 1 }}
-                        InputProps={{
-                          endAdornment: account.url && (
-                            <IconButton 
-                              size="small"
-                              onClick={() => {
-                                // Remove this account
-                                const updatedAccounts = [...socialMediaAccounts];
-                                updatedAccounts.splice(index, 1);
-                                setSocialMediaAccounts(updatedAccounts);
-                              }}
-                            >
-                              <ErrorIcon fontSize="small" />
-                            </IconButton>
-                          )
-                        }}
-                      />
                     </Box>
                   ))}
                   
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setSocialMediaAccounts([
-                        ...socialMediaAccounts,
-                        { platform: 'Facebook', url: '' }
-                      ]);
-                    }}
-                    sx={{ mt: 1 }}
-                  >
-                    Add Another Account
-                  </Button>
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        // Find social platforms not yet added
+                        const availablePlatforms = ['Facebook', 'Twitter', 'Instagram', 'LinkedIn', 'Pinterest', 'YouTube', 'TikTok'];
+                        const usedPlatforms = socialMediaAccounts.map(acc => acc.platform);
+                        const unusedPlatforms = availablePlatforms.filter(p => !usedPlatforms.includes(p));
+                        
+                        // Use first available platform or default to Facebook
+                        const nextPlatform = unusedPlatforms.length > 0 ? unusedPlatforms[0] : 'Facebook';
+                        
+                        setSocialMediaAccounts([
+                          ...socialMediaAccounts,
+                          { platform: nextPlatform, url: '' }
+                        ]);
+                      }}
+                    >
+                      Add Another Account
+                    </Button>
+                  </Box>
                 </Box>
               ) : (
                 <Typography variant="body2" color="text.secondary">
@@ -1116,19 +1118,6 @@ const BrandNew = () => {
                   }
                 }}
               />
-              <Button 
-                size="small" 
-                sx={{ mt: 1 }}
-                onClick={() => {
-                  const input = document.querySelector('input[placeholder="Add audience segment (press Enter)"]') as HTMLInputElement;
-                  if (input && input.value) {
-                    setTargetAudience([...targetAudience, input.value]);
-                    input.value = '';
-                  }
-                }}
-              >
-                Add Audience
-              </Button>
             </Paper>
             
             <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
@@ -1225,39 +1214,21 @@ const BrandNew = () => {
                 ))}
               </Box>
               
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                <TextField
-                  size="small"
-                  placeholder="Add custom time (e.g., Monday 3:00 PM)"
-                  fullWidth
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value) {
-                      setSchedule({
-                        ...schedule,
-                        bestTimes: [...schedule.bestTimes, e.currentTarget.value]
-                      });
-                      e.currentTarget.value = '';
-                      e.preventDefault();
-                    }
-                  }}
-                />
-                <Button 
-                  variant="outlined" 
-                  size="small"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Add custom time (e.g., Monday 3:00 PM)"]') as HTMLInputElement;
-                    if (input && input.value) {
-                      setSchedule({
-                        ...schedule,
-                        bestTimes: [...schedule.bestTimes, input.value]
-                      });
-                      input.value = '';
-                    }
-                  }}
-                >
-                  Add
-                </Button>
-              </Box>
+              <TextField
+                size="small"
+                placeholder="Add custom time (e.g., Monday 3:00 PM)"
+                fullWidth
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.currentTarget.value) {
+                    setSchedule({
+                      ...schedule,
+                      bestTimes: [...schedule.bestTimes, e.currentTarget.value]
+                    });
+                    e.currentTarget.value = '';
+                    e.preventDefault();
+                  }
+                }}
+              />
             </Paper>
           </Grid>
           
@@ -1308,19 +1279,6 @@ const BrandNew = () => {
                     }
                   }}
                 />
-                <Button 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Add content type (press Enter)"]') as HTMLInputElement;
-                    if (input && input.value) {
-                      setContentTypes([...contentTypes, input.value]);
-                      input.value = '';
-                    }
-                  }}
-                >
-                  Add Content Type
-                </Button>
               </Box>
             </Paper>
             
@@ -1401,19 +1359,6 @@ const BrandNew = () => {
                     }
                   }}
                 />
-                <Button 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Add a marketing goal (press Enter)"]') as HTMLInputElement;
-                    if (input && input.value) {
-                      setMarketingGoals([...marketingGoals, input.value]);
-                      input.value = '';
-                    }
-                  }}
-                >
-                  Add Goal
-                </Button>
               </Box>
             </Paper>
           </Grid>
