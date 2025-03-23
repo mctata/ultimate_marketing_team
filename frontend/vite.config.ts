@@ -17,6 +17,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Fix for prop-types ESM/CJS compatibility issue
+      'prop-types': path.resolve(__dirname, 'src/utils/propTypesCompat.js'),
     },
   },
   server: {
@@ -72,8 +74,12 @@ export default defineConfig({
       'react-dom', 
       'react-router-dom',
       'use-sync-external-store',
-      'use-sync-external-store/shim'
+      'use-sync-external-store/shim',
+      'prop-types'
     ],
+    esbuildOptions: {
+      preserveSymlinks: true,
+    },
     exclude: ['@tanstack/react-query-devtools', '@mui/x-date-pickers-pro'],
   },
 });
