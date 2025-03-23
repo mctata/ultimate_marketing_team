@@ -103,8 +103,9 @@ const BrandNew = () => {
   const [socialMediaAccounts, setSocialMediaAccounts] = useState<{platform: string; url: string}[]>([]);
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
   const [contentTypes, setContentTypes] = useState<string[]>([]);
-  const [schedule, setSchedule] = useState<{frequency: string; bestTimes: string[]}>({
+  const [schedule, setSchedule] = useState<{frequency: string; customFrequency?: string; bestTimes: string[]}>({
     frequency: '',
+    customFrequency: '',
     bestTimes: []
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
@@ -393,19 +394,71 @@ const BrandNew = () => {
                 bgcolor: 'grey.100',
                 borderRadius: 2,
                 mb: 2,
-                overflow: 'hidden'
-              }}>
+                overflow: 'hidden',
+                cursor: 'pointer',
+                position: 'relative',
+                border: '2px dashed #ccc',
+                '&:hover': {
+                  bgcolor: 'grey.200',
+                  '& .upload-overlay': {
+                    opacity: 1
+                  }
+                }
+              }}
+              component="label"
+              >
                 {logo ? (
-                  <img 
-                    src={logo} 
-                    alt="Company Logo" 
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                  />
+                  <>
+                    <img 
+                      src={logo} 
+                      alt="Company Logo" 
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    />
+                    <Box 
+                      className="upload-overlay"
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        right: 0, 
+                        bottom: 0, 
+                        backgroundColor: 'rgba(0,0,0,0.5)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease'
+                      }}
+                    >
+                      <EditIcon sx={{ color: 'white', fontSize: '2rem' }} />
+                    </Box>
+                  </>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No logo detected
-                  </Typography>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      No logo detected
+                    </Typography>
+                    <EditIcon sx={{ color: 'text.secondary' }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Click to upload a logo
+                    </Typography>
+                  </Box>
                 )}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setLogo(event.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
               </Box>
               
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
@@ -435,7 +488,7 @@ const BrandNew = () => {
               </Box>
             </Paper>
             
-            <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Paper sx={{ p: 2, borderRadius: 2, mb: 3 }}>
               <Typography variant="subtitle1" gutterBottom>
                 Contact Information
               </Typography>
@@ -459,6 +512,17 @@ const BrandNew = () => {
                         });
                       }
                     }}
+                    InputProps={{
+                      endAdornment: analysisResult?.contactInfo?.email && (
+                        <IconButton 
+                          size="small" 
+                          href={`mailto:${analysisResult.contactInfo.email}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
                   />
                 </Box>
                 
@@ -480,6 +544,17 @@ const BrandNew = () => {
                         });
                       }
                     }}
+                    InputProps={{
+                      endAdornment: analysisResult?.contactInfo?.phone && (
+                        <IconButton 
+                          size="small" 
+                          href={`tel:${analysisResult.contactInfo.phone}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
                   />
                 </Box>
                 
@@ -490,9 +565,125 @@ const BrandNew = () => {
                     fullWidth
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
+                    InputProps={{
+                      endAdornment: url && (
+                        <IconButton 
+                          size="small" 
+                          href={url.startsWith('http') ? url : `https://${url}`}
+                          target="_blank"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                      )
+                    }}
                   />
                 </Box>
               </Box>
+            </Paper>
+            
+            <Paper sx={{ p: 2, borderRadius: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle1">Social Media Accounts</Typography>
+                <Button 
+                  size="small" 
+                  startIcon={<EditIcon />}
+                  onClick={() => {
+                    if (!socialMediaAccounts.length) {
+                      setSocialMediaAccounts([
+                        { platform: 'Facebook', url: '' }
+                      ]);
+                    }
+                  }}
+                >
+                  {socialMediaAccounts.length ? 'Edit' : 'Add'}
+                </Button>
+              </Box>
+              
+              {socialMediaAccounts.length > 0 ? (
+                <Box>
+                  {socialMediaAccounts.map((account, index) => (
+                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 140 }}>
+                        {account.platform === 'Twitter' && <TwitterIcon sx={{ mr: 1, color: '#1DA1F2' }} fontSize="small" />}
+                        {account.platform === 'Facebook' && <FacebookIcon sx={{ mr: 1, color: '#4267B2' }} fontSize="small" />}
+                        {account.platform === 'Instagram' && <InstagramIcon sx={{ mr: 1, color: '#C13584' }} fontSize="small" />}
+                        {account.platform === 'LinkedIn' && <LinkedInIcon sx={{ mr: 1, color: '#0077B5' }} fontSize="small" />}
+                        {account.platform === 'Pinterest' && <PinterestIcon sx={{ mr: 1, color: '#E60023' }} fontSize="small" />}
+                        {account.platform === 'YouTube' && <YouTubeIcon sx={{ mr: 1, color: '#FF0000' }} fontSize="small" />}
+                        {account.platform === 'TikTok' && <DomainIcon sx={{ mr: 1, color: '#000000' }} fontSize="small" />}
+                        
+                        <TextField
+                          select
+                          size="small"
+                          value={account.platform}
+                          onChange={(e) => {
+                            const updatedAccounts = [...socialMediaAccounts];
+                            updatedAccounts[index].platform = e.target.value;
+                            setSocialMediaAccounts(updatedAccounts);
+                          }}
+                          sx={{ minWidth: 100 }}
+                          SelectProps={{
+                            native: true,
+                          }}
+                        >
+                          <option value="Facebook">Facebook</option>
+                          <option value="Twitter">Twitter</option>
+                          <option value="Instagram">Instagram</option>
+                          <option value="LinkedIn">LinkedIn</option>
+                          <option value="Pinterest">Pinterest</option>
+                          <option value="YouTube">YouTube</option>
+                          <option value="TikTok">TikTok</option>
+                        </TextField>
+                      </Box>
+                      
+                      <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="Social media URL"
+                        value={account.url}
+                        onChange={(e) => {
+                          const updatedAccounts = [...socialMediaAccounts];
+                          updatedAccounts[index].url = e.target.value;
+                          setSocialMediaAccounts(updatedAccounts);
+                        }}
+                        sx={{ ml: 1 }}
+                        InputProps={{
+                          endAdornment: account.url && (
+                            <IconButton 
+                              size="small"
+                              onClick={() => {
+                                // Remove this account
+                                const updatedAccounts = [...socialMediaAccounts];
+                                updatedAccounts.splice(index, 1);
+                                setSocialMediaAccounts(updatedAccounts);
+                              }}
+                            >
+                              <ErrorIcon fontSize="small" />
+                            </IconButton>
+                          )
+                        }}
+                      />
+                    </Box>
+                  ))}
+                  
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setSocialMediaAccounts([
+                        ...socialMediaAccounts,
+                        { platform: 'Facebook', url: '' }
+                      ]);
+                    }}
+                    sx={{ mt: 1 }}
+                  >
+                    Add Another Account
+                  </Button>
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No social media accounts detected
+                </Typography>
+              )}
             </Paper>
           </Grid>
         </Grid>
@@ -539,7 +730,7 @@ const BrandNew = () => {
                     Primary Color
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                       <Box 
                         sx={{ 
                           width: 40, 
@@ -549,10 +740,16 @@ const BrandNew = () => {
                           border: '1px solid #ddd',
                           bgcolor: primaryColor,
                           cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          '&:hover': {
+                            transform: 'scale(1.1)'
+                          }
                         }}
                         onClick={(e) => {
                           const colorInput = document.getElementById('primary-color-input');
-                          if (colorInput) colorInput.click();
+                          if (colorInput) {
+                            colorInput.click();
+                          }
                         }}
                       />
                       <TextField
@@ -561,19 +758,38 @@ const BrandNew = () => {
                         onChange={(e) => setPrimaryColor(e.target.value)}
                         sx={{ width: 120, mr: 1 }}
                       />
-                      <input
-                        id="primary-color-input"
-                        type="color"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        style={{ 
-                          width: 0, 
-                          height: 0, 
-                          padding: 0, 
-                          border: 'none',
-                          visibility: 'hidden' 
-                        }}
-                      />
+                      <Box sx={{ position: 'relative', width: 25, height: 25, ml: 1 }}>
+                        <input
+                          id="primary-color-input"
+                          type="color"
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          style={{ 
+                            opacity: 0,
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            width: '100%',
+                            height: '100%',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <Box 
+                          sx={{ 
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          <PaletteIcon fontSize="small" />
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
                 </Grid>
@@ -583,7 +799,7 @@ const BrandNew = () => {
                     Secondary Color
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                       <Box 
                         sx={{ 
                           width: 40, 
@@ -593,10 +809,16 @@ const BrandNew = () => {
                           border: '1px solid #ddd',
                           bgcolor: secondaryColor,
                           cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          '&:hover': {
+                            transform: 'scale(1.1)'
+                          }
                         }}
                         onClick={(e) => {
                           const colorInput = document.getElementById('secondary-color-input');
-                          if (colorInput) colorInput.click();
+                          if (colorInput) {
+                            colorInput.click();
+                          }
                         }}
                       />
                       <TextField
@@ -605,19 +827,38 @@ const BrandNew = () => {
                         onChange={(e) => setSecondaryColor(e.target.value)}
                         sx={{ width: 120, mr: 1 }}
                       />
-                      <input
-                        id="secondary-color-input"
-                        type="color"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        style={{ 
-                          width: 0, 
-                          height: 0, 
-                          padding: 0, 
-                          border: 'none',
-                          visibility: 'hidden' 
-                        }}
-                      />
+                      <Box sx={{ position: 'relative', width: 25, height: 25, ml: 1 }}>
+                        <input
+                          id="secondary-color-input"
+                          type="color"
+                          value={secondaryColor}
+                          onChange={(e) => setSecondaryColor(e.target.value)}
+                          style={{ 
+                            opacity: 0,
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            width: '100%',
+                            height: '100%',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <Box 
+                          sx={{ 
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          <PaletteIcon fontSize="small" />
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
                 </Grid>
@@ -912,7 +1153,24 @@ const BrandNew = () => {
                 <option value="Weekly">Weekly</option>
                 <option value="Bi-weekly">Bi-weekly</option>
                 <option value="Monthly">Monthly</option>
+                <option value="Custom">Custom</option>
               </TextField>
+              
+              {schedule.frequency === 'Custom' && (
+                <TextField
+                  fullWidth
+                  placeholder="Specify custom frequency"
+                  size="small"
+                  sx={{ mb: 3 }}
+                  value={schedule.frequency === 'Custom' ? schedule.customFrequency || '' : ''}
+                  onChange={(e) => {
+                    setSchedule({
+                      ...schedule,
+                      customFrequency: e.target.value
+                    });
+                  }}
+                />
+              )}
               
               <Typography variant="subtitle2" gutterBottom>
                 Best Times to Post
@@ -978,20 +1236,27 @@ const BrandNew = () => {
               
               <Grid container spacing={2}>
                 {contentTypes.map((type, index) => (
-                  <Grid item xs={6} key={index}>
+                  <Grid item xs={6} key={type}>
                     <FormControlLabel
                       control={
                         <Switch
                           checked={true}
                           onChange={() => {
-                            const updatedTypes = [...contentTypes];
-                            updatedTypes.splice(index, 1);
+                            // Instead of removing, we'll toggle active state
+                            const updatedTypes = contentTypes.filter((_, i) => i !== index);
                             setContentTypes(updatedTypes);
                           }}
                         />
                       }
                       label={type}
                     />
+                  </Grid>
+                ))}
+                
+                {/* This adds empty slots for removed content types */}
+                {Array.from({ length: Math.max(0, 6 - contentTypes.length) }).map((_, i) => (
+                  <Grid item xs={6} key={`empty-${i}`}>
+                    <Box sx={{ height: 42 }}></Box>
                   </Grid>
                 ))}
               </Grid>
@@ -1065,20 +1330,26 @@ const BrandNew = () => {
               
               <Grid container spacing={2}>
                 {marketingGoals.map((goal, index) => (
-                  <Grid item xs={12} key={index}>
+                  <Grid item xs={12} key={goal}>
                     <FormControlLabel
                       control={
                         <Switch
                           checked={true}
                           onChange={() => {
-                            const updatedGoals = [...marketingGoals];
-                            updatedGoals.splice(index, 1);
+                            const updatedGoals = marketingGoals.filter((_, i) => i !== index);
                             setMarketingGoals(updatedGoals);
                           }}
                         />
                       }
                       label={goal}
                     />
+                  </Grid>
+                ))}
+                
+                {/* This adds empty slots for removed marketing goals */}
+                {Array.from({ length: Math.max(0, 4 - marketingGoals.length) }).map((_, i) => (
+                  <Grid item xs={12} key={`empty-${i}`}>
+                    <Box sx={{ height: 42 }}></Box>
                   </Grid>
                 ))}
               </Grid>

@@ -591,7 +591,8 @@ async def analyze_website(request: WebsiteAnalysisRequest, current_user = Depend
             website=url,
             colors=colors,
             fonts=fonts,
-            contentTone="Professional" if industry in ['Technology', 'Finance', 'Healthcare'] else "Friendly",
+            contentTone="Professional, Authoritative, Informative" if industry in ['Technology', 'Finance', 'Healthcare'] 
+                          else "Friendly, Conversational, Engaging",
             products=['Product or Service 1', 'Product or Service 2'],  # Would need more specific extraction
             contactInfo=contact_info,
             socialMedia=social_media,
