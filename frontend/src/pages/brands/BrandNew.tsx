@@ -2138,7 +2138,7 @@ const BrandNew = () => {
                         <Box sx={{ height: 160, bgcolor: primaryColor || '#f2f2f2' }} />
                         <CardContent>
                           <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                            {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution. #${brandName.replace(' ', '')}`}
+                            {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution...`}
                           </Typography>
                         </CardContent>
                       </Card>
@@ -2170,7 +2170,7 @@ const BrandNew = () => {
                       </Box>
                     </Box>
                     <Typography variant="body2" paragraph>
-                      {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution designed to transform your experience. Check it out! ${hashtags[0] || '#Innovation'}`}
+                      {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution...`}
                     </Typography>
                   </Box>
                   
@@ -2204,10 +2204,7 @@ const BrandNew = () => {
                         Introducing the latest innovation from {brandName}!
                       </Typography>
                       <Typography variant="body2" paragraph>
-                        We're excited to announce our newest solution designed to transform your experience and deliver exceptional results.
-                      </Typography>
-                      <Typography variant="body2">
-                        {`Learn more about how ${brandName} can help you achieve ${marketingGoals[0] || 'your goals'}.`}
+                        We're excited to announce our newest solution...
                       </Typography>
                     </Box>
                   </Box>
@@ -2242,7 +2239,7 @@ const BrandNew = () => {
                     </Box>
                     <Box sx={{ p: 2 }}>
                       <Typography variant="body2" paragraph>
-                        {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution designed to transform your experience. ${hashtags[0] || '#Innovation'}`}
+                        {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution...`}
                       </Typography>
                     </Box>
                   </Box>
