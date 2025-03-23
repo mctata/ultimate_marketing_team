@@ -1123,33 +1123,28 @@ const BrandNew = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Font Family
               </Typography>
-              <TextField
-                select
-                fullWidth
-                value={analysisResult?.fonts?.primary || 'Roboto'}
-                onChange={(e) => {
-                  if (analysisResult) {
-                    setAnalysisResult({
-                      ...analysisResult,
-                      fonts: {
-                        ...analysisResult.fonts,
-                        primary: e.target.value
-                      }
-                    });
-                  }
-                }}
-                size="small"
-                sx={{ mb: 3 }}
-                SelectProps={{
-                  native: true,
-                }}
-              >
-                <option value="Roboto">Roboto</option>
-                <option value="Open Sans">Open Sans</option>
-                <option value="Lato">Lato</option>
-                <option value="Montserrat">Montserrat</option>
-                <option value="Source Sans Pro">Source Sans Pro</option>
-              </TextField>
+              <FormControl fullWidth size="small" sx={{ mb: 3 }}>
+                <Select
+                  value={analysisResult?.fonts?.primary || 'Roboto'}
+                  onChange={(e) => {
+                    if (analysisResult) {
+                      setAnalysisResult({
+                        ...analysisResult,
+                        fonts: {
+                          ...analysisResult.fonts,
+                          primary: e.target.value
+                        }
+                      });
+                    }
+                  }}
+                >
+                  <MenuItem value="Roboto">Roboto</MenuItem>
+                  <MenuItem value="Open Sans">Open Sans</MenuItem>
+                  <MenuItem value="Lato">Lato</MenuItem>
+                  <MenuItem value="Montserrat">Montserrat</MenuItem>
+                  <MenuItem value="Source Sans Pro">Source Sans Pro</MenuItem>
+                </Select>
+              </FormControl>
               
               <Typography variant="h6" gutterBottom>
                 Content Tone
@@ -1706,6 +1701,25 @@ const BrandNew = () => {
               </Grid>
               
               <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Custom Marketing Goals
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  {marketingGoals.filter(goal => 
+                    !['Increase Brand Awareness', 'Generate Quality Leads', 'Improve Customer Engagement', 
+                     'Boost Website Traffic', 'Increase Social Media Following', 'Drive Conversions and Sales']
+                     .includes(goal))
+                     .map((goal, index) => (
+                    <Chip 
+                      key={index}
+                      label={goal}
+                      onDelete={() => {
+                        setMarketingGoals(marketingGoals.filter(g => g !== goal));
+                      }}
+                      sx={{ m: 0.5 }}
+                    />
+                  ))}
+                </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <TextField
                     fullWidth
@@ -2128,7 +2142,7 @@ const BrandNew = () => {
               </Typography>
               
               <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     {['Instagram', 'Twitter', 'LinkedIn', 'Facebook'].map((platform) => (
                       <Chip 
@@ -2140,14 +2154,6 @@ const BrandNew = () => {
                       />
                     ))}
                   </Box>
-                  <Button 
-                    variant="contained" 
-                    size="small"
-                    onClick={() => navigate(`/content/new?brandId=${createdBrandId}&platform=${activePlatformPreview}`)}
-                    startIcon={<EditIcon />}
-                  >
-                    Edit & Schedule
-                  </Button>
                 </Box>
                 
                 <Box sx={{ position: 'relative', height: 320, overflow: 'hidden', borderRadius: 2, border: '1px solid #eee' }}>
@@ -2178,13 +2184,7 @@ const BrandNew = () => {
                         <Box sx={{ height: 160, bgcolor: primaryColor || '#f2f2f2' }} />
                         <CardContent>
                           <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                            {industry === 'Technology' ? (
-                              `Introducing our latest innovation! #${brandName.replace(' ', '')}`
-                            ) : industry === 'E-commerce' ? (
-                              `Just dropped: Our new collection! #${brandName.replace(' ', '')}`
-                            ) : (
-                              `Welcome to our page! #${brandName.replace(' ', '')}`
-                            )}
+                            {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution. #${brandName.replace(' ', '')}`}
                           </Typography>
                         </CardContent>
                       </Card>
@@ -2216,13 +2216,7 @@ const BrandNew = () => {
                       </Box>
                     </Box>
                     <Typography variant="body2" paragraph>
-                      {industry === 'Technology' ? (
-                        `We're excited to announce our newest solution designed to transform how you ${contentTypes[0] || 'work'}. Check it out! ${hashtags[0] || '#Innovation'}`
-                      ) : industry === 'E-commerce' ? (
-                        `Just launched: our latest collection featuring ${suggestedTopics[0] || 'exciting new products'}! Shop now ${hashtags[0] || '#ShopNow'}`
-                      ) : (
-                        `Hello world! We're ${brandName} and we're here to share insights about ${suggestedTopics[0] || 'our industry'}. ${hashtags[0] || '#Welcome'}`
-                      )}
+                      {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution designed to transform your experience. Check it out! ${hashtags[0] || '#Innovation'}`}
                     </Typography>
                   </Box>
                   
@@ -2253,22 +2247,10 @@ const BrandNew = () => {
                     </Box>
                     <Box sx={{ p: 2 }}>
                       <Typography variant="body1" sx={{ fontWeight: 'medium', mb: 1 }}>
-                        {industry === 'Technology' ? (
-                          `Announcing Our Latest Innovation`
-                        ) : industry === 'E-commerce' ? (
-                          `Introducing Our New Collection`
-                        ) : (
-                          `Welcome to ${brandName}`
-                        )}
+                        Introducing the latest innovation from {brandName}!
                       </Typography>
                       <Typography variant="body2" paragraph>
-                        {industry === 'Technology' ? (
-                          `We're excited to share our newest solution designed specifically for professionals in ${targetAudience[0] || 'your industry'}.`
-                        ) : industry === 'E-commerce' ? (
-                          `We're thrilled to unveil our latest collection featuring premium ${suggestedTopics[0] || 'products'} for our discerning customers.`
-                        ) : (
-                          `We're delighted to join the LinkedIn community and share valuable insights about ${suggestedTopics[0] || 'our industry'}.`
-                        )}
+                        We're excited to announce our newest solution designed to transform your experience and deliver exceptional results.
                       </Typography>
                       <Typography variant="body2">
                         {`Learn more about how ${brandName} can help you achieve ${marketingGoals[0] || 'your goals'}.`}
@@ -2306,13 +2288,7 @@ const BrandNew = () => {
                     </Box>
                     <Box sx={{ p: 2 }}>
                       <Typography variant="body2" paragraph>
-                        {industry === 'Technology' ? (
-                          `Introducing our latest innovation! Check out how ${brandName} is transforming ${targetAudience[0] || 'businesses'}. ${hashtags[0] || '#Innovation'}`
-                        ) : industry === 'E-commerce' ? (
-                          `New arrivals just dropped! Explore our latest collection at ${brandName}. ${hashtags[0] || '#ShopNow'}`
-                        ) : (
-                          `Welcome to our Facebook page! Follow us for the latest updates on ${suggestedTopics[0] || 'our industry'}. ${hashtags[0] || '#Welcome'}`
-                        )}
+                        {`Introducing the latest innovation from ${brandName}! We're excited to announce our newest solution designed to transform your experience. ${hashtags[0] || '#Innovation'}`}
                       </Typography>
                     </Box>
                   </Box>
