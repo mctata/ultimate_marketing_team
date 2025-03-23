@@ -28,6 +28,7 @@ const Templates = lazy(() => import('./pages/templates/Templates'));
 const TemplateDetail = lazy(() => import('./pages/templates/TemplateDetail'));
 const TemplateTestWorkspace = lazy(() => import('./pages/templates/TemplateTestWorkspace'));
 const AdminTemplatesUtility = lazy(() => import('./pages/templates/AdminTemplatesUtility'));
+const TemplateDiagnostics = lazy(() => import('./pages/templates/TemplateDiagnostics'));
 
 // Loading component
 const LoadingScreen = () => (
@@ -76,9 +77,10 @@ function App() {
               
               {/* Template Management Routes */}
               <Route path="/templates" element={<Templates />} />
+              <Route path="/templates/admin" element={<AdminTemplatesUtility />} />
+              <Route path="/templates/diagnostics" element={<TemplateDiagnostics />} />
               <Route path="/templates/:id" element={<TemplateDetail />} />
               <Route path="/templates/:id/test" element={<TemplateTestWorkspace />} />
-              <Route path="/templates/admin" element={<AdminTemplatesUtility />} />
             </Route>
           </Route>
 

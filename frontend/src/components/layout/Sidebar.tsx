@@ -48,7 +48,8 @@ const menuItems = [
     subItems: [
       { text: 'Content Library', path: '/content' },
       { text: 'Content Calendar', path: '/content/calendar' },
-      { text: 'Templates Library', path: '/templates' }
+      { text: 'Templates Library', path: '/templates' },
+      { text: 'Template Diagnostics', path: '/templates/diagnostics' }
     ]
   },
   { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
