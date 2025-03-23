@@ -7,9 +7,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import uuid
+import os
+import sys
 
 from src.core.settings import settings
 from src.core.logging import setup_logging, get_logger
+
+# Add current directory to path to help with imports
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Setup logging
 setup_logging()
@@ -53,11 +58,10 @@ from src.api import seed_templates  # Import seed templates router
 # Add health router for basic functionality
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
 
-# Add templates router
-app.include_router(templates.router, prefix=f"{settings.API_PREFIX}/templates", tags=["Templates"])
-
-# Add seed templates router
-app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-templates", tags=["Templates"])
+# Create a direct endpoint for templates testing
+@app.get("/api/v1/templates/categories-test", tags=["Templates"])
+async def templates_categories_test():
+    return {"status": "ok", "message": "Templates categories endpoint is working"}
 
 # Root endpoint
 @app.get("/")
@@ -78,4 +82,29 @@ async def health_check():
         "timestamp": time.time(),
         "version": settings.APP_VERSION,
         "environment": settings.ENV
+    }
+
+@app.get("/api/debug/routes")
+async def debug_routes():
+    """Debug endpoint to list all registered routes"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "path") and hasattr(route, "methods"):
+            routes.append({
+                "path": route.path,
+                "name": route.name,
+                "methods": list(route.methods)
+            })
+    return {
+        "routes": sorted(routes, key=lambda x: x["path"]),
+        "count": len(routes)
+    }
+
+@app.get("/api/v1/test-templates")
+async def test_templates():
+    """Direct test endpoint for templates"""
+    return {
+        "status": "ok",
+        "message": "Direct templates test endpoint is working",
+        "timestamp": time.time()
     }

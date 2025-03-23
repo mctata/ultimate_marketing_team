@@ -19,6 +19,12 @@ router = APIRouter(
     tags=["templates"]
 )
 
+# Add a simple test endpoint without auth for debugging
+@router.get("/test", response_model=dict)
+def test_seed_templates_endpoint():
+    """Simple test endpoint to verify the seed-templates router is working."""
+    return {"status": "ok", "message": "Seed templates router is working"}
+
 # Industry mapping
 INDUSTRY_MAP = {
     "health-wellness": "Health & Wellness",

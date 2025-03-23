@@ -20,6 +20,12 @@ router = APIRouter(
     tags=["templates"]
 )
 
+# Add a simple test endpoint without auth for debugging
+@router.get("/test", response_model=dict)
+def test_templates_endpoint():
+    """Simple test endpoint to verify the templates router is working."""
+    return {"status": "ok", "message": "Templates router is working"}
+
 # Template Categories
 @router.get("/categories", response_model=List[Dict[str, Any]])
 def get_template_categories(
