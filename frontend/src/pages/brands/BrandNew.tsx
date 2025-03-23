@@ -365,11 +365,19 @@ const BrandNew = () => {
         // Set error flag in localStorage to enable recovery on page reload
         localStorage.setItem('brandFormError', 'true');
         
-        // Show detailed error message
-        setAnalyzeError(
-          "Failed to create brand. Your data has been saved locally. " +
-          "You can try again or reload the page to recover your information."
-        );
+        // Check form validation again
+        if (!validateForm()) {
+          // Show specific validation message
+          setAnalyzeError(
+            "Please check all required fields. We found some issues that need to be fixed before creating your brand."
+          );
+        } else {
+          // Show general error message
+          setAnalyzeError(
+            "Failed to create brand. Your data has been saved locally. " +
+            "You can try again or reload the page to recover your information."
+          );
+        }
         
         // Scroll to top to show error
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2107,7 +2115,26 @@ const BrandNew = () => {
             <Button
               variant="contained" 
               size="large"
-              onClick={handleCreateBrand}
+              onClick={() => {
+                if (validateForm()) {
+                  handleCreateBrand();
+                } else {
+                  // Show error and return to fields with errors
+                  setAnalyzeError("Please check all required fields before creating your brand.");
+                  
+                  // If there are content strategy errors, go to that step
+                  if (formErrors.contentTypes || formErrors.marketingGoals || formErrors.bestTimes || formErrors.customFrequency) {
+                    setActiveStep(3);
+                  } 
+                  // If there are company info errors, go to that step
+                  else if (formErrors.brandName || formErrors.industry || formErrors.brandDescription) {
+                    setActiveStep(1);
+                  }
+                  
+                  // Scroll to top to show error
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
               startIcon={<CheckIcon />}
               disabled={createBrand.isLoading}
             >
@@ -2128,15 +2155,6 @@ const BrandNew = () => {
   const renderSuccessStep = () => {
     return (
       <Box>
-        <Box sx={{ mb: 5 }}>
-          <Typography variant="h5" gutterBottom fontWeight="bold">
-            Brand Setup Complete
-          </Typography>
-          
-          <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 700 }}>
-            Your brand "{brandName}" is ready to go. Get started with the resources below, or explore your brand dashboard for more options.
-          </Typography>
-        </Box>
         
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
@@ -2147,22 +2165,10 @@ const BrandNew = () => {
               
               <Box sx={{ mb: 3, p: 3, bgcolor: 'background.default', borderRadius: 2, border: '1px solid #eee' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ display: 'flex', alignItems: 'center' }}>
-                  {industry === 'Technology' ? (
-                    <>
-                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
-                      Product Announcement Post
-                    </>
-                  ) : industry === 'E-commerce' ? (
-                    <>
-                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
-                      New Collection Announcement
-                    </>
-                  ) : (
-                    <>
-                      <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
-                      Welcome Blog Post
-                    </>
-                  )}
+                  <ContentCopyIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                  {industry === 'Technology' ? 'Tech Announcement Post' : 
+                   industry === 'E-commerce' ? 'New Collection Announcement' : 
+                   'Welcome Blog Post'}
                 </Typography>
                 
                 <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
@@ -2189,35 +2195,19 @@ const BrandNew = () => {
                   </Typography>
                 </Paper>
                 
-                <Typography variant="caption" color="text.secondary" paragraph sx={{ display: 'block', mb: 2 }}>
-                  This draft is tailored to your brand's style and industry. Edit and schedule it now to start engaging your audience immediately.
-                </Typography>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button 
-                      variant="contained" 
-                      size="small"
-                      onClick={() => navigate(`/content/new?brandId=${createdBrandId}`)}
-                      startIcon={<EditIcon />}
-                    >
-                      Edit & Schedule
-                    </Button>
-                  </Box>
-                  
-                  <Chip 
-                    label={industry === 'Technology' ? 'Tech Announcement' : 
-                           industry === 'E-commerce' ? 'Product Launch' : 
-                           'Welcome Post'} 
-                    size="small" 
-                    color="primary" 
-                    variant="outlined"
-                  />
-                </Box>
+                <Chip 
+                  label={industry === 'Technology' ? 'Tech Announcement' : 
+                         industry === 'E-commerce' ? 'Product Launch' : 
+                         'Welcome Post'} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                  sx={{ mt: 2 }}
+                />
               </Box>
               
-              <Typography variant="subtitle2" gutterBottom>
-                Preview Across Platforms
+              <Typography variant="caption" color="text.secondary" paragraph sx={{ display: 'block', mb: 2 }}>
+                This draft is tailored to your brand's style and industry. Preview how it will look on different platforms.
               </Typography>
               
               <Box sx={{ mb: 3 }}>
