@@ -1190,25 +1190,51 @@ const BrandNew = () => {
                 )}
               </Box>
               
-              <TextField
-                fullWidth
-                placeholder="Add custom tone (press Enter)"
-                size="small"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    const customTone = e.currentTarget.value.trim();
-                    if (customTone) {
-                      if (contentTone) {
-                        setContentTone(contentTone + ', ' + customTone);
-                      } else {
-                        setContentTone(customTone);
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Add custom tone (press Enter)"
+                  size="small"
+                  value={topicInput} // Reuse topicInput state for simplicity
+                  onChange={(e) => setTopicInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && topicInput.trim()) {
+                      const customTone = topicInput.trim();
+                      if (customTone) {
+                        // Get current tones as array
+                        const currentTones = contentTone ? contentTone.split(',').map(t => t.trim()) : [];
+                        // Add new tone if not already present
+                        if (!currentTones.includes(customTone)) {
+                          const newTones = [...currentTones, customTone];
+                          setContentTone(newTones.join(', '));
+                        }
+                        setTopicInput(''); // Clear input
+                        e.preventDefault();
                       }
-                      e.currentTarget.value = '';
-                      e.preventDefault();
                     }
-                  }
-                }}
-              />
+                  }}
+                />
+                <Button 
+                  variant="contained"
+                  size="small"
+                  disabled={!topicInput.trim()}
+                  onClick={() => {
+                    const customTone = topicInput.trim();
+                    if (customTone) {
+                      // Get current tones as array
+                      const currentTones = contentTone ? contentTone.split(',').map(t => t.trim()) : [];
+                      // Add new tone if not already present
+                      if (!currentTones.includes(customTone)) {
+                        const newTones = [...currentTones, customTone];
+                        setContentTone(newTones.join(', '));
+                      }
+                      setTopicInput(''); // Clear input
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Paper>
           </Grid>
           
@@ -1529,8 +1555,9 @@ const BrandNew = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                     <TextField
+                      select
                       fullWidth
-                      placeholder="Specify custom frequency (e.g., 3 times per week)"
+                      label="Select a custom frequency"
                       size="small"
                       value={schedule.customFrequency || ''}
                       onChange={(e) => {
@@ -1542,14 +1569,21 @@ const BrandNew = () => {
                           setFormErrors({...formErrors, customFrequency: ''});
                         }
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                        }
-                      }}
                       error={!!formErrors.customFrequency}
-                      helperText={formErrors.customFrequency || "Describe how often you want to post content"}
-                    />
+                      helperText={formErrors.customFrequency || "Select how often you want to post content"}
+                      SelectProps={{
+                        native: true,
+                      }}
+                    >
+                      <option value="">Select frequency</option>
+                      <option value="2-3 times per day">2-3 times per day</option>
+                      <option value="Once a day">Once a day</option>
+                      <option value="2-3 times per week">2-3 times per week</option>
+                      <option value="Once a week">Once a week</option>
+                      <option value="Every two weeks">Every two weeks</option>
+                      <option value="Once a month">Once a month</option>
+                      <option value="On special occasions only">On special occasions only</option>
+                    </TextField>
                   </Box>
                   
                   <Box sx={{ mb: 2 }}>
@@ -1560,78 +1594,38 @@ const BrandNew = () => {
                       Schedule additional custom times that work best for your content.
                     </Typography>
                     
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <TextField
-                          select
-                          fullWidth
-                          size="small"
-                          label="Day"
-                          value={schedule.customTime ? schedule.customTime.split(' ')[0] || '' : ''}
-                          onChange={(e) => {
-                            const day = e.target.value;
-                            const time = schedule.customTime && schedule.customTime.includes(' ') ? 
-                              schedule.customTime.split(' ').slice(1).join(' ') : '';
-                            setSchedule({
-                              ...schedule,
-                              customTime: day ? `${day} ${time}` : time
-                            });
-                          }}
-                          SelectProps={{
-                            native: true,
-                          }}
-                        >
-                          <option value="">Select day</option>
-                          <option value="Monday">Monday</option>
-                          <option value="Tuesday">Tuesday</option>
-                          <option value="Wednesday">Wednesday</option>
-                          <option value="Thursday">Thursday</option>
-                          <option value="Friday">Friday</option>
-                          <option value="Saturday">Saturday</option>
-                          <option value="Sunday">Sunday</option>
-                        </TextField>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <TextField
-                          select
-                          fullWidth
-                          size="small"
-                          label="Time (EST)"
-                          value={schedule.customTime && schedule.customTime.includes(' ') ? 
-                            schedule.customTime.split(' ').slice(1).join(' ') : ''}
-                          onChange={(e) => {
-                            const day = schedule.customTime ? schedule.customTime.split(' ')[0] || '' : '';
-                            const time = e.target.value;
-                            setSchedule({
-                              ...schedule,
-                              customTime: `${day} ${time}`.trim()
-                            });
-                          }}
-                          SelectProps={{
-                            native: true,
-                          }}
-                        >
-                          <option value="">Select time</option>
-                          <option value="9:00 AM">9:00 AM</option>
-                          <option value="10:00 AM">10:00 AM</option>
-                          <option value="11:00 AM">11:00 AM</option>
-                          <option value="12:00 PM">12:00 PM</option>
-                          <option value="1:00 PM">1:00 PM</option>
-                          <option value="2:00 PM">2:00 PM</option>
-                          <option value="3:00 PM">3:00 PM</option>
-                          <option value="4:00 PM">4:00 PM</option>
-                          <option value="5:00 PM">5:00 PM</option>
-                          <option value="6:00 PM">6:00 PM</option>
-                        </TextField>
-                      </Grid>
-                    </Grid>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="datetime-local"
+                      label="Select exact date and time (EST)"
+                      InputLabelProps={{ shrink: true }}
+                      value={schedule.customTime || ''}
+                      onChange={(e) => {
+                        // Convert datetime-local value to a readable format
+                        const dateObj = new Date(e.target.value);
+                        const day = dateObj.toLocaleString('en-US', { weekday: 'long' });
+                        const time = dateObj.toLocaleString('en-US', { 
+                          hour: 'numeric', 
+                          minute: 'numeric', 
+                          hour12: true 
+                        });
+                        
+                        const formattedDateTime = `${day} ${time}`;
+                        
+                        setSchedule({
+                          ...schedule,
+                          customTime: formattedDateTime
+                        });
+                      }}
+                    />
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                       <Button 
                         variant="contained" 
                         size="small"
-                        disabled={!schedule.customTime || schedule.customTime.split(' ').length < 2}
+                        disabled={!schedule.customTime}
                         onClick={() => {
-                          if (schedule.customTime && schedule.customTime.split(' ').length >= 2) {
+                          if (schedule.customTime) {
                             setSchedule({
                               ...schedule,
                               bestTimes: [...schedule.bestTimes, schedule.customTime],
@@ -1803,9 +1797,16 @@ const BrandNew = () => {
                     size="small"
                     placeholder="Add a custom marketing goal"
                     value={marketingGoalInput}
-                    onChange={(e) => setMarketingGoalInput(e.target.value)}
+                    onChange={(e) => {
+                      setMarketingGoalInput(e.target.value);
+                      // Clear any error when user starts typing
+                      if (formErrors.marketingGoals) {
+                        setFormErrors({...formErrors, marketingGoals: ''});
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
+                        e.preventDefault(); // Always prevent default to avoid form submission
                         const trimmedGoal = marketingGoalInput.trim();
                         if (trimmedGoal !== '') {
                           // Make sure we're not adding a duplicate
@@ -1813,7 +1814,6 @@ const BrandNew = () => {
                             setMarketingGoals(prevGoals => [...prevGoals, trimmedGoal]);
                           }
                           setMarketingGoalInput('');
-                          e.preventDefault();
                         }
                       }
                     }}
@@ -1828,6 +1828,11 @@ const BrandNew = () => {
                         // Make sure we're not adding a duplicate
                         if (!marketingGoals.includes(trimmedGoal)) {
                           setMarketingGoals(prevGoals => [...prevGoals, trimmedGoal]);
+                          
+                          // Clear any errors related to marketing goals
+                          if (formErrors.marketingGoals) {
+                            setFormErrors({...formErrors, marketingGoals: ''});
+                          }
                         }
                         setMarketingGoalInput('');
                       }
