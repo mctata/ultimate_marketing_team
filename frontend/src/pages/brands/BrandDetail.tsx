@@ -426,7 +426,7 @@ const BrandDetail = () => {
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                   
-                  {brandData.recentContent.map((content, index) => (
+                  {(brandData.recentContent || []).map((content, index) => (
                     <Box key={content.id}>
                       <Box 
                         sx={{ 
@@ -487,7 +487,7 @@ const BrandDetail = () => {
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                   
-                  {brandData.recentCampaigns.map((campaign, index) => (
+                  {(brandData.recentCampaigns || []).map((campaign, index) => (
                     <Box key={campaign.id}>
                       <Box 
                         sx={{ 
