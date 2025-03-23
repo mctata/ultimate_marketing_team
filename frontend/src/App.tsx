@@ -18,6 +18,7 @@ const Login = lazyPage(() => import('./pages/auth/Login'));
 const Register = lazyPage(() => import('./pages/auth/Register'));
 const Brands = lazyPage(() => import('./pages/brands/Brands'));
 const BrandDetail = lazyPage(() => import('./pages/brands/BrandDetail'));
+const BrandNew = lazyPage(() => import('./pages/brands/BrandNew'));
 const Content = lazyPage(() => import('./pages/content/Content'));
 const ContentCalendar = lazyPage(() => import('./pages/content/ContentCalendar'));
 const ContentDetail = lazyPage(() => import('./pages/content/ContentDetail'));
@@ -206,6 +207,7 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="brands" element={<Brands />} />
+          <Route path="brands/new" element={<BrandNew />} />
           <Route path="brands/:id" element={<BrandDetail />} />
           <Route path="content" element={<Content />} />
           <Route path="content/calendar" element={<ContentCalendar />} />
