@@ -25,6 +25,7 @@
     "react-router-dom": "^6.11.1",
     "react-window": "^1.8.9",
     "redux-persist": "^6.0.0",
+    "use-sync-external-store": "^1.4.0",
     "yup": "^1.1.1"
   },
   "devDependencies": {

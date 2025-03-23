@@ -67,7 +67,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
+    include: [
+      'react', 
+      'react-dom', 
+      'react-router-dom',
+      'use-sync-external-store',
+      'use-sync-external-store/shim'
+    ],
     exclude: ['@tanstack/react-query-devtools', '@mui/x-date-pickers-pro'],
   },
 });
