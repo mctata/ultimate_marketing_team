@@ -25,6 +25,7 @@ import {
   useMediaQuery,
   ToggleButton,
   ToggleButtonGroup,
+  Snackbar,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -76,6 +77,8 @@ const TemplateTestWorkspace: React.FC = () => {
   const [selectedTone, setSelectedTone] = useState<string>('');
   const [viewMode, setViewMode] = useState<string>('preview');
   const [renderedContent, setRenderedContent] = useState<string>('');
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   
   // Fetch template data
   useEffect(() => {
@@ -239,8 +242,8 @@ const TemplateTestWorkspace: React.FC = () => {
   // Handle copy to clipboard
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(renderedContent);
-    // In a real app, show a snackbar or toast notification
-    alert('Copied to clipboard!');
+    setSnackbarMessage('Template copied to clipboard!');
+    setSnackbarOpen(true);
   };
   
   // Handle download
@@ -252,6 +255,14 @@ const TemplateTestWorkspace: React.FC = () => {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    
+    setSnackbarMessage('Template downloaded successfully!');
+    setSnackbarOpen(true);
+  };
+  
+  // Handle snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
   
   if (loading) {
@@ -334,6 +345,10 @@ const TemplateTestWorkspace: React.FC = () => {
             variant="contained"
             color="primary"
             startIcon={<SaveIcon />}
+            onClick={() => {
+              setSnackbarMessage('Draft saved successfully!');
+              setSnackbarOpen(true);
+            }}
           >
             Save as Draft
           </Button>
@@ -657,6 +672,15 @@ const TemplateTestWorkspace: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+      
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={handleSnackbarClose}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };
