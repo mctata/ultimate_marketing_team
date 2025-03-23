@@ -1130,6 +1130,7 @@ const BrandNew = () => {
                 <Select
                   value={analysisResult?.fonts?.primary || 'Roboto'}
                   onChange={(e) => {
+                    // Update font in the analysis result
                     if (analysisResult) {
                       setAnalysisResult({
                         ...analysisResult,
@@ -1139,6 +1140,10 @@ const BrandNew = () => {
                         }
                       });
                     }
+                    
+                    // Also update the font family state separately to ensure Brand Preview reflects the change
+                    const selectedFont = e.target.value as string;
+                    document.documentElement.style.setProperty('--brand-preview-font', selectedFont);
                   }}
                 >
                   <MenuItem value="Roboto">Roboto</MenuItem>
@@ -1260,6 +1265,7 @@ const BrandNew = () => {
                 borderRadius: 2, 
                 bgcolor: 'background.default',
                 border: '1px solid #ddd',
+                fontFamily: 'var(--brand-preview-font, Roboto)', // Use the selected font
               }}>
                 <Box 
                   sx={{ 
@@ -1284,13 +1290,13 @@ const BrandNew = () => {
                       p: logo ? 0 : 0.5,
                     }}
                   />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontFamily: 'inherit' }}>
                     {brandName}
                   </Typography>
                 </Box>
                 
                 <Box sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="body2" paragraph>
+                  <Typography variant="body2" paragraph sx={{ fontFamily: 'inherit' }}>
                     {brandDescription || 'Company description will appear here.'}
                   </Typography>
                   
@@ -1316,7 +1322,8 @@ const BrandNew = () => {
                     variant="subtitle2" 
                     sx={{ 
                       color: primaryColor,
-                      mb: 1 
+                      mb: 1,
+                      fontFamily: 'inherit'
                     }}
                   >
                     Latest Content
@@ -1328,10 +1335,10 @@ const BrandNew = () => {
                     bgcolor: '#f5f5f5', 
                     mb: 1 
                   }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium', fontFamily: 'inherit' }}>
                       Sample article title would go here
                     </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'inherit' }}>
                       This is how your content preview would appear with the selected styles.
                     </Typography>
                   </Box>
