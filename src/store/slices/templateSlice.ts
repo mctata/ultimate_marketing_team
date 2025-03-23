@@ -1,17 +1,18 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../index';
-import * as templateService from '../../services/templateService';
+import type * as templateServiceTypes from '../../services/templateService';
+import templateService from '../../services/templateServiceFactory';
 
 // Types
 export interface TemplatesState {
-  templates: templateService.Template[];
-  selectedTemplate: templateService.Template | null;
-  categories: templateService.TemplateCategory[];
-  industries: templateService.TemplateIndustry[];
-  formats: templateService.TemplateFormat[];
-  favoriteTemplates: templateService.Template[];
-  popularTemplates: templateService.Template[];
-  recommendedTemplates: templateService.Template[];
+  templates: templateServiceTypes.Template[];
+  selectedTemplate: templateServiceTypes.Template | null;
+  categories: templateServiceTypes.TemplateCategory[];
+  industries: templateServiceTypes.TemplateIndustry[];
+  formats: templateServiceTypes.TemplateFormat[];
+  favoriteTemplates: templateServiceTypes.Template[];
+  popularTemplates: templateServiceTypes.Template[];
+  recommendedTemplates: templateServiceTypes.Template[];
   loading: boolean;
   error: string | null;
 }
@@ -33,12 +34,12 @@ const initialState: TemplatesState = {
 // Async thunks
 export const fetchTemplates = createAsyncThunk(
   'templates/fetchTemplates',
-  async (params: Parameters<typeof templateService.getTemplates>[0] = {}, { rejectWithValue }) => {
+  async (params: any = {}, { rejectWithValue }) => {
     try {
-      const response = await templateService.getTemplates(params);
-      return response.data;
+      const templates = await templateService.getTemplates(params);
+      return templates;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch templates');
+      return rejectWithValue(error.message || 'Failed to fetch templates');
     }
   }
 );
@@ -47,34 +48,34 @@ export const fetchTemplateById = createAsyncThunk(
   'templates/fetchTemplateById',
   async (id: string, { rejectWithValue }) => {
     try {
-      const response = await templateService.getTemplateById(id);
-      return response.data;
+      const template = await templateService.getTemplateById(id);
+      return template;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch template');
+      return rejectWithValue(error.message || 'Failed to fetch template');
     }
   }
 );
 
 export const createTemplate = createAsyncThunk(
   'templates/createTemplate',
-  async (template: Parameters<typeof templateService.createTemplate>[0], { rejectWithValue }) => {
+  async (template: any, { rejectWithValue }) => {
     try {
-      const response = await templateService.createTemplate(template);
-      return response.data;
+      const createdTemplate = await templateService.createTemplate(template);
+      return createdTemplate;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to create template');
+      return rejectWithValue(error.message || 'Failed to create template');
     }
   }
 );
 
 export const updateTemplate = createAsyncThunk(
   'templates/updateTemplate',
-  async ({ id, template }: { id: string; template: Parameters<typeof templateService.updateTemplate>[1] }, { rejectWithValue }) => {
+  async ({ id, template }: { id: string; template: any }, { rejectWithValue }) => {
     try {
-      const response = await templateService.updateTemplate(id, template);
-      return response.data;
+      const updatedTemplate = await templateService.updateTemplate(id, template);
+      return updatedTemplate;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to update template');
+      return rejectWithValue(error.message || 'Failed to update template');
     }
   }
 );
@@ -86,7 +87,7 @@ export const deleteTemplate = createAsyncThunk(
       await templateService.deleteTemplate(id);
       return id;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to delete template');
+      return rejectWithValue(error.message || 'Failed to delete template');
     }
   }
 );
@@ -95,10 +96,10 @@ export const fetchCategories = createAsyncThunk(
   'templates/fetchCategories',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await templateService.getTemplateCategories();
-      return response.data;
+      const categories = await templateService.getTemplateCategories();
+      return categories;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch categories');
+      return rejectWithValue(error.message || 'Failed to fetch categories');
     }
   }
 );
@@ -107,10 +108,10 @@ export const fetchIndustries = createAsyncThunk(
   'templates/fetchIndustries',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await templateService.getTemplateIndustries();
-      return response.data;
+      const industries = await templateService.getTemplateIndustries();
+      return industries;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch industries');
+      return rejectWithValue(error.message || 'Failed to fetch industries');
     }
   }
 );
@@ -119,10 +120,10 @@ export const fetchFormats = createAsyncThunk(
   'templates/fetchFormats',
   async (contentType: string | undefined = undefined, { rejectWithValue }) => {
     try {
-      const response = await templateService.getTemplateFormats(contentType);
-      return response.data;
+      const formats = await templateService.getTemplateFormats(contentType);
+      return formats;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch formats');
+      return rejectWithValue(error.message || 'Failed to fetch formats');
     }
   }
 );
@@ -131,10 +132,10 @@ export const fetchFavoriteTemplates = createAsyncThunk(
   'templates/fetchFavoriteTemplates',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await templateService.getFavoriteTemplates();
-      return response.data;
+      const favorites = await templateService.getFavoriteTemplates();
+      return favorites;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch favorite templates');
+      return rejectWithValue(error.message || 'Failed to fetch favorite templates');
     }
   }
 );
@@ -150,7 +151,7 @@ export const toggleFavoriteTemplate = createAsyncThunk(
       }
       return { templateId, isFavorite: !isFavorite };
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to toggle favorite template');
+      return rejectWithValue(error.message || 'Failed to toggle favorite template');
     }
   }
 );
@@ -159,10 +160,10 @@ export const fetchPopularTemplates = createAsyncThunk(
   'templates/fetchPopularTemplates',
   async (limit: number = 10, { rejectWithValue }) => {
     try {
-      const response = await templateService.getPopularTemplates(limit);
-      return response.data;
+      const popularTemplates = await templateService.getPopularTemplates(limit);
+      return popularTemplates;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch popular templates');
+      return rejectWithValue(error.message || 'Failed to fetch popular templates');
     }
   }
 );
@@ -171,10 +172,10 @@ export const fetchRecommendedTemplates = createAsyncThunk(
   'templates/fetchRecommendedTemplates',
   async (limit: number = 10, { rejectWithValue }) => {
     try {
-      const response = await templateService.getRecommendedTemplates(limit);
-      return response.data;
+      const recommendedTemplates = await templateService.getRecommendedTemplates(limit);
+      return recommendedTemplates;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch recommended templates');
+      return rejectWithValue(error.message || 'Failed to fetch recommended templates');
     }
   }
 );
@@ -187,13 +188,13 @@ export const useTemplate = createAsyncThunk(
     draftData: Record<string, any>;
   }, { rejectWithValue }) => {
     try {
-      const response = await templateService.useTemplate(templateId, customizations, draftData);
+      const result = await templateService.useTemplate(templateId, customizations, draftData);
       return {
         templateId,
-        contentDraftId: response.data.content_draft_id
+        contentDraftId: result.content_draft_id
       };
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to use template');
+      return rejectWithValue(error.message || 'Failed to use template');
     }
   }
 );
