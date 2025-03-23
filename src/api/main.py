@@ -58,6 +58,10 @@ from src.api import seed_templates  # Import seed templates router
 # Add health router for basic functionality
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
 
+# Include template routers
+app.include_router(templates.router, prefix=f"{settings.API_PREFIX}/templates", tags=["Templates"])
+app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-templates", tags=["Templates"])
+
 # Create a direct endpoint for templates testing
 @app.get("/api/v1/templates/categories-test", tags=["Templates"])
 async def templates_categories_test():
@@ -98,6 +102,25 @@ async def debug_routes():
     return {
         "routes": sorted(routes, key=lambda x: x["path"]),
         "count": len(routes)
+    }
+
+@app.get("/api/debug/router-status")
+async def router_status():
+    """Debug endpoint to check if routers were included correctly"""
+    return {
+        "app_routes_count": len(app.routes),
+        "imported_routers": {
+            "health": True,
+            "templates": True if templates.router.routes else False,
+            "seed_templates": True if seed_templates.router.routes else False
+        },
+        "api_prefix": settings.API_PREFIX,
+        "environment": settings.ENV,
+        "mounted_paths": {
+            "health": f"{settings.API_PREFIX}/health",
+            "templates": f"{settings.API_PREFIX}/templates",
+            "seed_templates": f"{settings.API_PREFIX}/seed-templates",
+        }
     }
 
 @app.get("/api/v1/test-templates")

@@ -7,7 +7,8 @@ from src.core.database import get_db
 from src.core.security import get_current_user
 from src.models.template import (
     Template, TemplateCategory, TemplateIndustry, TemplateFormat, 
-    TemplateRating, TemplateUsage, TemplateFavorite
+    TemplateRating, TemplateUsage, TemplateFavorite,
+    template_category_association, template_industry_association
 )
 from src.models.system import User
 from src.models.content import ContentDraft
