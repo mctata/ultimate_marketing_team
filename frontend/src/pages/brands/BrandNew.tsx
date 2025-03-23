@@ -1447,6 +1447,9 @@ const BrandNew = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Recommended Frequency
               </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Based on your industry and target audience, we recommend the following posting frequency.
+              </Typography>
               <TextField
                 select
                 fullWidth
@@ -1471,6 +1474,9 @@ const BrandNew = () => {
                     ({formErrors.bestTimes})
                   </Typography>
                 }
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                All times shown in your local timezone (EST). Best times are when your audience is most active.
               </Typography>
               <Box sx={{ mb: 1 }}>
                 {schedule.bestTimes.map((time, index) => (
@@ -1516,10 +1522,15 @@ const BrandNew = () => {
                   <Typography variant="subtitle2" gutterBottom>
                     Custom Posting Frequency
                   </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    For {socialMediaAccounts.length > 0 ? 
+                      `${socialMediaAccounts.map(sm => sm.platform).join(', ')} accounts` : 
+                      'social media'}, we recommend posting at least 2-3 times per week.
+                  </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                     <TextField
                       fullWidth
-                      placeholder="Specify custom frequency"
+                      placeholder="Specify custom frequency (e.g., 3 times per week)"
                       size="small"
                       value={schedule.customFrequency || ''}
                       onChange={(e) => {
@@ -1537,7 +1548,7 @@ const BrandNew = () => {
                         }
                       }}
                       error={!!formErrors.customFrequency}
-                      helperText={formErrors.customFrequency}
+                      helperText={formErrors.customFrequency || "Describe how often you want to post content"}
                     />
                   </Box>
                   
@@ -1545,6 +1556,10 @@ const BrandNew = () => {
                     <Typography variant="subtitle2" gutterBottom>
                       Custom Posting Schedule
                     </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      Schedule additional custom times that work best for your content.
+                    </Typography>
+                    
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <TextField
@@ -1581,7 +1596,7 @@ const BrandNew = () => {
                           select
                           fullWidth
                           size="small"
-                          label="Time"
+                          label="Time (EST)"
                           value={schedule.customTime && schedule.customTime.includes(' ') ? 
                             schedule.customTime.split(' ').slice(1).join(' ') : ''}
                           onChange={(e) => {
