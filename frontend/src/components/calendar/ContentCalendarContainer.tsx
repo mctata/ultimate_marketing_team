@@ -564,7 +564,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           });
           
           // Bulk API call (non-optimistic for simplicity)
-          await contentCalendarService.bulkCreateCalendarEntries({
+          await contentCalendarService.default.bulkCreateCalendarEntries({
             items: bulkItems
           });
           
@@ -641,7 +641,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           
           // Bulk API call (non-optimistic for bulk items)
           if (recurringItems.length > 0) {
-            await contentCalendarService.bulkCreateCalendarEntries({
+            await contentCalendarService.default.bulkCreateCalendarEntries({
               items: recurringItems
             });
             

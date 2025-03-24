@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Box, 
   Typography, 
@@ -19,7 +19,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Card,
+  CardContent,
+  CardHeader,
+  Divider,
+  Zoom,
+  Fade,
+  Stack
 } from '@mui/material';
 import {
   format,
@@ -46,6 +53,14 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import MoreTimeIcon from '@mui/icons-material/MoreTime';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import TimerIcon from '@mui/icons-material/Timer';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 
 // Define content item interface
 interface CalendarItem {
@@ -108,6 +123,12 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
   const [showInsightDialog, setShowInsightDialog] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<CalendarInsight | null>(null);
+  
+  // Drag & Drop functionality
+  const [draggingItem, setDraggingItem] = useState<CalendarItem | null>(null);
+  const [previewContent, setPreviewContent] = useState<{ item: CalendarItem, x: number, y: number } | null>(null);
+  const dragItemRef = useRef<HTMLDivElement | null>(null);
+  const [dropTarget, setDropTarget] = useState<Date | null>(null);
   
   // Content type colors
   const contentTypeColors: Record<string, string> = {
@@ -219,6 +240,88 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     });
   };
   
+  // Drag and drop handlers
+  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, item: CalendarItem) => {
+    setDraggingItem(item);
+    
+    // Set data for drag operation
+    event.dataTransfer.setData('text/plain', JSON.stringify({
+      id: item.id,
+      title: item.title,
+      type: 'calendar-item'
+    }));
+    
+    // Set the dragging effect
+    event.dataTransfer.effectAllowed = 'move';
+    
+    // Set a custom drag image if needed
+    if (event.currentTarget) {
+      dragItemRef.current = event.currentTarget;
+      // Create a clone for the drag image
+      const clone = event.currentTarget.cloneNode(true) as HTMLDivElement;
+      clone.style.width = `${event.currentTarget.offsetWidth}px`;
+      clone.style.transform = 'translateY(-1000px)';
+      document.body.appendChild(clone);
+      event.dataTransfer.setDragImage(clone, 0, 0);
+      
+      // Remove the clone after the drag starts
+      setTimeout(() => {
+        document.body.removeChild(clone);
+      }, 0);
+    }
+  };
+  
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, day: Date) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDropTarget(day);
+  };
+  
+  const handleDragLeave = () => {
+    setDropTarget(null);
+  };
+  
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>, day: Date) => {
+    event.preventDefault();
+    
+    if (!draggingItem) return;
+    
+    // Get the data (if needed)
+    const data = event.dataTransfer.getData('text/plain');
+    
+    // Create an updated item with the new date
+    const updatedItem = {
+      ...draggingItem,
+      scheduled_date: format(day, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    };
+    
+    // Call the edit handler to update the item
+    onEditItem(updatedItem);
+    
+    // Reset dragging state
+    setDraggingItem(null);
+    setDropTarget(null);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggingItem(null);
+    setDropTarget(null);
+  };
+  
+  // Preview functionality
+  const handleItemMouseEnter = (event: React.MouseEvent<HTMLElement>, item: CalendarItem) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setPreviewContent({
+      item,
+      x: rect.right + 10,
+      y: rect.top
+    });
+  };
+  
+  const handleItemMouseLeave = () => {
+    setPreviewContent(null);
+  };
+  
   // Handle item click to show popover
   const handleItemClick = (event: React.MouseEvent<HTMLElement>, item: CalendarItem) => {
     setAnchorEl(event.currentTarget);
@@ -283,6 +386,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     const isPastDay = isPast(day) && !isToday(day);
     const dayItems = getItemsForDay(day);
     const dayInsights = getDayInsights(day);
+    const isDropTarget = dropTarget && format(dropTarget, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
     
     return (
       <Paper
@@ -291,14 +395,20 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           p: 1,
           display: 'flex',
           flexDirection: 'column',
-          background: isCurrentDay 
-            ? `${theme.palette.primary.light}20` 
-            : isCurrentMonth 
-              ? theme.palette.background.paper 
-              : theme.palette.grey[100],
+          background: isDropTarget
+            ? `${theme.palette.success.light}30`
+            : isCurrentDay 
+              ? `${theme.palette.primary.light}20` 
+              : isCurrentMonth 
+                ? theme.palette.background.paper 
+                : theme.palette.grey[100],
           opacity: isPastDay ? 0.7 : 1,
           position: 'relative',
           overflow: 'hidden',
+          transition: 'all 0.2s ease',
+          border: isDropTarget 
+            ? `2px dashed ${theme.palette.success.main}` 
+            : '1px solid rgba(0, 0, 0, 0.12)',
           '&:hover': {
             boxShadow: 2,
             '& .add-button': {
@@ -306,6 +416,9 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             }
           }
         }}
+        onDragOver={(e) => handleDragOver(e, day)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, day)}
       >
         <Box sx={{ 
           display: 'flex', 
@@ -358,60 +471,97 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         {/* Day items */}
         <Box sx={{ overflow: 'auto', flex: 1 }}>
           {dayItems.map((item) => (
-            <Tooltip
+            <Box
               key={item.id}
-              title={`${item.title} (${item.platform || 'No platform'}) - ${item.status}`}
-              arrow
+              draggable
+              onDragStart={(e) => handleDragStart(e, item)}
+              onDragEnd={handleDragEnd}
+              onClick={(e) => handleItemClick(e, item)}
+              onMouseEnter={(e) => handleItemMouseEnter(e, item)}
+              onMouseLeave={handleItemMouseLeave}
+              sx={{
+                p: 0.5,
+                mb: 0.5,
+                borderRadius: 1,
+                cursor: 'grab',
+                borderLeft: `3px solid ${
+                  item.content_type 
+                    ? contentTypeColors[item.content_type] || contentTypeColors.default
+                    : contentTypeColors.default
+                }`,
+                backgroundColor: `${
+                  item.platform 
+                    ? platformColors[item.platform] || platformColors.default
+                    : platformColors.default
+                }15`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s ease',
+                transform: draggingItem && draggingItem.id === item.id ? 'scale(0.95)' : 'scale(1)',
+                opacity: draggingItem && draggingItem.id === item.id ? 0.5 : 1,
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                },
+                '&:active': {
+                  cursor: 'grabbing'
+                }
+              }}
             >
-              <Box
-                onClick={(e) => handleItemClick(e, item)}
-                sx={{
-                  p: 0.5,
-                  mb: 0.5,
-                  borderRadius: 1,
-                  cursor: 'pointer',
-                  borderLeft: `3px solid ${
-                    item.content_type 
-                      ? contentTypeColors[item.content_type] || contentTypeColors.default
-                      : contentTypeColors.default
-                  }`,
-                  backgroundColor: `${
-                    item.platform 
-                      ? platformColors[item.platform] || platformColors.default
-                      : platformColors.default
-                  }15`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover
-                  }
-                }}
-              >
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <DragIndicatorIcon 
+                  fontSize="small" 
+                  sx={{ 
+                    fontSize: '0.7rem', 
+                    color: theme.palette.text.secondary,
+                    mr: 0.5,
+                    opacity: 0.6
+                  }} 
+                />
                 <Typography
                   variant="caption"
                   noWrap
                   sx={{ 
                     fontSize: '0.7rem',
-                    maxWidth: '80%',
+                    maxWidth: '70%',
                     textOverflow: 'ellipsis',
                     overflow: 'hidden'
                   }}
                 >
                   {item.title}
                 </Typography>
-                <Box>
+                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+                  {item.status === 'draft' && (
+                    <HourglassEmptyIcon 
+                      sx={{ 
+                        fontSize: '0.8rem', 
+                        color: statusColors[item.status],
+                        ml: 0.5
+                      }} 
+                    />
+                  )}
+                  {item.status === 'scheduled' && (
+                    <TimerIcon 
+                      sx={{ 
+                        fontSize: '0.8rem', 
+                        color: statusColors[item.status],
+                        ml: 0.5
+                      }} 
+                    />
+                  )}
                   {item.status === 'published' && (
                     <CheckCircleIcon 
                       sx={{ 
                         fontSize: '0.8rem', 
-                        color: statusColors[item.status] 
+                        color: statusColors[item.status],
+                        ml: 0.5
                       }} 
                     />
                   )}
                 </Box>
               </Box>
-            </Tooltip>
+            </Box>
           ))}
         </Box>
       </Paper>
@@ -439,7 +589,81 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', position: 'relative' }}>
+      {/* Content preview on hover */}
+      {previewContent && (
+        <Fade in={!!previewContent} timeout={200}>
+          <Card
+            sx={{
+              position: 'fixed',
+              top: previewContent.y,
+              left: previewContent.x,
+              zIndex: 1500,
+              width: 280,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              pointerEvents: 'none'
+            }}
+          >
+            <CardHeader
+              title={
+                <Typography variant="subtitle2">
+                  {previewContent.item.title}
+                </Typography>
+              }
+              subheader={
+                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                  {previewContent.item.platform && (
+                    <Chip 
+                      label={previewContent.item.platform} 
+                      size="small"
+                      sx={{ 
+                        height: 20,
+                        backgroundColor: `${platformColors[previewContent.item.platform] || platformColors.default}30`,
+                        color: platformColors[previewContent.item.platform] || platformColors.default,
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem'
+                      }}
+                    />
+                  )}
+                  {previewContent.item.content_type && (
+                    <Chip 
+                      label={previewContent.item.content_type} 
+                      size="small"
+                      sx={{ 
+                        height: 20,
+                        backgroundColor: `${contentTypeColors[previewContent.item.content_type] || contentTypeColors.default}30`,
+                        color: contentTypeColors[previewContent.item.content_type] || contentTypeColors.default,
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem'
+                      }}
+                    />
+                  )}
+                </Box>
+              }
+              sx={{ pb: 0 }}
+            />
+            <CardContent sx={{ pt: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <EventAvailableIcon sx={{ fontSize: '0.9rem', mr: 0.5, color: theme.palette.text.secondary }} />
+                <Typography variant="body2" color="text.secondary">
+                  {format(parseISO(previewContent.item.scheduled_date), 'PPp')}
+                </Typography>
+              </Box>
+              
+              <Divider sx={{ my: 1 }} />
+              
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  {previewContent.item.status === 'draft' ? 'Draft content' : 
+                   previewContent.item.status === 'scheduled' ? 'Scheduled for publishing' : 
+                   'Published content'}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Fade>
+      )}
+
       {/* Calendar Header */}
       <Box sx={{ 
         display: 'flex', 
@@ -563,7 +787,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         ))}
       </Grid>
 
-      {/* Item Popover */}
+      {/* Item Popover with Quick Actions */}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -576,86 +800,133 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           vertical: 'top',
           horizontal: 'left',
         }}
+        PaperProps={{
+          elevation: 4,
+          sx: { 
+            borderRadius: 2,
+            overflow: 'visible',
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              left: 14,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
+          }
+        }}
       >
         {selectedItem && (
-          <Box sx={{ p: 2, maxWidth: 300 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              {selectedItem.title}
-            </Typography>
+          <Card sx={{ width: 320, borderRadius: 2, overflow: 'hidden' }} variant="outlined">
+            <CardHeader
+              title={
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {selectedItem.title}
+                </Typography>
+              }
+              action={
+                <IconButton size="small" onClick={handlePopoverClose}>
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              }
+              sx={{ 
+                pb: 1,
+                background: selectedItem.content_type
+                  ? `${contentTypeColors[selectedItem.content_type]}15`
+                  : theme.palette.background.default
+              }}
+            />
             
-            <Box sx={{ mb: 1 }}>
-              <Chip 
-                label={selectedItem.status} 
-                size="small"
-                sx={{ 
-                  mr: 0.5,
-                  backgroundColor: statusColors[selectedItem.status] || statusColors.draft,
-                  color: '#fff'
-                }} 
-              />
-              {selectedItem.content_type && (
+            <CardContent sx={{ pb: 1 }}>
+              <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 <Chip 
-                  label={selectedItem.content_type} 
+                  label={selectedItem.status} 
                   size="small"
                   sx={{ 
-                    mr: 0.5,
-                    backgroundColor: contentTypeColors[selectedItem.content_type] || contentTypeColors.default,
+                    backgroundColor: statusColors[selectedItem.status] || statusColors.draft,
                     color: '#fff'
                   }} 
                 />
-              )}
-              {selectedItem.platform && (
-                <Chip 
-                  label={selectedItem.platform} 
-                  size="small"
-                  sx={{ 
-                    backgroundColor: platformColors[selectedItem.platform] || platformColors.default,
-                    color: '#fff'
-                  }} 
-                />
-              )}
-            </Box>
-            
-            <Typography variant="body2" gutterBottom>
-              Scheduled: {format(parseISO(selectedItem.scheduled_date), 'PPp')}
-            </Typography>
-            
-            {selectedItem.published_date && (
-              <Typography variant="body2" gutterBottom>
-                Published: {format(parseISO(selectedItem.published_date), 'PPp')}
-              </Typography>
-            )}
-            
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-              <Button 
-                startIcon={<EditIcon />}
-                size="small"
-                onClick={handleEditItem}
-              >
-                Edit
-              </Button>
+                {selectedItem.content_type && (
+                  <Chip 
+                    label={selectedItem.content_type} 
+                    size="small"
+                    sx={{ 
+                      backgroundColor: contentTypeColors[selectedItem.content_type] || contentTypeColors.default,
+                      color: '#fff'
+                    }} 
+                  />
+                )}
+                {selectedItem.platform && (
+                  <Chip 
+                    label={selectedItem.platform} 
+                    size="small"
+                    sx={{ 
+                      backgroundColor: platformColors[selectedItem.platform] || platformColors.default,
+                      color: '#fff'
+                    }} 
+                  />
+                )}
+              </Box>
               
-              {selectedItem.status !== 'published' && (
+              <Stack spacing={1}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <EventAvailableIcon sx={{ fontSize: '1rem', mr: 1, color: theme.palette.primary.main }} />
+                  <Typography variant="body2">
+                    Scheduled: {format(parseISO(selectedItem.scheduled_date), 'PPp')}
+                  </Typography>
+                </Box>
+                
+                {selectedItem.published_date && (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CheckCircleIcon sx={{ fontSize: '1rem', mr: 1, color: theme.palette.success.main }} />
+                    <Typography variant="body2">
+                      Published: {format(parseISO(selectedItem.published_date), 'PPp')}
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                 <Button 
-                  startIcon={<CheckCircleIcon />}
+                  variant="outlined"
+                  startIcon={<EditIcon />}
                   size="small"
-                  color="success"
-                  onClick={handlePublishItem}
+                  onClick={handleEditItem}
                 >
-                  Publish
+                  Edit
                 </Button>
-              )}
-              
-              <Button 
-                startIcon={<DeleteIcon />}
-                size="small"
-                color="error"
-                onClick={handleDeleteItem}
-              >
-                Delete
-              </Button>
-            </Box>
-          </Box>
+                
+                {selectedItem.status !== 'published' && (
+                  <Button 
+                    variant="contained"
+                    startIcon={<CheckCircleIcon />}
+                    size="small"
+                    color="success"
+                    onClick={handlePublishItem}
+                  >
+                    Publish
+                  </Button>
+                )}
+                
+                <Button 
+                  variant="outlined"
+                  startIcon={<DeleteIcon />}
+                  size="small"
+                  color="error"
+                  onClick={handleDeleteItem}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
         )}
       </Popover>
       
