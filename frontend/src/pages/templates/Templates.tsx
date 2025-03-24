@@ -252,7 +252,11 @@ const Templates: React.FC = () => {
               >
                 <CardMedia
                   component="img"
-                  height="140"
+                  height="180"
+                  sx={{
+                    objectFit: "cover",
+                    aspectRatio: "16/9"
+                  }}
                   image={template.preview_image}
                   alt={template.title}
                 />

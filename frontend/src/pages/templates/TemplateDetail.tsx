@@ -243,34 +243,52 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
     setGenerationError(null);
     
     try {
-      // For implementing an actual API call in the future
+      // In production, we would use the API call:
       // const response = await contentGenerationApi.generateContent({
       //   content_type: template!.content_type,
       //   template_id: template!.id,
       //   variables: formValues,
       // });
+      // setGeneratedContent(response.data.content);
       
-      // For demo purposes, process the content with variable replacement
-      let generatedResult = template!.content;
+      // But for demo purposes, we'll process the content with variable replacement
+      let generatedResult = '';
       
-      // First, apply selected tone modifications if applicable
+      // First determine the source content based on template or tone
       if (selectedTone && template!.tone_options) {
         const toneOption = template!.tone_options.find(t => t.id === selectedTone);
         if (toneOption && toneOption.modifications && toneOption.modifications.content) {
           generatedResult = toneOption.modifications.content;
+        } else {
+          generatedResult = template!.content;
         }
+      } else {
+        generatedResult = template!.content;
       }
       
-      // Replace all dynamic field placeholders
+      // Then replace all dynamic field placeholders with actual values
       Object.entries(formValues).forEach(([key, value]) => {
-        const regex = new RegExp(`{${key}}`, 'g');
-        generatedResult = generatedResult.replace(regex, String(value));
+        if (value) { // Only replace if value exists
+          const placeholder = `{${key}}`;
+          const regex = new RegExp(escapeRegExp(placeholder), 'g');
+          generatedResult = generatedResult.replace(regex, String(value));
+        }
       });
       
+      // Helper function to escape special regex characters
+      function escapeRegExp(string: string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+      
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       
       setGeneratedContent(generatedResult);
+      
+      // If no content was generated, show an error
+      if (!generatedResult.trim()) {
+        setGenerationError('Failed to generate content. Please check your inputs and try again.');
+      }
     } catch (err: any) {
       setGenerationError(err.message || 'Error generating content');
       console.error('Error generating content:', err);
@@ -567,32 +585,26 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
                   src={template.preview_image} 
                   alt={`Preview of ${template.title}`}
                   style={{ 
-                    maxWidth: '100%', 
+                    width: '100%',
+                    aspectRatio: '16/9',
+                    objectFit: 'cover',
                     maxHeight: '300px', 
                     borderRadius: '4px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 />
                 {template.preview_image.includes('unsplash.com') && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    Photo via <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>
+                  <Typography variant="body2" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+                    <a 
+                      href={`https://unsplash.com/photos/${template.preview_image.split('/').pop()?.split('?')[0]}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ color: '#0277bd', textDecoration: 'underline' }}
+                    >
+                      Photo via Unsplash
+                    </a>
                   </Typography>
                 )}
-                <IconButton
-                  onClick={handleOpenImageSearch}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: 'rgba(255,255,255,0.7)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.9)',
-                    }
-                  }}
-                  size="small"
-                >
-                  <ImageIcon />
-                </IconButton>
               </Box>
             )}
             <Typography variant="h6" gutterBottom>Template Structure</Typography>
@@ -633,6 +645,43 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
             <Grid item xs={12} md={6}>
               <Paper elevation={0} variant="outlined" sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>Customize Template</Typography>
+                
+                {/* Image Selection */}
+                <Box sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Typography variant="subtitle1" gutterBottom>Template Image</Typography>
+                  <Box sx={{ position: 'relative', width: '100%', maxWidth: '300px', mb: 2 }}>
+                    <img 
+                      src={template.preview_image} 
+                      alt={`Preview of ${template.title}`}
+                      style={{ 
+                        width: '100%',
+                        aspectRatio: '16/9',
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                    {template.preview_image.includes('unsplash.com') && (
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center' }}>
+                        <a 
+                          href={`https://unsplash.com/photos/${template.preview_image.split('/').pop()?.split('?')[0]}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          Photo via Unsplash
+                        </a>
+                      </Typography>
+                    )}
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ImageIcon />}
+                    onClick={handleOpenImageSearch}
+                    size="small"
+                  >
+                    Change Image
+                  </Button>
+                </Box>
                 
                 {/* Tone selection if available */}
                 {template.variables.some(v => v.name === 'tone' && v.type === 'select') && (
