@@ -20,6 +20,9 @@ export interface CampaignRule {
   created_at: string;
   updated_at: string;
   last_triggered_at?: string;
+  auto_resume?: boolean; // New field for automatic resuming of campaigns
+  auto_resume_after?: number; // Number of hours after which to auto-resume
+  performance_threshold?: number; // For conditional auto-resume based on performance
 }
 
 export interface RuleExecutionHistory {
@@ -77,3 +80,20 @@ export const updateNotificationConfig = (ruleId: string, config: Omit<Notificati
 // Test rule conditions
 export const testRuleCondition = (ruleData: Partial<CampaignRule>, campaignId: string) => 
   api.post<{ would_trigger: boolean; metrics: Record<string, any> }>(`/campaigns/${campaignId}/test-rule`, ruleData);
+
+// Scheduling APIs
+export const getScheduledRules = (params?: { status?: string; from_date?: string; to_date?: string }) =>
+  api.get<CampaignRule[]>('/campaign-rules/scheduled', { params });
+
+export const pauseScheduledRule = (ruleId: string) =>
+  api.post<CampaignRule>(`/campaign-rules/${ruleId}/pause-schedule`);
+
+export const resumeScheduledRule = (ruleId: string) =>
+  api.post<CampaignRule>(`/campaign-rules/${ruleId}/resume-schedule`);
+
+// Performance threshold APIs
+export const getCampaignPerformanceThresholds = (campaignId: string) =>
+  api.get<Record<string, number>>(`/campaigns/${campaignId}/performance-thresholds`);
+
+export const updateCampaignPerformanceThresholds = (campaignId: string, thresholds: Record<string, number>) =>
+  api.put<Record<string, number>>(`/campaigns/${campaignId}/performance-thresholds`, thresholds);
