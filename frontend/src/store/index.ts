@@ -1,6 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
+import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, createTransform } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 
@@ -39,23 +39,55 @@ const uiPersistConfig = {
   whitelist: ['darkMode', 'currentTheme', 'sidebarOpen'], // Only persist UI preferences
 };
 
+const contentPersistConfig = {
+  key: 'content',
+  storage,
+  whitelist: ['calendar'], // Only persist calendar data
+  blacklist: [],
+  // Nested persist config for calendar
+  transforms: [
+    createTransform(
+      // On save
+      (state) => {
+        // Keep only what we need for caching
+        if (state.calendar) {
+          return {
+            items: state.calendar.items,
+            itemsByDate: state.calendar.itemsByDate,
+            insights: state.calendar.insights,
+            bestTimeRecommendations: state.calendar.bestTimeRecommendations,
+            lastFetched: state.calendar.lastFetched,
+          };
+        }
+        return state;
+      },
+      // On load
+      (state) => state,
+      {
+        whitelist: ['calendar'],
+      }
+    ),
+  ],
+};
+
 // Main persist configuration
 const persistConfig = {
   key: 'root',
   storage,
   whitelist: [], // Root level persistence
-  blacklist: ['auth', 'ui'], // These are handled by their own persistReducers
+  blacklist: ['auth', 'ui', 'content'], // These are handled by their own persistReducers
 };
 
 // Create persistReducers for specific slices
 const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
 const persistedUiReducer = persistReducer(uiPersistConfig, uiReducer);
+const persistedContentReducer = persistReducer(contentPersistConfig, contentReducer);
 
 // Create the main persistedReducer
 const persistedReducer = persistReducer(persistConfig, combineReducers({
   auth: persistedAuthReducer,
   brands: brandsReducer,
-  content: contentReducer,
+  content: persistedContentReducer,
   campaigns: campaignsReducer,
   analytics: analyticsReducer,
   ui: persistedUiReducer,

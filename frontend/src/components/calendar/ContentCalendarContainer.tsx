@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -25,20 +25,44 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import InfoIcon from '@mui/icons-material/Info';
+import SyncIcon from '@mui/icons-material/Sync';
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import { useDispatch, useSelector } from 'react-redux';
+import WebSocketService from '../../services/websocketService';
 
 import CalendarMonthView from './CalendarMonthView';
 import CalendarWeekView from './CalendarWeekView';
 import CalendarListView from './CalendarListView';
 import ScheduleDialog from './ScheduleDialog';
 import { ScheduleFormData } from './ScheduleDialog';
-import contentCalendarService from '../../services/contentCalendarService';
 import { 
   CalendarItem, 
   BestTimeRecommendation, 
   SchedulingInsight as CalendarInsight, 
   ScheduleItemRequest 
 } from '../../services/contentCalendarService';
+
+// Import Redux actions and selectors
+import { 
+  fetchCalendarItems,
+  fetchCalendarInsights,
+  fetchBestTimeRecommendations,
+  createCalendarItem,
+  updateCalendarItem,
+  deleteCalendarItem,
+  publishCalendarItem,
+  addCalendarItemOptimistic,
+  updateCalendarItemOptimistic,
+  deleteCalendarItemOptimistic,
+  invalidateCalendarCache,
+  selectCalendarItems,
+  selectCalendarItemsForDateRange,
+  selectCalendarInsights,
+  selectBestTimeRecommendations,
+  selectCalendarLoading,
+  selectCalendarError
+} from '../../store/slices/contentSlice';
+import { RootState } from '../../store';
 
 // Define content draft interface
 interface ContentDraft {
@@ -56,26 +80,42 @@ interface ContentCalendarContainerProps {
 
 const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ projectId }) => {
   const theme = useTheme();
+  const dispatch = useDispatch();
   
-  // State for calendar data
-  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
+  // Access Redux state with cached data
+  const calendarItemsObj = useSelector(selectCalendarItems);
+  const insights = useSelector(selectCalendarInsights);
+  const bestTimeRecommendations = useSelector(selectBestTimeRecommendations);
+  const loading = useSelector(selectCalendarLoading);
+  const reduxError = useSelector(selectCalendarError);
+  
+  // Local state for other data
   const [contentDrafts, setContentDrafts] = useState<ContentDraft[]>([]);
-  const [bestTimeRecommendations, setBestTimeRecommendations] = useState<BestTimeRecommendation[]>([]);
-  const [insights, setInsights] = useState<CalendarInsight[]>([]);
   
   // UI state
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [realtimeUpdates, setRealtimeUpdates] = useState(true);
+  
+  // WebSocket reference
+  const wsServiceRef = useRef<WebSocketService | null>(null);
   
   // Date range state for fetching data
   const [currentDateRange, setCurrentDateRange] = useState({
     startDate: startOfMonth(new Date()),
     endDate: endOfMonth(new Date())
   });
+  
+  // Get calendar items for the current date range
+  const calendarItems = useSelector((state: RootState) => 
+    selectCalendarItemsForDateRange(
+      format(currentDateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss'Z'"),
+      format(currentDateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    )(state)
+  );
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -107,51 +147,85 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     }
   }, []);
   
-  // Fetch calendar data from API
-  const fetchCalendarData = useCallback(async () => {
-    setLoading(true);
+  // Fetch calendar data from Redux
+  const fetchCalendarData = useCallback(async (force = false) => {
     setError(null);
     
+    // Format dates for API
+    const startDateStr = format(currentDateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    const endDateStr = format(currentDateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    
     try {
-      // Format dates for API
-      const startDateStr = format(currentDateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
-      const endDateStr = format(currentDateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
-      
       // Fetch calendar entries
-      const calendarData = await contentCalendarService.getCalendarEntries(
-        projectId,
-        startDateStr,
-        endDateStr
-      );
-      setCalendarItems(calendarData);
+      await dispatch(fetchCalendarItems({
+        startDate: startDateStr,
+        endDate: endDateStr,
+        force
+      }));
       
       // Fetch best time recommendations
-      const timeRecommendations = await contentCalendarService.getBestTimeRecommendations(projectId);
-      setBestTimeRecommendations(timeRecommendations);
+      await dispatch(fetchBestTimeRecommendations(projectId.toString()));
       
       // Fetch scheduling insights
-      const schedulingInsights = await contentCalendarService.getSchedulingInsights(
-        projectId,
-        startDateStr,
-        endDateStr
-      );
-      setInsights(schedulingInsights);
+      await dispatch(fetchCalendarInsights(projectId.toString()));
       
       // Fetch content drafts
       await fetchContentDrafts();
-      
-      setLoading(false);
     } catch (err) {
       console.error('Error fetching calendar data:', err);
       setError('Failed to load calendar data. Please try again.');
-      setLoading(false);
     }
-  }, [projectId, currentDateRange, fetchContentDrafts]);
+  }, [dispatch, projectId, currentDateRange, fetchContentDrafts]);
+  
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (realtimeUpdates) {
+      // Create WebSocket connection
+      const wsService = WebSocketService.getInstance('wss://api.ultimatemarketingteam.com/ws/calendar');
+      wsServiceRef.current = wsService;
+      wsService.connect();
+      
+      // Cleanup on unmount
+      return () => {
+        if (wsServiceRef.current) {
+          wsServiceRef.current.disconnect();
+        }
+      };
+    }
+  }, [realtimeUpdates]);
   
   // Initial data load
   useEffect(() => {
     fetchCalendarData();
   }, [fetchCalendarData]);
+  
+  // Update error state from Redux
+  useEffect(() => {
+    if (reduxError) {
+      setError(reduxError);
+    }
+  }, [reduxError]);
+  
+  // Handle toggling real-time updates
+  const toggleRealTimeUpdates = () => {
+    if (realtimeUpdates) {
+      // Disconnect WebSocket
+      if (wsServiceRef.current) {
+        wsServiceRef.current.disconnect();
+      }
+    } else {
+      // Connect WebSocket
+      if (wsServiceRef.current) {
+        wsServiceRef.current.connect();
+      } else {
+        const wsService = WebSocketService.getInstance('wss://api.ultimatemarketingteam.com/ws/calendar');
+        wsServiceRef.current = wsService;
+        wsService.connect();
+      }
+    }
+    
+    setRealtimeUpdates(!realtimeUpdates);
+  };
   
   // Handle date range change (e.g., when switching months)
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
@@ -186,44 +260,56 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     setScheduleDialogOpen(true);
   };
   
-  // Handle delete item
+  // Handle delete item with optimistic updates
   const handleDeleteItem = async (itemId: number) => {
-    setLoading(true);
-    
     try {
-      await contentCalendarService.deleteCalendarEntry(itemId);
-      setCalendarItems(prev => prev.filter(item => item.id !== itemId));
+      // Optimistic update
+      dispatch(deleteCalendarItemOptimistic(itemId.toString()));
+      
+      // Actual API call
+      await dispatch(deleteCalendarItem(itemId.toString()));
       setSuccessMessage('Content successfully removed from calendar.');
     } catch (err) {
       console.error('Error deleting calendar item:', err);
       setError('Failed to delete calendar item. Please try again.');
-    } finally {
-      setLoading(false);
+      
+      // Refresh data if optimistic update failed
+      fetchCalendarData(true);
     }
   };
   
-  // Handle publish item
+  // Handle publish item with optimistic updates
   const handlePublishItem = async (itemId: number) => {
-    setLoading(true);
-    
     try {
-      const updatedItem = await contentCalendarService.publishContent(itemId);
-      setCalendarItems(prev => 
-        prev.map(item => item.id === itemId ? updatedItem : item)
-      );
-      setSuccessMessage('Content successfully published!');
+      // Find the item in the current items
+      const itemToPublish = calendarItems.find(item => item.id === itemId);
+      
+      if (itemToPublish) {
+        // Create an optimistic update
+        const optimisticItem = {
+          ...itemToPublish,
+          status: 'published',
+          publishedDate: new Date().toISOString()
+        };
+        
+        // Optimistic update
+        dispatch(updateCalendarItemOptimistic(optimisticItem));
+        
+        // Actual API call
+        await dispatch(publishCalendarItem(itemId.toString()));
+        setSuccessMessage('Content successfully published!');
+      }
     } catch (err) {
       console.error('Error publishing content:', err);
       setError('Failed to publish content. Please try again.');
-    } finally {
-      setLoading(false);
+      
+      // Refresh data if optimistic update failed
+      fetchCalendarData(true);
     }
   };
   
-  // Handle scheduling submission
+  // Handle scheduling submission with optimistic updates
   const handleScheduleSubmit = async (formData: ScheduleFormData) => {
-    setLoading(true);
-    
     try {
       if (selectedItem) {
         // Edit existing
@@ -233,14 +319,24 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           status: 'scheduled'
         };
         
-        const updatedItem = await contentCalendarService.updateCalendarEntry(selectedItem.id, updateData);
+        // Create optimistic update item
+        const optimisticItem = {
+          ...selectedItem,
+          ...updateData,
+          scheduledDate: formData.scheduled_date.toISOString()
+        };
         
-        setCalendarItems(prev => 
-          prev.map(item => item.id === selectedItem.id ? updatedItem : item)
-        );
+        // Optimistic update
+        dispatch(updateCalendarItemOptimistic(optimisticItem));
+        
+        // Actual API call
+        await dispatch(updateCalendarItem(optimisticItem));
         
         setSuccessMessage('Calendar item updated successfully.');
       } else {
+        // Create a temporary ID for optimistic updates
+        const tempId = `temp-${Date.now()}`;
+        
         // Create new item
         const newItemData: ScheduleItemRequest = {
           project_id: formData.project_id,
@@ -251,9 +347,26 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           content_type: formData.content_type
         };
         
-        // Create the main item
-        const createdItem = await contentCalendarService.createCalendarEntry(newItemData);
-        setCalendarItems(prev => [...prev, createdItem]);
+        // Create optimistic item
+        const optimisticItem = {
+          id: tempId,
+          project_id: formData.project_id,
+          content_draft_id: formData.content_draft_id,
+          scheduledDate: formData.scheduled_date.toISOString(),
+          status: 'scheduled',
+          platform: formData.platform || '',
+          contentType: formData.content_type || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          title: contentDrafts.find(d => d.id === formData.content_draft_id)?.title || 'New Content',
+          author: 'Current User'
+        };
+        
+        // Optimistic update
+        dispatch(addCalendarItemOptimistic(optimisticItem));
+        
+        // Actual API call
+        await dispatch(createCalendarItem(newItemData));
         
         // Handle cross-platform publishing
         if (formData.cross_platform && formData.additional_platforms && formData.additional_platforms.length > 0) {
@@ -272,12 +385,33 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             };
           });
           
-          // Bulk create additional platform items
-          const additionalItems = await contentCalendarService.bulkCreateCalendarEntries({
+          // Create optimistic items for each platform
+          bulkItems.forEach((item, index) => {
+            const platformTempId = `temp-platform-${Date.now()}-${index}`;
+            const platformOptimisticItem = {
+              id: platformTempId,
+              project_id: item.project_id,
+              content_draft_id: item.content_draft_id,
+              scheduledDate: item.scheduled_date,
+              status: item.status,
+              platform: item.platform || '',
+              contentType: item.content_type || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              title: contentDrafts.find(d => d.id === item.content_draft_id)?.title || 'New Platform Content',
+              author: 'Current User'
+            };
+            
+            dispatch(addCalendarItemOptimistic(platformOptimisticItem));
+          });
+          
+          // Bulk API call (non-optimistic for simplicity)
+          await contentCalendarService.bulkCreateCalendarEntries({
             items: bulkItems
           });
           
-          setCalendarItems(prev => [...prev, ...additionalItems]);
+          // Refresh data to get accurate IDs
+          fetchCalendarData(true);
         }
         
         // Handle recurring content
@@ -327,13 +461,34 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             }
           }
           
-          // Bulk create recurring items
+          // Create optimistic items for recurring items
+          recurringItems.forEach((item, index) => {
+            const recurringTempId = `temp-recurring-${Date.now()}-${index}`;
+            const recurringOptimisticItem = {
+              id: recurringTempId,
+              project_id: item.project_id,
+              content_draft_id: item.content_draft_id,
+              scheduledDate: item.scheduled_date,
+              status: item.status,
+              platform: item.platform || '',
+              contentType: item.content_type || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              title: contentDrafts.find(d => d.id === item.content_draft_id)?.title || 'Recurring Content',
+              author: 'Current User'
+            };
+            
+            dispatch(addCalendarItemOptimistic(recurringOptimisticItem));
+          });
+          
+          // Bulk API call (non-optimistic for bulk items)
           if (recurringItems.length > 0) {
-            const createdRecurringItems = await contentCalendarService.bulkCreateCalendarEntries({
+            await contentCalendarService.bulkCreateCalendarEntries({
               items: recurringItems
             });
             
-            setCalendarItems(prev => [...prev, ...createdRecurringItems]);
+            // Refresh data to get accurate IDs
+            fetchCalendarData(true);
           }
         }
         
@@ -342,8 +497,10 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     } catch (err) {
       console.error('Error scheduling content:', err);
       setError('Failed to schedule content. Please try again.');
+      
+      // Refresh data if optimistic update failed
+      fetchCalendarData(true);
     } finally {
-      setLoading(false);
       setScheduleDialogOpen(false);
     }
   };
@@ -362,29 +519,43 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     }));
   };
   
-  // Duplicate an item (for list view)
+  // Duplicate an item with optimistic updates
   const handleDuplicateItem = async (item: CalendarItem) => {
-    setLoading(true);
-    
     try {
+      // Create a temporary ID for optimistic update
+      const tempId = `temp-duplicate-${Date.now()}`;
+      
       // Create a new item based on the existing one
       const newItemData: ScheduleItemRequest = {
         project_id: item.project_id,
         content_draft_id: item.content_draft_id || null,
-        scheduled_date: item.scheduled_date,
+        scheduled_date: item.scheduledDate,
         status: 'draft',
         platform: item.platform,
-        content_type: item.content_type
+        content_type: item.contentType
       };
       
-      const duplicatedItem = await contentCalendarService.createCalendarEntry(newItemData);
-      setCalendarItems(prev => [...prev, duplicatedItem]);
+      // Create optimistic item for immediate UI feedback
+      const optimisticItem = {
+        ...item,
+        id: tempId,
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      // Optimistic update
+      dispatch(addCalendarItemOptimistic(optimisticItem));
+      
+      // Actual API call
+      await dispatch(createCalendarItem(newItemData));
       setSuccessMessage('Content duplicated successfully.');
     } catch (err) {
       console.error('Error duplicating item:', err);
       setError('Failed to duplicate content. Please try again.');
-    } finally {
-      setLoading(false);
+      
+      // Refresh data if optimistic update failed
+      fetchCalendarData(true);
     }
   };
   
@@ -467,8 +638,17 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           >
             Schedule Content
           </Button>
+          <Tooltip title={realtimeUpdates ? "Disable real-time updates" : "Enable real-time updates"}>
+            <IconButton
+              onClick={toggleRealTimeUpdates}
+              color={realtimeUpdates ? "success" : "default"}
+              aria-label="Toggle real-time updates"
+            >
+              <SyncIcon />
+            </IconButton>
+          </Tooltip>
           <IconButton 
-            onClick={fetchCalendarData}
+            onClick={() => fetchCalendarData(true)}
             disabled={loading}
             color="primary"
             aria-label="Refresh calendar data"
