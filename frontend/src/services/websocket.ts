@@ -105,6 +105,16 @@ class WebSocketService {
     };
   }
   
+  // Add a handler for all messages
+  public addMessageHandler(handler: (data: any) => void): () => void {
+    return this.on('all', handler);
+  }
+  
+  // Check if websocket is connected
+  public isConnected(): boolean {
+    return this.status === 'connected' && this.socket !== null && this.socket.readyState === WebSocket.OPEN;
+  }
+  
   // Handle WebSocket open event
   private handleOpen(): void {
     this.status = 'connected';
