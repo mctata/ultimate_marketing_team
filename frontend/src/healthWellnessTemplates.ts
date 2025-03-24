@@ -124,7 +124,7 @@ Use UK spelling and terminology throughout the article.`,
     updated_at: '2025-03-23T10:00:00Z',
     is_default: true,
     is_featured: true,
-    sample_output: 'Essential Wellness Tips for Busy Parents: Creating Moments of Balance\n\nAs parents, we often place our wellbeing last on a never-ending to-do list. However, integrating simple stress management practices into our daily routines isn't just beneficial for us—it creates a healthier environment for our entire family...',
+    sample_output: 'Essential Wellness Tips for Busy Parents: Creating Moments of Balance\n\nAs parents, we often place our wellbeing last on a never-ending to-do list. However, integrating simple stress management practices into our daily routines isn\'t just beneficial for us—it creates a healthier environment for our entire family...',
     author: 'Marketing Team'
   },
   

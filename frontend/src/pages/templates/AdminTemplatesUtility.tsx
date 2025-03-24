@@ -340,16 +340,312 @@ const AdminTemplatesUtility: React.FC = () => {
           
           {/* Templates Table */}
           <TabPanel value={tabValue} index={0}>
-            <TemplatesTable />
+            {(() => {
+              const displayTemplates = getTabTemplates();
+              
+              return displayTemplates.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  No templates found matching your criteria.
+                </Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: '30%' }}>Name</TableCell>
+                        <TableCell>Type</TableCell>
+                        <TableCell align="center">Variables</TableCell>
+                        <TableCell align="center">Featured</TableCell>
+                        <TableCell align="center">Premium</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {displayTemplates.map((template) => (
+                        <TableRow 
+                          key={template.id}
+                          sx={{ 
+                            '&:last-child td, &:last-child th': { border: 0 },
+                            opacity: template.is_active ? 1 : 0.6
+                          }}
+                        >
+                          <TableCell component="th" scope="row">
+                            <Box>
+                              <Typography variant="body1" fontWeight="medium">
+                                {template.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                {template.description.length > 70 
+                                  ? `${template.description.substring(0, 70)}...` 
+                                  : template.description}
+                              </Typography>
+                              <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {template.tags.slice(0, 3).map((tag) => (
+                                  <Chip 
+                                    key={tag} 
+                                    label={tag} 
+                                    size="small" 
+                                    sx={{ fontSize: '0.7rem' }} 
+                                  />
+                                ))}
+                                {template.tags.length > 3 && (
+                                  <Chip 
+                                    label={`+${template.tags.length - 3}`} 
+                                    size="small" 
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem' }} 
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={template.content_type.charAt(0).toUpperCase() + template.content_type.slice(1)} 
+                              size="small" 
+                              color="primary"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            {template.variable_count}
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton 
+                              onClick={() => handleToggleFeatured(template.id)}
+                              color={template.is_featured ? 'warning' : 'default'}
+                              size="small"
+                            >
+                              {template.is_featured ? <StarIcon /> : <StarBorderIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Switch
+                              checked={template.is_premium}
+                              onChange={() => handleTogglePremium(template.id)}
+                              color="secondary"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip 
+                              label={template.is_active ? 'Active' : 'Inactive'} 
+                              size="small"
+                              color={template.is_active ? 'success' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                              <Tooltip title="Edit Template">
+                                <IconButton 
+                                  onClick={() => navigate(`/content/templates/${template.id}/test`)}
+                                  size="small"
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Duplicate Template">
+                                <IconButton 
+                                  onClick={() => handleOpenDuplicateDialog(template.id)}
+                                  size="small"
+                                >
+                                  <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title={template.is_active ? "Deactivate" : "Activate"}>
+                                <IconButton 
+                                  onClick={() => handleToggleActive(template.id)}
+                                  size="small"
+                                  color={template.is_active ? 'default' : 'success'}
+                                >
+                                  {template.is_active ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            })()}
           </TabPanel>
           <TabPanel value={tabValue} index={1}>
-            <TemplatesTable />
+            {(() => {
+              const displayTemplates = getTabTemplates();
+              return displayTemplates.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>No templates found matching your criteria.</Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  {/* Same table structure as above */}
+                  <Table sx={{ minWidth: 650 }}>
+                    {/* Table content same as above */}
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: '30%' }}>Name</TableCell>
+                        <TableCell>Type</TableCell>
+                        <TableCell align="center">Variables</TableCell>
+                        <TableCell align="center">Featured</TableCell>
+                        <TableCell align="center">Premium</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {displayTemplates.map((template) => (
+                        <TableRow key={template.id} sx={{ opacity: template.is_active ? 1 : 0.6 }}>
+                          {/* Same row content as above */}
+                          <TableCell component="th" scope="row">
+                            <Box>
+                              <Typography variant="body1" fontWeight="medium">{template.name}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                {template.description.length > 70 ? `${template.description.substring(0, 70)}...` : template.description}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell><Chip label={template.content_type} size="small" color="primary" /></TableCell>
+                          <TableCell align="center">{template.variable_count}</TableCell>
+                          <TableCell align="center">
+                            <IconButton onClick={() => handleToggleFeatured(template.id)} color={template.is_featured ? 'warning' : 'default'} size="small">
+                              {template.is_featured ? <StarIcon /> : <StarBorderIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Switch checked={template.is_premium} onChange={() => handleTogglePremium(template.id)} color="secondary" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip label={template.is_active ? 'Active' : 'Inactive'} size="small" color={template.is_active ? 'success' : 'default'} />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                              <Tooltip title="Edit Template">
+                                <IconButton onClick={() => navigate(`/content/templates/${template.id}/test`)} size="small">
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Duplicate Template">
+                                <IconButton onClick={() => handleOpenDuplicateDialog(template.id)} size="small">
+                                  <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title={template.is_active ? "Deactivate" : "Activate"}>
+                                <IconButton onClick={() => handleToggleActive(template.id)} size="small" color={template.is_active ? 'default' : 'success'}>
+                                  {template.is_active ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            })()}
           </TabPanel>
           <TabPanel value={tabValue} index={2}>
-            <TemplatesTable />
+            {(() => {
+              const displayTemplates = getTabTemplates();
+              return displayTemplates.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>No premium templates found.</Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  {/* Same table structure abbreviated */}
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: '30%' }}>Name</TableCell>
+                        <TableCell>Type</TableCell>
+                        <TableCell align="center">Variables</TableCell>
+                        <TableCell align="center">Featured</TableCell>
+                        <TableCell align="center">Premium</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {displayTemplates.map((template) => (
+                        <TableRow key={template.id} sx={{ opacity: template.is_active ? 1 : 0.6 }}>
+                          <TableCell component="th" scope="row">{template.name}</TableCell>
+                          <TableCell><Chip label={template.content_type} size="small" color="primary" /></TableCell>
+                          <TableCell align="center">{template.variable_count}</TableCell>
+                          <TableCell align="center">
+                            <IconButton onClick={() => handleToggleFeatured(template.id)} color="warning" size="small">
+                              <StarIcon />
+                            </IconButton>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Switch checked={true} onChange={() => handleTogglePremium(template.id)} color="secondary" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip label="Active" size="small" color="success" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                              <IconButton size="small"><EditIcon fontSize="small" /></IconButton>
+                              <IconButton size="small"><ContentCopyIcon fontSize="small" /></IconButton>
+                              <IconButton size="small"><VisibilityOffIcon fontSize="small" /></IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            })()}
           </TabPanel>
           <TabPanel value={tabValue} index={3}>
-            <TemplatesTable />
+            {(() => {
+              const displayTemplates = getTabTemplates();
+              return displayTemplates.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>No inactive templates found.</Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  {/* Same table structure abbreviated */}
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: '30%' }}>Name</TableCell>
+                        <TableCell>Type</TableCell>
+                        <TableCell align="center">Variables</TableCell>
+                        <TableCell align="center">Featured</TableCell>
+                        <TableCell align="center">Premium</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {displayTemplates.map((template) => (
+                        <TableRow key={template.id} sx={{ opacity: 0.6 }}>
+                          <TableCell component="th" scope="row">{template.name}</TableCell>
+                          <TableCell><Chip label={template.content_type} size="small" color="primary" /></TableCell>
+                          <TableCell align="center">{template.variable_count}</TableCell>
+                          <TableCell align="center">
+                            <IconButton onClick={() => handleToggleFeatured(template.id)} size="small">
+                              <StarBorderIcon />
+                            </IconButton>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Switch checked={template.is_premium} onChange={() => handleTogglePremium(template.id)} color="secondary" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip label="Inactive" size="small" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                              <IconButton size="small"><EditIcon fontSize="small" /></IconButton>
+                              <IconButton size="small"><ContentCopyIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" color="success"><VisibilityIcon fontSize="small" /></IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            })()}
           </TabPanel>
           
           {/* Duplicate Template Dialog */}
@@ -380,136 +676,6 @@ const AdminTemplatesUtility: React.FC = () => {
         </>
       )}
       
-      {/* Templates Table Component */}
-      function TemplatesTable() {
-        const displayTemplates = getTabTemplates();
-        
-        return displayTemplates.length === 0 ? (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            No templates found matching your criteria.
-          </Alert>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table sx={{ minWidth: 650 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ width: '30%' }}>Name</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell align="center">Variables</TableCell>
-                  <TableCell align="center">Featured</TableCell>
-                  <TableCell align="center">Premium</TableCell>
-                  <TableCell align="center">Status</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {displayTemplates.map((template) => (
-                  <TableRow 
-                    key={template.id}
-                    sx={{ 
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      opacity: template.is_active ? 1 : 0.6
-                    }}
-                  >
-                    <TableCell component="th" scope="row">
-                      <Box>
-                        <Typography variant="body1" fontWeight="medium">
-                          {template.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          {template.description.length > 70 
-                            ? `${template.description.substring(0, 70)}...` 
-                            : template.description}
-                        </Typography>
-                        <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {template.tags.slice(0, 3).map((tag) => (
-                            <Chip 
-                              key={tag} 
-                              label={tag} 
-                              size="small" 
-                              sx={{ fontSize: '0.7rem' }} 
-                            />
-                          ))}
-                          {template.tags.length > 3 && (
-                            <Chip 
-                              label={`+${template.tags.length - 3}`} 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }} 
-                            />
-                          )}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={template.content_type.charAt(0).toUpperCase() + template.content_type.slice(1)} 
-                        size="small" 
-                        color="primary"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      {template.variable_count}
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton 
-                        onClick={() => handleToggleFeatured(template.id)}
-                        color={template.is_featured ? 'warning' : 'default'}
-                        size="small"
-                      >
-                        {template.is_featured ? <StarIcon /> : <StarBorderIcon />}
-                      </IconButton>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Switch
-                        checked={template.is_premium}
-                        onChange={() => handleTogglePremium(template.id)}
-                        color="secondary"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip 
-                        label={template.is_active ? 'Active' : 'Inactive'} 
-                        size="small"
-                        color={template.is_active ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                        <Tooltip title="Edit Template">
-                          <IconButton 
-                            onClick={() => navigate(`/content/templates/${template.id}/test`)}
-                            size="small"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Duplicate Template">
-                          <IconButton 
-                            onClick={() => handleOpenDuplicateDialog(template.id)}
-                            size="small"
-                          >
-                            <ContentCopyIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={template.is_active ? "Deactivate" : "Activate"}>
-                          <IconButton 
-                            onClick={() => handleToggleActive(template.id)}
-                            size="small"
-                            color={template.is_active ? 'default' : 'success'}
-                          >
-                            {template.is_active ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        );
-      }
     </Box>
   );
 };
