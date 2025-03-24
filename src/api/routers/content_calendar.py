@@ -225,7 +225,7 @@ def generate_best_time_recommendations(db: Session, project_id: int) -> List[Bes
 # ==================== Endpoints ====================
 
 @router.post("/", response_model=ContentCalendarResponse, status_code=status.HTTP_201_CREATED)
-def create_calendar_entry(
+async def create_calendar_entry(
     entry: ContentCalendarCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -254,8 +254,25 @@ def create_calendar_entry(
     db.commit()
     db.refresh(db_entry)
     
+    # Prepare response object
+    enriched_entry = enrich_calendar_entries(db, [db_entry])[0]
+    
+    # Send real-time notification
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        await notify_calendar_item_change(
+            change_type="create",
+            project_id=str(entry.project_id),
+            item_id=str(db_entry.id),
+            data=enriched_entry.dict(),
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying calendar change: {e}")
+    
     # Return enriched entry
-    return enrich_calendar_entries(db, [db_entry])[0]
+    return enriched_entry
 
 @router.get("/", response_model=List[ContentCalendarResponse])
 def get_calendar_entries(
@@ -306,7 +323,7 @@ def get_calendar_entry(
     return enrich_calendar_entries(db, [entry])[0]
 
 @router.put("/{entry_id}", response_model=ContentCalendarResponse)
-def update_calendar_entry(
+async def update_calendar_entry(
     entry_id: int,
     entry_update: ContentCalendarUpdate,
     db: Session = Depends(get_db),
@@ -323,10 +340,27 @@ def update_calendar_entry(
     db.commit()
     db.refresh(db_entry)
     
-    return enrich_calendar_entries(db, [db_entry])[0]
+    # Prepare response object
+    enriched_entry = enrich_calendar_entries(db, [db_entry])[0]
+    
+    # Send real-time notification
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        await notify_calendar_item_change(
+            change_type="update",
+            project_id=str(db_entry.project_id),
+            item_id=str(db_entry.id),
+            data=enriched_entry.dict(),
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying calendar change: {e}")
+    
+    return enriched_entry
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_calendar_entry(
+async def delete_calendar_entry(
     entry_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -334,13 +368,35 @@ def delete_calendar_entry(
     """Delete a content calendar entry."""
     db_entry = get_content_calendar_entry(db, entry_id, current_user)
     
+    # Store project_id for notification before deleting
+    project_id = db_entry.project_id
+    entry_id_str = str(db_entry.id)
+    
+    # Get entry info for the notification
+    entry_info = enrich_calendar_entries(db, [db_entry])[0].dict()
+    
+    # Delete the entry
     db.delete(db_entry)
     db.commit()
+    
+    # Send real-time notification
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        await notify_calendar_item_change(
+            change_type="delete",
+            project_id=str(project_id),
+            item_id=entry_id_str,
+            data=entry_info,
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying calendar change: {e}")
     
     return {"status": "success"}
 
 @router.post("/bulk", response_model=List[ContentCalendarResponse], status_code=status.HTTP_201_CREATED)
-def bulk_create_calendar_entries(
+async def bulk_create_calendar_entries(
     entries: ContentCalendarBulkCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -369,11 +425,53 @@ def bulk_create_calendar_entries(
     for entry in db_entries:
         db.refresh(entry)
     
+    # Prepare enriched entries for response
+    enriched_entries = enrich_calendar_entries(db, db_entries)
+    
+    # Send real-time notifications for each entry by project
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        
+        # Group entries by project for more efficient notifications
+        entries_by_project = {}
+        for i, entry in enumerate(db_entries):
+            project_id = str(entry.project_id)
+            if project_id not in entries_by_project:
+                entries_by_project[project_id] = []
+            entries_by_project[project_id].append((entry, enriched_entries[i]))
+        
+        # Send notifications for each project
+        for project_id, project_entries in entries_by_project.items():
+            # Send individual notifications for each entry
+            for entry, enriched_entry in project_entries:
+                await notify_calendar_item_change(
+                    change_type="create",
+                    project_id=project_id,
+                    item_id=str(entry.id),
+                    data=enriched_entry.dict(),
+                    user_id=str(current_user.id)
+                )
+            
+            # Also send a bulk notification
+            await notify_calendar_item_change(
+                change_type="bulk_create",
+                project_id=project_id,
+                item_id="bulk",
+                data={
+                    "count": len(project_entries),
+                    "items": [e.dict() for _, e in project_entries]
+                },
+                user_id=str(current_user.id)
+            )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying bulk calendar changes: {e}")
+    
     # Return enriched entries
-    return enrich_calendar_entries(db, db_entries)
+    return enriched_entries
 
 @router.put("/bulk", response_model=List[ContentCalendarResponse])
-def bulk_update_calendar_entries(
+async def bulk_update_calendar_entries(
     updates: ContentCalendarBulkUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -409,11 +507,54 @@ def bulk_update_calendar_entries(
     for entry in entries:
         db.refresh(entry)
     
+    # Prepare enriched entries for response
+    enriched_entries = enrich_calendar_entries(db, entries)
+    
+    # Send real-time notifications for each entry by project
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        
+        # Group entries by project for more efficient notifications
+        entries_by_project = {}
+        for i, entry in enumerate(entries):
+            project_id = str(entry.project_id)
+            if project_id not in entries_by_project:
+                entries_by_project[project_id] = []
+            entries_by_project[project_id].append((entry, enriched_entries[i]))
+        
+        # Send notifications for each project
+        for project_id, project_entries in entries_by_project.items():
+            # Send individual notifications for each entry
+            for entry, enriched_entry in project_entries:
+                await notify_calendar_item_change(
+                    change_type="update",
+                    project_id=project_id,
+                    item_id=str(entry.id),
+                    data=enriched_entry.dict(),
+                    user_id=str(current_user.id)
+                )
+            
+            # Also send a bulk notification
+            await notify_calendar_item_change(
+                change_type="bulk_update",
+                project_id=project_id,
+                item_id="bulk",
+                data={
+                    "count": len(project_entries),
+                    "items": [e.dict() for _, e in project_entries],
+                    "update_fields": list(update_data.keys())
+                },
+                user_id=str(current_user.id)
+            )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying bulk calendar changes: {e}")
+    
     # Return enriched entries
-    return enrich_calendar_entries(db, entries)
+    return enriched_entries
 
 @router.post("/{entry_id}/publish", response_model=ContentCalendarResponse)
-def publish_content(
+async def publish_content(
     entry_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -428,7 +569,24 @@ def publish_content(
     db.commit()
     db.refresh(db_entry)
     
-    return enrich_calendar_entries(db, [db_entry])[0]
+    # Prepare response object
+    enriched_entry = enrich_calendar_entries(db, [db_entry])[0]
+    
+    # Send real-time notification
+    try:
+        from src.api.content_calendar_websocket import notify_calendar_item_change
+        await notify_calendar_item_change(
+            change_type="publish",
+            project_id=str(db_entry.project_id),
+            item_id=str(db_entry.id),
+            data=enriched_entry.dict(),
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error notifying calendar change: {e}")
+    
+    return enriched_entry
 
 @router.get("/insights/conflicts", response_model=List[SchedulingInsight])
 def get_scheduling_insights(

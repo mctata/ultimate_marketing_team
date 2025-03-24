@@ -3,7 +3,7 @@ Simplified API Gateway - minimal version with just health endpoint
 for performance optimization
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import time
@@ -40,6 +40,10 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info(f"Shutting down {settings.APP_NAME}")
+    # Also shut down any WebSocket managers
+    from src.api.websocket import manager as general_ws_manager
+    from src.api.content_calendar_websocket import calendar_manager
+    await general_ws_manager.shutdown()
     logger.info("Application shutdown complete")
 
 # Configure CORS
@@ -56,6 +60,8 @@ from src.api.routers import health
 from src.api import templates  # Import template router
 from src.api import seed_templates  # Import seed templates router
 from src.api.routers import content_calendar  # Import content calendar router
+from src.api.websocket import websocket_endpoint
+from src.api.content_calendar_websocket import calendar_websocket_endpoint
 
 # Add health router for basic functionality
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
@@ -66,6 +72,10 @@ app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-te
 
 # Include content calendar router
 app.include_router(content_calendar.router, tags=["Content Calendar"])
+
+# Add WebSocket endpoints
+app.add_websocket_route("/ws", websocket_endpoint)
+app.add_websocket_route("/ws/calendar", calendar_websocket_endpoint)
 
 # Create a direct endpoint for templates testing
 @app.get("/api/v1/templates/categories-test", tags=["Templates"])

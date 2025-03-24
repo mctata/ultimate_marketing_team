@@ -15,7 +15,8 @@ import {
   Paper,
   Tooltip,
   Divider,
-  Chip
+  Chip,
+  Badge
 } from '@mui/material';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -26,9 +27,16 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import InfoIcon from '@mui/icons-material/Info';
 import SyncIcon from '@mui/icons-material/Sync';
+import PeopleIcon from '@mui/icons-material/People';
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
-import WebSocketService from '../../services/websocketService';
+import CalendarWebSocketService, { 
+  CalendarWebSocketMessage,
+  CalendarChangeMessage,
+  ContentLockedMessage,
+  UserJoinedProjectMessage,
+  UserLeftProjectMessage
+} from '../../services/calendarWebSocketService';
 
 import CalendarMonthView from './CalendarMonthView';
 import CalendarWeekView from './CalendarWeekView';
@@ -101,13 +109,22 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   const [realtimeUpdates, setRealtimeUpdates] = useState(true);
   
   // WebSocket reference
-  const wsServiceRef = useRef<WebSocketService | null>(null);
+  const wsServiceRef = useRef<CalendarWebSocketService | null>(null);
   
   // Date range state for fetching data
   const [currentDateRange, setCurrentDateRange] = useState({
     startDate: startOfMonth(new Date()),
     endDate: endOfMonth(new Date())
   });
+  
+  // Active users state for collaboration awareness
+  const [activeUsers, setActiveUsers] = useState<{id: string, data: any}[]>([]);
+  
+  // Locked content state
+  const [lockedContent, setLockedContent] = useState<{[key: string]: {lockedBy: string, userData: any}}>({});
+  
+  // When a real-time update was last received
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   
   // Get calendar items for the current date range
   const calendarItems = useSelector((state: RootState) => 
@@ -177,22 +194,127 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     }
   }, [dispatch, projectId, currentDateRange, fetchContentDrafts]);
   
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((message: CalendarWebSocketMessage) => {
+    console.log('WebSocket message received:', message);
+    
+    // Update last update time
+    setLastUpdateTime(new Date());
+    
+    switch (message.type) {
+      case 'calendar_change':
+        const changeMsg = message as CalendarChangeMessage;
+        
+        // Only invalidate cache if change came from another user
+        if (changeMsg.source_user_id !== wsServiceRef.current?.getCurrentUserId()) {
+          console.log('Invalidating cache due to remote change');
+          
+          // Invalidate cache to refresh data
+          dispatch(invalidateCalendarCache());
+          
+          // Fetch updated data
+          fetchCalendarData(true);
+          
+          // Show notification based on change type
+          const changeTypeMap: {[key: string]: string} = {
+            'create': 'added',
+            'update': 'updated',
+            'delete': 'deleted',
+            'publish': 'published',
+            'bulk_create': 'added multiple items',
+            'bulk_update': 'updated multiple items'
+          };
+          
+          const action = changeTypeMap[changeMsg.change_type] || 'modified';
+          setSuccessMessage(`Calendar content was ${action} by another user.`);
+        }
+        break;
+        
+      case 'user_joined_project':
+        const joinMsg = message as UserJoinedProjectMessage;
+        
+        // Add user to active users if not already present
+        setActiveUsers(prev => {
+          const exists = prev.some(u => u.id === joinMsg.user_id);
+          if (!exists) {
+            return [...prev, { id: joinMsg.user_id, data: joinMsg.user_data }];
+          }
+          return prev;
+        });
+        break;
+        
+      case 'user_left_project':
+        const leaveMsg = message as UserLeftProjectMessage;
+        
+        // Remove user from active users
+        setActiveUsers(prev => prev.filter(u => u.id !== leaveMsg.user_id));
+        break;
+        
+      case 'content_locked':
+        const lockMsg = message as ContentLockedMessage;
+        
+        // Update locked content state
+        setLockedContent(prev => ({
+          ...prev,
+          [lockMsg.content_id]: {
+            lockedBy: lockMsg.locked_by,
+            userData: lockMsg.user_data
+          }
+        }));
+        break;
+        
+      case 'content_unlocked':
+        const unlockMsg = message as ContentLockedMessage;
+        
+        // Remove content from locked state
+        setLockedContent(prev => {
+          const { [unlockMsg.content_id]: _, ...rest } = prev;
+          return rest;
+        });
+        break;
+    }
+  }, [dispatch, fetchCalendarData]);
+
   // Initialize WebSocket connection
   useEffect(() => {
     if (realtimeUpdates) {
       // Create WebSocket connection
-      const wsService = WebSocketService.getInstance('wss://api.ultimatemarketingteam.com/ws/calendar');
+      const wsService = CalendarWebSocketService.getInstance();
       wsServiceRef.current = wsService;
-      wsService.connect();
+      
+      // Connect to WebSocket server
+      wsService.connect().then(connected => {
+        if (connected) {
+          console.log('WebSocket connected');
+          
+          // Register message handler
+          wsService.on('*', handleWebSocketMessage);
+          
+          // Join project room
+          wsService.joinProject(projectId.toString(), {
+            name: 'Current User' // In a real app, this would be the actual user info
+          });
+        } else {
+          console.error('Failed to connect to WebSocket');
+          setError('Failed to establish real-time connection. Some features may be limited.');
+        }
+      });
       
       // Cleanup on unmount
       return () => {
         if (wsServiceRef.current) {
+          // Leave project room
+          wsServiceRef.current.leaveProject(projectId.toString());
+          
+          // Remove message handler
+          wsServiceRef.current.off('*', handleWebSocketMessage);
+          
+          // Disconnect
           wsServiceRef.current.disconnect();
         }
       };
     }
-  }, [realtimeUpdates]);
+  }, [realtimeUpdates, projectId, handleWebSocketMessage]);
   
   // Initial data load
   useEffect(() => {
@@ -213,14 +335,31 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
       if (wsServiceRef.current) {
         wsServiceRef.current.disconnect();
       }
+      setActiveUsers([]);
+      setLockedContent({});
     } else {
       // Connect WebSocket
       if (wsServiceRef.current) {
-        wsServiceRef.current.connect();
+        wsServiceRef.current.connect().then(connected => {
+          if (connected) {
+            wsServiceRef.current?.joinProject(projectId.toString(), {
+              name: 'Current User' // In a real app, this would be the actual user info
+            });
+          }
+        });
       } else {
-        const wsService = WebSocketService.getInstance('wss://api.ultimatemarketingteam.com/ws/calendar');
+        const wsService = CalendarWebSocketService.getInstance();
         wsServiceRef.current = wsService;
-        wsService.connect();
+        
+        // Connect and join project
+        wsService.connect().then(connected => {
+          if (connected) {
+            wsService.on('*', handleWebSocketMessage);
+            wsService.joinProject(projectId.toString(), {
+              name: 'Current User' // In a real app, this would be the actual user info
+            });
+          }
+        });
       }
     }
     
@@ -254,8 +393,22 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     setScheduleDialogOpen(true);
   };
   
-  // Handle edit item
+  // Handle edit item with content locking
   const handleEditItem = (item: CalendarItem) => {
+    // Check if item is locked by someone else
+    if (lockedContent[item.id] && lockedContent[item.id].lockedBy !== wsServiceRef.current?.getCurrentUserId()) {
+      const lockedBy = lockedContent[item.id].userData?.name || lockedContent[item.id].lockedBy;
+      setError(`This item is currently being edited by ${lockedBy}.`);
+      return;
+    }
+    
+    // Try to lock the item
+    if (wsServiceRef.current && realtimeUpdates) {
+      wsServiceRef.current.lockContent(item.id, {
+        name: 'Current User' // In a real app, this would be the actual user info
+      });
+    }
+    
     setSelectedItem(item);
     setScheduleDialogOpen(true);
   };
@@ -331,6 +484,11 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
         
         // Actual API call
         await dispatch(updateCalendarItem(optimisticItem));
+        
+        // Unlock the item if it was locked
+        if (wsServiceRef.current && realtimeUpdates) {
+          wsServiceRef.current.unlockContent(selectedItem.id);
+        }
         
         setSuccessMessage('Calendar item updated successfully.');
       } else {
@@ -559,6 +717,16 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
     }
   };
   
+  // Handle dialog close with content unlocking
+  const handleDialogClose = () => {
+    // Unlock content if it was selected for editing
+    if (selectedItem && wsServiceRef.current && realtimeUpdates) {
+      wsServiceRef.current.unlockContent(selectedItem.id);
+    }
+    
+    setScheduleDialogOpen(false);
+  };
+
   // Handle snackbar close
   const handleSnackbarClose = () => {
     setSuccessMessage(null);
@@ -771,16 +939,47 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
         {renderCalendarView()}
       </Paper>
       
+      {/* Active users indicator */}
+      {realtimeUpdates && activeUsers.length > 0 && (
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title={`${activeUsers.length} active user${activeUsers.length !== 1 ? 's' : ''}`}>
+            <Badge
+              badgeContent={activeUsers.length}
+              color="primary"
+              sx={{ '& .MuiBadge-badge': { top: 8, right: 8 } }}
+            >
+              <PeopleIcon color="action" />
+            </Badge>
+          </Tooltip>
+          <Typography variant="body2" color="text.secondary">
+            {activeUsers.length} user{activeUsers.length !== 1 ? 's' : ''} viewing this calendar
+          </Typography>
+        </Box>
+      )}
+      
+      {/* Real-time updates status indicator */}
+      {realtimeUpdates && lastUpdateTime && (
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            icon={<SyncIcon fontSize="small" />}
+            label={`Last updated: ${new Date(lastUpdateTime).toLocaleTimeString()}`}
+            size="small"
+            color="success"
+            variant="outlined"
+          />
+        </Box>
+      )}
+      
       {/* Schedule dialog */}
       <ScheduleDialog
         open={scheduleDialogOpen}
-        onClose={() => setScheduleDialogOpen(false)}
+        onClose={handleDialogClose}
         onSchedule={handleScheduleSubmit}
         initialData={selectedItem ? {
           content_draft_id: selectedItem.content_draft_id || 0,
           platform: selectedItem.platform || '',
           content_type: selectedItem.content_type || '',
-          scheduled_date: new Date(selectedItem.scheduled_date),
+          scheduled_date: new Date(selectedItem.scheduledDate),
           project_id: selectedItem.project_id
         } : undefined}
         contentDrafts={contentDrafts.map(d => ({ id: d.id, title: d.title }))}
