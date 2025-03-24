@@ -1,3 +1,4 @@
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -49,7 +50,9 @@ const menuItems = [
       { text: 'Content Library', path: '/content' },
       { text: 'Content Calendar', path: '/content/calendar' },
       { text: 'Templates Library', path: '/templates' },
-      { text: 'Template Diagnostics', path: '/templates/diagnostics' }
+      { text: 'Template Diagnostics', path: '/templates/diagnostics' },
+      { text: 'Template Test Workspace', path: '/templates/test-workspace' },
+      { text: 'Template Admin (Admin Only)', path: '/templates/admin' }
     ]
   },
   { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
@@ -174,32 +177,39 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             {/* Sub-items */}
             {item.subItems && open && (
               <Box sx={{ pl: 4 }}>
-                {item.subItems.map((subItem) => (
-                  <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
-                    <ListItemButton
-                      onClick={() => handleNavigation(subItem.path)}
-                      selected={location.pathname === subItem.path}
-                      sx={{
-                        minHeight: 36,
-                        justifyContent: 'initial',
-                        borderRadius: 1,
-                        px: 2,
-                        '&.Mui-selected': {
-                          backgroundColor: 'primary.light',
-                          color: 'primary.contrastText',
-                        },
-                        '&:hover': {
-                          backgroundColor: 'rgba(0, 102, 204, 0.08)',
-                        },
-                      }}
-                    >
-                      <ListItemText
-                        primary={subItem.text}
-                        primaryTypographyProps={{ fontSize: '0.875rem' }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
+                {item.subItems.map((subItem) => {
+                  // Only show admin items to users with admin role
+                  if (subItem.text.includes('Admin') && user?.role !== 'admin') {
+                    return null;
+                  }
+                  
+                  return (
+                    <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
+                      <ListItemButton
+                        onClick={() => handleNavigation(subItem.path)}
+                        selected={location.pathname === subItem.path}
+                        sx={{
+                          minHeight: 36,
+                          justifyContent: 'initial',
+                          borderRadius: 1,
+                          px: 2,
+                          '&.Mui-selected': {
+                            backgroundColor: 'primary.light',
+                            color: 'primary.contrastText',
+                          },
+                          '&:hover': {
+                            backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          primary={subItem.text}
+                          primaryTypographyProps={{ fontSize: '0.875rem' }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
               </Box>
             )}
           </React.Fragment>

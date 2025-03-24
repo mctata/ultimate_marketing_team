@@ -19,8 +19,8 @@ import {
   Refresh as RefreshIcon,
   Analytics as AnalyticsIcon
 } from '@mui/icons-material';
-import templateApiMonitor from '../../services/templateApiMonitor';
-import { resetApiAvailabilityCheck } from '../../services/templateServiceFactory';
+import templateApiMonitor from '../../../frontend/src/services/templateApiMonitor';
+import { resetApiAvailabilityCheck } from '../../../frontend/src/services/templateServiceFactory';
 
 /**
  * Template API diagnostics component

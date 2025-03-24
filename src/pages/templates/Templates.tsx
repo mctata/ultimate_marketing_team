@@ -63,8 +63,8 @@ import {
   selectTemplatesLoading,
   selectTemplatesError,
 } from '../../store/slices/templateSlice';
-import type { Template, TemplateCategory, TemplateIndustry } from '../../services/templateService';
-import templateService from '../../services/templateServiceFactory';
+import type { Template, TemplateCategory, TemplateIndustry } from '../../../frontend/src/services/templateService';
+import templateService from '../../../frontend/src/services/templateServiceFactory';
 import useAuth from '../../hooks/useAuth';
 
 // Tab panel component

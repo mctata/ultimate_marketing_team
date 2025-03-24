@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Typography, Box, Paper, CircularProgress, Alert } from '@mui/material';
-import templateService from '../../services/templateServiceFactory';
+import templateService from '../../../frontend/src/services/templateServiceFactory';
 import useAuth from '../../hooks/useAuth';
 
 /**

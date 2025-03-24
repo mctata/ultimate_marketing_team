@@ -28,9 +28,11 @@ const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail')
 import Analytics from './pages/analytics/Analytics';
 const AnalyticsPage = () => <Analytics />;
 const Settings = lazyPage(() => import('./pages/settings/Settings'));
-const Templates = lazyPage(() => import('./pages/templates/Templates'));
-const TemplateDetail = lazyPage(() => import('./pages/templates/TemplateDetail'));
-const AdminTemplatesUtility = lazyPage(() => import('./pages/templates/AdminTemplatesUtility'));
+const Templates = lazyPage(() => import('../../src/pages/templates/Templates'));
+const TemplateDetail = lazyPage(() => import('../../src/pages/templates/TemplateDetail'));
+const AdminTemplatesUtility = lazyPage(() => import('../../src/pages/templates/AdminTemplatesUtility'));
+const TemplateDiagnostics = lazyPage(() => import('../../src/pages/templates/TemplateDiagnostics'));
+const TemplateTestWorkspace = lazyPage(() => import('../../src/pages/templates/TemplateTestWorkspace'));
 const NotFound = lazyPage(() => import('./pages/NotFound'));
 
 // Protected route component
@@ -221,6 +223,8 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="templates" element={<Templates />} />
           <Route path="templates/admin" element={<AdminTemplatesUtility />} />
+          <Route path="templates/diagnostics" element={<TemplateDiagnostics />} />
+          <Route path="templates/test-workspace" element={<TemplateTestWorkspace />} />
           <Route path="templates/:id" element={<TemplateDetail />} />
           <Route path="templates/:id/test" element={<TemplateDetail testMode={true} />} />
           <Route path="templates/:id/use" element={<TemplateDetail useMode={true} />} />
