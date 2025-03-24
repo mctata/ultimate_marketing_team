@@ -48,6 +48,11 @@ import {
   Cell
 } from 'recharts';
 
+// Import our new predictive analytics components
+import CampaignPerformanceForecasting from '../../components/campaigns/CampaignPerformanceForecasting';
+import CampaignBudgetOptimization from '../../components/campaigns/CampaignBudgetOptimization';
+import CampaignPerformanceAlerts from '../../components/campaigns/CampaignPerformanceAlerts';
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const CampaignMetrics = () => {
@@ -231,6 +236,9 @@ const CampaignMetrics = () => {
         </Box>
       </Box>
       
+      {/* Performance Alerts Section (New) */}
+      <CampaignPerformanceAlerts />
+      
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
@@ -323,6 +331,12 @@ const CampaignMetrics = () => {
               </Card>
             </Grid>
           </Grid>
+          
+          {/* Performance Forecasting Section (New) */}
+          <CampaignPerformanceForecasting />
+          
+          {/* Budget Optimization Section (New) */}
+          <CampaignBudgetOptimization />
           
           {/* Chart Section */}
           <Paper sx={{ p: 3, mb: 4 }}>
