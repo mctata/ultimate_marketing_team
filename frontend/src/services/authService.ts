@@ -160,6 +160,14 @@ export const getToken = (): string | null => {
   return localStorage.getItem(tokenKey);
 };
 
+/**
+ * Gets the authentication token for API requests
+ * @returns The authentication token as a string, or null if not authenticated
+ */
+export const getAuthToken = (): string | null => {
+  return getToken();
+};
+
 export const setupTokenFromStorage = (): void => {
   const token = getToken();
   if (token) {
