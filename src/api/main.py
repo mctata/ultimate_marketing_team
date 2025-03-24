@@ -55,6 +55,7 @@ app.add_middleware(
 from src.api.routers import health
 from src.api import templates  # Import template router
 from src.api import seed_templates  # Import seed templates router
+from src.api.routers import content_calendar  # Import content calendar router
 
 # Add health router for basic functionality
 app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=["Health"])
@@ -62,6 +63,9 @@ app.include_router(health.router, prefix=f"{settings.API_PREFIX}/health", tags=[
 # Include template routers
 app.include_router(templates.router, prefix=f"{settings.API_PREFIX}/templates", tags=["Templates"])
 app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-templates", tags=["Templates"])
+
+# Include content calendar router
+app.include_router(content_calendar.router, tags=["Content Calendar"])
 
 # Create a direct endpoint for templates testing
 @app.get("/api/v1/templates/categories-test", tags=["Templates"])
