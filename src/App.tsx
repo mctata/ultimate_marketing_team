@@ -21,7 +21,9 @@ const ContentABTest = lazy(() => import('./pages/content/ContentABTest'));
 const CampaignList = lazy(() => import('./pages/campaigns/CampaignList'));
 const CampaignEditor = lazy(() => import('./pages/campaigns/CampaignEditor'));
 const CampaignMetrics = lazy(() => import('./pages/campaigns/CampaignMetrics'));
+const ABTestingDashboard = lazy(() => import('./pages/campaigns/ABTestingDashboard'));
 const AdSetDetail = lazy(() => import('./pages/campaigns/AdSetDetail'));
+const AdEditor = lazy(() => import('./pages/campaigns/AdEditor'));
 
 // Template Management
 const Templates = lazy(() => import('./pages/templates/Templates'));
@@ -73,7 +75,10 @@ function App() {
               <Route path="/campaigns/new" element={<CampaignEditor />} />
               <Route path="/campaigns/:id" element={<CampaignEditor />} />
               <Route path="/campaigns/:id/metrics" element={<CampaignMetrics />} />
+              <Route path="/campaigns/:id/ab-testing" element={<ABTestingDashboard />} />
               <Route path="/campaigns/:campaignId/adsets/:adSetId" element={<AdSetDetail />} />
+              <Route path="/campaigns/:campaignId/adsets/:adSetId/ads/new" element={<AdEditor />} />
+              <Route path="/campaigns/:campaignId/adsets/:adSetId/ads/:adId" element={<AdEditor />} />
               
               {/* Template Management Routes */}
               <Route path="/templates" element={<Templates />} />

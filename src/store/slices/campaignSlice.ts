@@ -7,7 +7,9 @@ import {
   Campaign, 
   CampaignMetrics, 
   AdSet, 
-  Ad
+  Ad,
+  ABTest,
+  ABTestVariant
 } from '../../services/campaignService';
 
 interface CampaignState {
@@ -33,6 +35,12 @@ interface CampaignState {
     data: CampaignMetrics[];
     loading: boolean;
     error: string | null;
+  };
+  abTests: {
+    data: ABTest[];
+    loading: boolean;
+    error: string | null;
+    selectedTest: ABTest | null;
   };
   filters: {
     brandId?: string;
@@ -64,6 +72,12 @@ const initialState: CampaignState = {
     data: [],
     loading: false,
     error: null,
+  },
+  abTests: {
+    data: [],
+    loading: false,
+    error: null,
+    selectedTest: null,
   },
   filters: {},
 };
@@ -267,6 +281,91 @@ export const fetchCampaignMetrics = createAsyncThunk(
   }
 );
 
+// Async Thunks for A/B Testing
+export const fetchABTests = createAsyncThunk(
+  'campaigns/fetchABTests',
+  async (campaignId: string, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.getABTests(campaignId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch A/B tests');
+    }
+  }
+);
+
+export const fetchABTestById = createAsyncThunk(
+  'campaigns/fetchABTestById',
+  async ({ campaignId, testId }: { campaignId: string; testId: string }, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.getABTestById(campaignId, testId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch A/B test');
+    }
+  }
+);
+
+export const createABTest = createAsyncThunk(
+  'campaigns/createABTest',
+  async ({ campaignId, test }: { campaignId: string; test: Omit<ABTest, 'id' | 'campaign_id'> }, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.createABTest(campaignId, test);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create A/B test');
+    }
+  }
+);
+
+export const updateABTest = createAsyncThunk(
+  'campaigns/updateABTest',
+  async ({ campaignId, testId, test }: { campaignId: string; testId: string; test: Partial<ABTest> }, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.updateABTest(campaignId, testId, test);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update A/B test');
+    }
+  }
+);
+
+export const deleteABTest = createAsyncThunk(
+  'campaigns/deleteABTest',
+  async ({ campaignId, testId }: { campaignId: string; testId: string }, { rejectWithValue }) => {
+    try {
+      await campaignService.deleteABTest(campaignId, testId);
+      return testId;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete A/B test');
+    }
+  }
+);
+
+export const declareABTestWinner = createAsyncThunk(
+  'campaigns/declareABTestWinner',
+  async ({ campaignId, testId, variantId }: { campaignId: string; testId: string; variantId: string }, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.declareABTestWinner(campaignId, testId, variantId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to declare A/B test winner');
+    }
+  }
+);
+
+export const applyABTestWinner = createAsyncThunk(
+  'campaigns/applyABTestWinner',
+  async ({ campaignId, testId, options }: { campaignId: string; testId: string; options?: { applyToAllCampaigns?: boolean } }, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.applyABTestWinner(campaignId, testId, options);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to apply A/B test winner');
+    }
+  }
+);
+
 const campaignSlice = createSlice({
   name: 'campaigns',
   initialState,
@@ -282,6 +381,9 @@ const campaignSlice = createSlice({
     },
     clearSelectedAd(state) {
       state.ads.selectedAd = null;
+    },
+    clearSelectedABTest(state) {
+      state.abTests.selectedTest = null;
     },
   },
   extraReducers: (builder) => {
@@ -412,6 +514,64 @@ const campaignSlice = createSlice({
       .addCase(fetchCampaignMetrics.rejected, (state, action) => {
         state.metrics.loading = false;
         state.metrics.error = action.payload as string;
+      })
+
+    // A/B Tests reducers
+    builder
+      .addCase(fetchABTests.pending, (state) => {
+        state.abTests.loading = true;
+        state.abTests.error = null;
+      })
+      .addCase(fetchABTests.fulfilled, (state, action) => {
+        state.abTests.loading = false;
+        state.abTests.data = action.payload;
+      })
+      .addCase(fetchABTests.rejected, (state, action) => {
+        state.abTests.loading = false;
+        state.abTests.error = action.payload as string;
+      })
+      .addCase(fetchABTestById.pending, (state) => {
+        state.abTests.loading = true;
+        state.abTests.error = null;
+      })
+      .addCase(fetchABTestById.fulfilled, (state, action) => {
+        state.abTests.loading = false;
+        state.abTests.selectedTest = action.payload;
+      })
+      .addCase(fetchABTestById.rejected, (state, action) => {
+        state.abTests.loading = false;
+        state.abTests.error = action.payload as string;
+      })
+      .addCase(createABTest.fulfilled, (state, action) => {
+        state.abTests.data.push(action.payload);
+        state.abTests.selectedTest = action.payload;
+      })
+      .addCase(updateABTest.fulfilled, (state, action) => {
+        const index = state.abTests.data.findIndex(test => test.id === action.payload.id);
+        if (index !== -1) {
+          state.abTests.data[index] = action.payload;
+        }
+        state.abTests.selectedTest = action.payload;
+      })
+      .addCase(deleteABTest.fulfilled, (state, action) => {
+        state.abTests.data = state.abTests.data.filter(test => test.id !== action.payload);
+        if (state.abTests.selectedTest?.id === action.payload) {
+          state.abTests.selectedTest = null;
+        }
+      })
+      .addCase(declareABTestWinner.fulfilled, (state, action) => {
+        const index = state.abTests.data.findIndex(test => test.id === action.payload.id);
+        if (index !== -1) {
+          state.abTests.data[index] = action.payload;
+        }
+        state.abTests.selectedTest = action.payload;
+      })
+      .addCase(applyABTestWinner.fulfilled, (state, action) => {
+        const index = state.abTests.data.findIndex(test => test.id === action.payload.id);
+        if (index !== -1) {
+          state.abTests.data[index] = action.payload;
+        }
+        state.abTests.selectedTest = action.payload;
       });
   },
 });
@@ -433,8 +593,13 @@ export const selectSelectedAd = (state: RootState) => state.campaigns.ads.select
 export const selectCampaignMetrics = (state: RootState) => state.campaigns.metrics.data;
 export const selectMetricsLoading = (state: RootState) => state.campaigns.metrics.loading;
 
+export const selectABTests = (state: RootState) => state.campaigns.abTests.data;
+export const selectABTestsLoading = (state: RootState) => state.campaigns.abTests.loading;
+export const selectABTestsError = (state: RootState) => state.campaigns.abTests.error;
+export const selectSelectedABTest = (state: RootState) => state.campaigns.abTests.selectedTest;
+
 export const selectCampaignFilters = (state: RootState) => state.campaigns.filters;
 
-export const { setFilters, clearSelectedCampaign, clearSelectedAdSet, clearSelectedAd } = campaignSlice.actions;
+export const { setFilters, clearSelectedCampaign, clearSelectedAdSet, clearSelectedAd, clearSelectedABTest } = campaignSlice.actions;
 
 export default campaignSlice.reducer;
