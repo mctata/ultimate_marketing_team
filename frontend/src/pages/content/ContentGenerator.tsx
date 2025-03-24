@@ -20,6 +20,9 @@ import {
   Tabs,
   CircularProgress,
 } from '@mui/material';
+import APIErrorBoundary from '../../components/common/APIErrorBoundary';
+import { useToast } from '../../components/common/ToastNotification';
+import useApiError from '../../hooks/useApiError';
 import {
   ArrowBack as ArrowBackIcon,
   Help as HelpIcon,
@@ -39,7 +42,7 @@ import RichTextEditor from '../../components/content/RichTextEditor';
 import ContentABTesting from '../../components/content/ContentABTesting';
 
 // Import API services and hooks
-import { useTemplates, useContentGeneration, useABTesting } from '../../hooks/useContentGeneration';
+import { useTemplates, useContentGeneration, useABTesting, Generate } from '../../hooks/useContentGeneration';
 import contentGenerationApi, { 
   GenerationRequest, 
   GenerationResponse,
@@ -48,6 +51,7 @@ import contentGenerationApi, {
   ABTest,
   ABTestRequest
 } from '../../services/contentGenerationService';
+import analyticsService from '../../services/analyticsService';
 
 // Content quality data interface
 interface ContentQualityData {
@@ -148,6 +152,8 @@ const ContentGenerator = () => {
   const { templatesQuery } = useTemplates();
   const { generateContent, taskStatus, isGenerating, clearTaskStatus, assessContent, getQualityAssessment } = useContentGeneration();
   const { createABTest, abTestsQuery } = useABTesting();
+  const { showSuccess, showError, showInfo, ToastComponent } = useToast();
+  const { apiError, isError, handleApiError, clearApiError } = useApiError();
 
   // UI state
   const [activeStep, setActiveStep] = useState(0);
@@ -163,6 +169,7 @@ const ContentGenerator = () => {
   const [abTest, setAbTest] = useState<ABTest | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   
   const steps = ['Select Template', 'Customize Variables', 'Generate Content', 'Review & Enhance'];
   
@@ -178,9 +185,23 @@ const ContentGenerator = () => {
   useEffect(() => {
     if (taskStatus) {
       if (taskStatus.status === 'completed' && taskStatus.result) {
+        const generationEndTime = Date.now();
+        const generationDuration = generationStartTime > 0 ? generationEndTime - generationStartTime : 0;
+        
+        // Track successful generation in analytics
+        const selectedTemplateName = templatesQuery.data?.find(t => t.id === selectedTemplate)?.name || 'Unknown Template';
+        analyticsService.trackTemplateUsage(
+          selectedTemplate,
+          selectedTemplateName,
+          true,
+          generationDuration,
+          templateVariables
+        ).catch(err => console.error('Failed to track template usage:', err));
+        
         setGeneratedVariations(taskStatus.result);
         setGeneratedContent(taskStatus.result[0]?.content || '');
         setGenerationComplete(true);
+        showSuccess('Content generated successfully!', 'Your content is ready for review and enhancement.');
         
         // Request quality assessment for the generated content
         if (taskStatus.result[0]?.content) {
@@ -203,29 +224,48 @@ const ContentGenerator = () => {
                   .then(assessmentData => {
                     setQualityAssessment(assessmentData);
                     setIsLoadingAssessment(false);
+                    showInfo('Content quality assessment completed', 'Review the metrics to improve your content.');
                   })
                   .catch(err => {
-                    console.error('Error fetching quality assessment:', err);
+                    handleApiError(err, 'Error fetching quality assessment');
                     setIsLoadingAssessment(false);
                   });
               }, 2000); // Give the backend some time to complete the assessment
             }
           }).catch(err => {
-            console.error('Error requesting quality assessment:', err);
+            handleApiError(err, 'Error requesting quality assessment');
             setIsLoadingAssessment(false);
           });
         }
       } else if (taskStatus.status === 'failed') {
-        setError(taskStatus.error || 'Content generation failed');
+        const errorMessage = taskStatus.error || 'Content generation failed';
+        setError(errorMessage);
+        showError('Generation failed', errorMessage);
+        
+        // Track failed generation in analytics
+        const selectedTemplateName = templatesQuery.data?.find(t => t.id === selectedTemplate)?.name || 'Unknown Template';
+        analyticsService.trackTemplateError(
+          selectedTemplate,
+          'generation_failed',
+          errorMessage
+        ).catch(err => console.error('Failed to track template error:', err));
       }
     }
-  }, [taskStatus, assessContent, getQualityAssessment, selectedTemplate, templatesQuery.data]);
+  }, [taskStatus, assessContent, getQualityAssessment, selectedTemplate, templatesQuery.data, 
+      showSuccess, showError, showInfo, handleApiError, templateVariables, generationStartTime]);
 
   const startContentGeneration = useCallback(() => {
     // Clear any previous errors
     setError(null);
     setGenerationComplete(false);
     clearTaskStatus();
+    clearApiError();
+    
+    // Record start time for analytics
+    setGenerationStartTime(Date.now());
+    
+    // Show loading toast
+    showInfo('Generating content...', 'This may take a moment. Please wait.');
     
     // Prepare the request
     const request: GenerationRequest = {
@@ -241,14 +281,34 @@ const ContentGenerator = () => {
         if (response.task_id) {
           setGenerationTaskId(response.task_id);
         } else {
-          setError('No task ID returned from generation request');
+          const errorMsg = 'No task ID returned from generation request';
+          setError(errorMsg);
+          showError('Generation failed', errorMsg);
+          
+          // Track failed generation in analytics
+          const selectedTemplateName = templatesQuery.data?.find(t => t.id === selectedTemplate)?.name || 'Unknown Template';
+          analyticsService.trackTemplateError(
+            selectedTemplate,
+            'generation_failed', 
+            errorMsg
+          ).catch(err => console.error('Failed to track template error:', err));
         }
       })
       .catch(err => {
-        console.error('Error starting content generation:', err);
-        setError('Failed to start content generation. Please try again.');
+        const errorMsg = 'Failed to start content generation. Please try again.';
+        handleApiError(err, errorMsg);
+        setError(errorMsg);
+        
+        // Track failed generation in analytics
+        const selectedTemplateName = templatesQuery.data?.find(t => t.id === selectedTemplate)?.name || 'Unknown Template';
+        analyticsService.trackTemplateError(
+          selectedTemplate,
+          'api_error',
+          err.message || errorMsg
+        ).catch(err => console.error('Failed to track template error:', err));
       });
-  }, [selectedTemplate, templateVariables, generateContent, clearTaskStatus, templatesQuery.data]);
+  }, [selectedTemplate, templateVariables, generateContent, clearTaskStatus, templatesQuery.data, 
+      showInfo, showError, handleApiError, clearApiError]);
 
   const handleNext = () => {
     if (activeStep === 2) {
@@ -259,6 +319,8 @@ const ContentGenerator = () => {
     if (activeStep === 3) {
       // Create an A/B test with the generated content
       if (generatedVariations.length > 0) {
+        showInfo('Creating A/B test...', 'Setting up your test with the generated content variations.');
+        
         const abTestRequest: ABTestRequest = {
           title: `A/B Test for ${templateVariables.title || 'Content'}`,
           content_variations: generatedVariations,
@@ -269,15 +331,27 @@ const ContentGenerator = () => {
         createABTest(abTestRequest)
           .then(response => {
             setAbTest(response);
+            showSuccess('A/B test created successfully', 'Your test is ready to run.');
+            
+            // Track in analytics
+            analyticsService.trackEvent({
+              event_name: 'ab_test_created',
+              event_data: {
+                test_id: response.id,
+                test_title: response.title,
+                variation_count: response.content_variations.length,
+                template_id: selectedTemplate
+              }
+            }).catch(err => console.error('Failed to track AB test creation:', err));
           })
           .catch(err => {
-            console.error('Error creating A/B test:', err);
-            setError('Failed to create A/B test. Using mock data instead.');
+            handleApiError(err, 'Failed to create A/B test. Using mock data instead.');
             setAbTest(mockABTest);
           });
       } else {
         // Fallback to mock data if no real variations available
         setAbTest(mockABTest);
+        showInfo('Using sample A/B test data', 'No content variations were available to create a real test.');
       }
     }
     
@@ -500,40 +574,44 @@ const ContentGenerator = () => {
   };
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ my: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-          <IconButton
-            onClick={() => {
-              // Navigate back to content list in a real app
-            }}
-            sx={{ mr: 2 }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          
-          <Typography variant="h4" component="h1">
-            AI Content Generator
-          </Typography>
-          
-          <Tooltip title="Help and documentation">
-            <IconButton sx={{ ml: 'auto' }}>
-              <HelpIcon />
+    <APIErrorBoundary onError={(error) => handleApiError(error)}>
+      <Container maxWidth="xl">
+        {/* Toast component for notifications */}
+        <ToastComponent />
+        
+        <Box sx={{ my: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+            <IconButton
+              onClick={() => {
+                // Navigate back to content list in a real app
+              }}
+              sx={{ mr: 2 }}
+            >
+              <ArrowBackIcon />
             </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Generator settings">
-            <IconButton>
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Generation history">
-            <IconButton>
-              <HistoryIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
+            
+            <Typography variant="h4" component="h1">
+              AI Content Generator
+            </Typography>
+            
+            <Tooltip title="Help and documentation">
+              <IconButton sx={{ ml: 'auto' }}>
+                <HelpIcon />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Generator settings">
+              <IconButton>
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Generation history">
+              <IconButton>
+                <HistoryIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         
         <Paper sx={{ p: 3, mb: 4 }}>
           <Stepper activeStep={activeStep} alternativeLabel>
@@ -575,7 +653,15 @@ const ContentGenerator = () => {
                 sx={{ mr: 1 }}
                 onClick={() => {
                   // Save the generated content
-                  alert('Content saved!');
+                  showSuccess('Content saved', 'Your content draft has been saved successfully.');
+                  analyticsService.trackEvent({
+                    event_name: 'content_saved',
+                    event_data: {
+                      template_id: selectedTemplate,
+                      content_length: generatedContent.length,
+                      has_quality_assessment: !!qualityAssessment
+                    }
+                  }).catch(err => console.error('Failed to track content save:', err));
                 }}
               >
                 Save Draft
@@ -647,6 +733,7 @@ const ContentGenerator = () => {
         )}
       </Box>
     </Container>
+    </APIErrorBoundary>
   );
 };
 
