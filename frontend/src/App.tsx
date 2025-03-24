@@ -26,6 +26,7 @@ const ContentCalendar = lazyPage(() => import('./pages/content/ContentCalendar')
 const ContentDetail = lazyPage(() => import('./pages/content/ContentDetail'));
 const Campaigns = lazyPage(() => import('./pages/campaigns/Campaigns'));
 const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail'));
+const ABTestingDashboard = lazyPage(() => import('./pages/campaigns/ABTestingDashboard'));
 // Import Analytics component directly to avoid "default cannot be resolved by star export" error
 import Analytics from './pages/analytics/Analytics';
 const AnalyticsPage = () => <Analytics />;
@@ -251,6 +252,7 @@ function App() {
           
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="campaigns/:id" element={<CampaignDetail />} />
+          <Route path="campaigns/:id/ab-testing" element={<ABTestingDashboard />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<Settings />} />
         </Route>
