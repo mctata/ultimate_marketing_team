@@ -184,4 +184,11 @@ const contentGenerationApi = {
     api.post<ABTest>(`/content-generation/ab-tests/${testId}/stop`, {}),
 };
 
+// Direct export for Generate function
+export const Generate = async (
+  request: GenerationRequest
+): Promise<GenerationResponse> => {
+  return contentGenerationApi.generateContent(request);
+};
+
 export default contentGenerationApi;

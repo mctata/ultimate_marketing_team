@@ -42,14 +42,15 @@ import RichTextEditor from '../../components/content/RichTextEditor';
 import ContentABTesting from '../../components/content/ContentABTesting';
 
 // Import API services and hooks
-import { useTemplates, useContentGeneration, useABTesting, Generate } from '../../hooks/useContentGeneration';
+import { useTemplates, useContentGeneration, useABTesting } from '../../hooks/useContentGeneration';
 import contentGenerationApi, { 
   GenerationRequest, 
   GenerationResponse,
   ContentVariation,
   QualityAssessment,
   ABTest,
-  ABTestRequest
+  ABTestRequest,
+  Generate
 } from '../../services/contentGenerationService';
 import analyticsService from '../../services/analyticsService';
 

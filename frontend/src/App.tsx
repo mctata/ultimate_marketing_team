@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { ErrorBoundary } from 'react-error-boundary';
+import { QueryClient, QueryClientProvider } from 'react-query';
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/common/LoadingScreen';
 import websocketService from './services/websocket';
@@ -66,6 +67,17 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   
   return <>{children}</>;
 };
+
+// Create a new QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -187,18 +199,19 @@ function App() {
   
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={
-          <PublicOnlyRoute>
-            <Login />
-          </PublicOnlyRoute>
-        } />
-        <Route path="/register" element={
-          <PublicOnlyRoute>
-            <Register />
-          </PublicOnlyRoute>
-        } />
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={
+            <PublicOnlyRoute>
+              <Login />
+            </PublicOnlyRoute>
+          } />
+          <Route path="/register" element={
+            <PublicOnlyRoute>
+              <Register />
+            </PublicOnlyRoute>
+          } />
         
         {/* OAuth callback routes */}
         <Route path="/auth/callback/google" element={<OAuthCallback provider="google" />} />
@@ -245,6 +258,7 @@ function App() {
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }
