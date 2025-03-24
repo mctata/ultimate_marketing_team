@@ -20,6 +20,7 @@ const Brands = lazyPage(() => import('./pages/brands/Brands'));
 const BrandDetail = lazyPage(() => import('./pages/brands/BrandDetail'));
 const BrandNew = lazyPage(() => import('./pages/brands/BrandNew'));
 const Content = lazyPage(() => import('./pages/content/Content'));
+const ContentLibrary = lazyPage(() => import('./pages/content/ContentLibrary'));
 const ContentCalendar = lazyPage(() => import('./pages/content/ContentCalendar'));
 const ContentDetail = lazyPage(() => import('./pages/content/ContentDetail'));
 const Campaigns = lazyPage(() => import('./pages/campaigns/Campaigns'));
@@ -215,6 +216,7 @@ function App() {
           <Route path="brands/new" element={<BrandNew />} />
           <Route path="brands/:id" element={<BrandDetail />} />
           <Route path="content" element={<Content />} />
+          <Route path="content/library" element={<ContentLibrary />} />
           <Route path="content/calendar" element={<ContentCalendar />} />
           <Route path="content/:id" element={<ContentDetail />} />
           <Route path="campaigns" element={<Campaigns />} />

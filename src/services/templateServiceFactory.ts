@@ -58,9 +58,6 @@ export const resetApiAvailabilityCheck = () => {
   apiCheckPromise = null;
 };
 
-// Export these functions for monitoring tools
-export { checkTemplateApiAvailability };
-
 /**
  * Get the appropriate template service based on API availability
  * @param forceMock Force using mock data even if API is available

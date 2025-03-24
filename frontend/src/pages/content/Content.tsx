@@ -313,9 +313,19 @@ const Content = () => {
         </Grid>
       </Paper>
       
-      <Typography variant="h5" component="h2" fontWeight="medium" sx={{ mb: 2 }}>
-        Content Library
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" component="h2" fontWeight="medium">
+          Content Library
+        </Typography>
+        
+        <Button 
+          variant="outlined" 
+          endIcon={<ArrowForwardIcon />}
+          onClick={() => navigate('/content/library')}
+        >
+          View Full Library
+        </Button>
+      </Box>
       
       <Grid container spacing={3}>
         {contentItems.map((item) => (

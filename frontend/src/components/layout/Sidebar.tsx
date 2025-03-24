@@ -47,7 +47,8 @@ const menuItems = [
     icon: <ArticleIcon />, 
     path: '/content',
     subItems: [
-      { text: 'Content Library', path: '/content' },
+      { text: 'Overview', path: '/content' },
+      { text: 'Content Library', path: '/content/library' },
       { text: 'Content Calendar', path: '/content/calendar' },
       { text: 'Templates Library', path: '/templates' },
       { text: 'Template Diagnostics', path: '/templates/diagnostics' },
