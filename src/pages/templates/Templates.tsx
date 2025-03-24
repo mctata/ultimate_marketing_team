@@ -66,6 +66,7 @@ import {
 import type { Template, TemplateCategory, TemplateIndustry } from '../../services/templateService';
 import templateService from '../../services/templateServiceFactory';
 import useAuth from '../../hooks/useAuth';
+import { Generate } from '../../hooks/useContentGeneration';
 
 // Tab panel component
 interface TabPanelProps {
