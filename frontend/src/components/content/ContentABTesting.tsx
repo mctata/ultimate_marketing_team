@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -49,8 +49,6 @@ import {
   QuestionMark as QuestionMarkIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
-
-import { useState, useEffect } from 'react';
 import { ABTest as ApiABTest, ContentVariation } from '../../services/contentGenerationService';
 import { useABTesting } from '../../hooks/useContentGeneration';
 
