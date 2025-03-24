@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import metricsService from '../../services/metricsService';
+import { RootState } from '../index';
 
 interface AnalyticsMetric {
   id: string;
@@ -86,6 +87,42 @@ interface AgentUsage {
   avg_tokens_per_request: number;
 }
 
+// Template Analytics interfaces
+interface TemplateUsageData {
+  date: string;
+  count: number;
+}
+
+interface TemplatePerformance {
+  templateId: string;
+  templateName: string;
+  usageCount: number;
+  conversionRate: number;
+  engagement: number;
+  completionTime: number;
+}
+
+interface TemplateAnalytics {
+  totalUsage: number;
+  usageGrowth: number;
+  avgConversionRate: number;
+  conversionGrowth: number;
+  avgEngagementScore: number;
+  engagementGrowth: number;
+  avgCompletionTime: number;
+  completionTimeGrowth: number;
+  usageOverTime: TemplateUsageData[];
+  usageByContentType: {name: string, value: number}[];
+  usageByPlatform: {name: string, value: number}[];
+}
+
+interface IndustryPerformance {
+  industry: string;
+  usageCount: number;
+  conversionRate: number;
+  engagementScore: number;
+}
+
 interface AnalyticsState {
   dashboardMetrics: AnalyticsMetric[];
   charts: AnalyticsChart[];
@@ -98,6 +135,13 @@ interface AnalyticsState {
   };
   isLoading: boolean;
   error: string | null;
+  
+  // Template analytics
+  templateAnalytics: TemplateAnalytics | null;
+  industryPerformance: IndustryPerformance[];
+  topPerformingTemplates: TemplatePerformance[];
+  templateAnalyticsLoading: boolean;
+  templateAnalyticsError: string | null;
   
   // API Metrics
   aiMetrics: {
@@ -163,6 +207,72 @@ export const fetchAgentUsage = createAsyncThunk(
   }
 );
 
+// Template analytics thunks
+export const fetchTemplateAnalytics = createAsyncThunk(
+  'analytics/fetchTemplateAnalytics',
+  async (timeRange: string) => {
+    // Mock implementation - would connect to API in real implementation
+    return {
+      totalUsage: 1250,
+      usageGrowth: 12.5,
+      avgConversionRate: 8.2,
+      conversionGrowth: 3.4,
+      avgEngagementScore: 7.8,
+      engagementGrowth: 5.2,
+      avgCompletionTime: 4.5,
+      completionTimeGrowth: -1.2,
+      usageOverTime: [
+        { date: '2023-01-01', count: 45 },
+        { date: '2023-01-02', count: 52 },
+        { date: '2023-01-03', count: 48 },
+        { date: '2023-01-04', count: 67 },
+        { date: '2023-01-05', count: 58 },
+      ],
+      usageByContentType: [
+        { name: 'Blog', value: 450 },
+        { name: 'Social', value: 380 },
+        { name: 'Email', value: 250 },
+        { name: 'Ad', value: 170 },
+      ],
+      usageByPlatform: [
+        { name: 'Facebook', value: 280 },
+        { name: 'Instagram', value: 240 },
+        { name: 'Twitter', value: 180 },
+        { name: 'LinkedIn', value: 220 },
+        { name: 'Website', value: 330 },
+      ],
+    };
+  }
+);
+
+export const fetchIndustryPerformance = createAsyncThunk(
+  'analytics/fetchIndustryPerformance',
+  async (timeRange: string) => {
+    // Mock implementation - would connect to API in real implementation
+    return [
+      { industry: 'Technology', usageCount: 450, conversionRate: 8.7, engagementScore: 8.1 },
+      { industry: 'Finance', usageCount: 380, conversionRate: 7.2, engagementScore: 6.9 },
+      { industry: 'Healthcare', usageCount: 320, conversionRate: 8.1, engagementScore: 7.8 },
+      { industry: 'Education', usageCount: 280, conversionRate: 7.9, engagementScore: 8.3 },
+      { industry: 'Retail', usageCount: 340, conversionRate: 7.6, engagementScore: 7.5 },
+    ];
+  }
+);
+
+export const fetchTopPerformingTemplates = createAsyncThunk(
+  'analytics/fetchTopPerformingTemplates',
+  async (timeRange: string) => {
+    // Mock implementation - would connect to API in real implementation
+    return [
+      { templateId: '1', templateName: 'Product Launch Email', usageCount: 215, conversionRate: 9.2, engagement: 8.7, completionTime: 3.5 },
+      { templateId: '2', templateName: 'Social Media Contest', usageCount: 198, conversionRate: 8.9, engagement: 9.1, completionTime: 4.2 },
+      { templateId: '3', templateName: 'Blog Post Template', usageCount: 187, conversionRate: 8.5, engagement: 8.3, completionTime: 5.1 },
+      { templateId: '4', templateName: 'Weekly Newsletter', usageCount: 165, conversionRate: 7.8, engagement: 7.9, completionTime: 3.8 },
+      { templateId: '5', templateName: 'Sales Promotion', usageCount: 143, conversionRate: 8.1, engagement: 7.7, completionTime: 4.0 },
+    ];
+  }
+);
+
 const initialState: AnalyticsState = {
   dashboardMetrics: [],
   charts: [],
@@ -175,6 +285,13 @@ const initialState: AnalyticsState = {
   },
   isLoading: false,
   error: null,
+  
+  // Template analytics initial state
+  templateAnalytics: null,
+  industryPerformance: [],
+  topPerformingTemplates: [],
+  templateAnalyticsLoading: false,
+  templateAnalyticsError: null,
   
   // API Metrics initial state
   aiMetrics: {
@@ -356,6 +473,48 @@ const analyticsSlice = createSlice({
         state.aiMetrics.isLoading = false;
         state.aiMetrics.error = action.error.message || 'Failed to fetch agent usage';
       });
+      
+    // Template analytics reducers
+    builder
+      // Template analytics
+      .addCase(fetchTemplateAnalytics.pending, (state) => {
+        state.templateAnalyticsLoading = true;
+        state.templateAnalyticsError = null;
+      })
+      .addCase(fetchTemplateAnalytics.fulfilled, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.templateAnalytics = action.payload;
+      })
+      .addCase(fetchTemplateAnalytics.rejected, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.templateAnalyticsError = action.error.message || 'Failed to fetch template analytics';
+      })
+      
+      // Industry performance
+      .addCase(fetchIndustryPerformance.pending, (state) => {
+        state.templateAnalyticsLoading = true;
+      })
+      .addCase(fetchIndustryPerformance.fulfilled, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.industryPerformance = action.payload;
+      })
+      .addCase(fetchIndustryPerformance.rejected, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.templateAnalyticsError = action.error.message || 'Failed to fetch industry performance';
+      })
+      
+      // Top performing templates
+      .addCase(fetchTopPerformingTemplates.pending, (state) => {
+        state.templateAnalyticsLoading = true;
+      })
+      .addCase(fetchTopPerformingTemplates.fulfilled, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.topPerformingTemplates = action.payload;
+      })
+      .addCase(fetchTopPerformingTemplates.rejected, (state, action) => {
+        state.templateAnalyticsLoading = false;
+        state.templateAnalyticsError = action.error.message || 'Failed to fetch top performing templates';
+      });
   },
 });
 
@@ -369,5 +528,12 @@ export const {
   setDateRange,
   clearAnalytics,
 } = analyticsSlice.actions;
+
+// Selectors for template analytics
+export const selectTemplateAnalytics = (state: RootState) => state.analytics.templateAnalytics;
+export const selectIndustryPerformance = (state: RootState) => state.analytics.industryPerformance;
+export const selectTopPerformingTemplates = (state: RootState) => state.analytics.topPerformingTemplates;
+export const selectTemplateAnalyticsLoading = (state: RootState) => state.analytics.templateAnalyticsLoading;
+export const selectTemplateAnalyticsError = (state: RootState) => state.analytics.templateAnalyticsError;
 
 export default analyticsSlice.reducer;
