@@ -188,9 +188,8 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
   
-  // Generate mock data when there are no items
+  // Generate stable, deterministic mock data when there are no items
   const generateMockData = () => {
-    console.log("Generating mock data for calendar items");
     const result: CalendarItem[] = [];
     
     // Get current month days
@@ -204,22 +203,41 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     const platforms = ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok', 'email', 'website'];
     const statuses = ['draft', 'scheduled', 'published'];
     
+    // Create deterministic titles for mock content
+    const titles = [
+      "Monthly Product Update",
+      "Customer Success Story",
+      "Industry Insights",
+      "Feature Highlight",
+      "Product Tips & Tricks",
+      "Company News",
+      "Upcoming Webinar",
+      "Team Spotlight", 
+      "Product Tutorial",
+      "Product Launch"
+    ];
+    
     // Create some mock items (at least one per day)
     daysInMonth.forEach((day, index) => {
-      // Skip some days randomly (but consistently)
+      // Skip some days consistently (not randomly)
       if (index % 3 === 0) return;
       
       // Number of items per day (1-3)
       const itemsPerDay = (index % 3) + 1;
       
       for (let i = 0; i < itemsPerDay; i++) {
+        // Use deterministic selections based on day and index
         const contentType = contentTypes[index % contentTypes.length];
         const platform = platforms[(index + i) % platforms.length];
         const status = statuses[(index + i) % statuses.length];
+        const title = titles[(index + i) % titles.length];
+        
+        // Create a stable ID using date and index information
+        const stableId = 1000 + (index * 10) + i;
         
         result.push({
-          id: 1000 + (index * 10) + i,
-          title: `Mock ${contentType} for ${platform}`,
+          id: stableId,
+          title: `${title} - ${contentType}`,
           scheduled_date: format(day, "yyyy-MM-dd'T'HH:mm:ss'Z'"),
           status,
           content_type: contentType,
@@ -273,15 +291,28 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     });
   };
   
-  // Check if a day has insights
+  // Check if a day has insights with proper error handling
   const getDayInsights = (day: Date) => {
+    // Handle case when insights might be undefined or null
+    if (!insights || insights.length === 0) {
+      return [];
+    }
+    
     return insights.filter(insight => {
-      if (!insight.start_date) return false;
+      // Skip invalid insights without start_date
+      if (!insight || !insight.start_date) return false;
       
-      const startDate = parseISO(insight.start_date);
-      const endDate = insight.end_date ? parseISO(insight.end_date) : startDate;
-      
-      return isWithinInterval(day, { start: startDate, end: endDate });
+      try {
+        const startDate = parseISO(insight.start_date);
+        // Fallback to start date if end_date is missing
+        const endDate = insight.end_date ? parseISO(insight.end_date) : startDate;
+        
+        return isWithinInterval(day, { start: startDate, end: endDate });
+      } catch (error) {
+        // If there's an error parsing dates, skip this insight
+        console.error('Error processing insight date:', error);
+        return false;
+      }
     });
   };
   

@@ -23,9 +23,9 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import audienceService from '../../services/audienceService';
 import { AudienceTarget, Demographic, BehavioralTarget, InterestTarget, LifeEventTarget } from '../../types/audience';
-import { AudienceSegment } from './index';
-import { LookalikeAudience } from './index';
-import { AudienceOverlapAnalysis } from './index';
+import AudienceSegment from './AudienceSegment';
+import LookalikeAudience from './LookalikeAudience';
+import AudienceOverlapAnalysis from './AudienceOverlapAnalysis';
 
 interface TabPanelProps {
   children?: React.ReactNode;

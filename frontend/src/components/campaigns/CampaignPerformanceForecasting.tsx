@@ -219,23 +219,27 @@ const CampaignPerformanceForecasting = () => {
     }))
   ];
   
-  // Calculate the trend from the predictions
+  // Calculate the trend from the predictions using a stable approach
   const calculateTrend = () => {
     if (chartData.predicted.length === 0) return 'stable';
     
+    // Use a consistent approach to determine the trend
     const firstPrediction = chartData.predicted[0].value;
     const lastPrediction = chartData.predicted[chartData.predicted.length - 1].value;
     
-    const percentChange = ((lastPrediction - firstPrediction) / firstPrediction) * 100;
+    // Round to 2 decimal places to prevent tiny fluctuations from changing the trend
+    const percentChange = Math.round(((lastPrediction - firstPrediction) / firstPrediction) * 100 * 100) / 100;
     
     if (percentChange > 5) return 'up';
     if (percentChange < -5) return 'down';
     return 'stable';
   };
   
-  const trend = calculateTrend();
+  // Memoize the trend calculation to prevent flickering between renders
+  const trendSeed = `${selectedMetric}-${forecastDays}`;
+  const trend = React.useMemo(() => calculateTrend(), [trendSeed, chartData.predicted]);
   
-  // Calculate performance stats
+  // Calculate performance stats with stability in mind
   const calculateStats = () => {
     if (chartData.historical.length === 0 || chartData.predicted.length === 0) {
       return {
@@ -253,7 +257,7 @@ const CampaignPerformanceForecasting = () => {
     // Calculate the average of predicted data
     const predictedAverage = chartData.predicted.reduce((sum, item) => sum + item.value, 0) / chartData.predicted.length;
     
-    // Calculate percent change
+    // Calculate percent change and round to 2 decimal places for stability
     const percentChange = ((predictedAverage - currentAverage) / currentAverage) * 100;
     
     // Find the max predicted value
@@ -267,7 +271,9 @@ const CampaignPerformanceForecasting = () => {
     };
   };
   
-  const stats = calculateStats();
+  // Memoize stats calculation to prevent recalculation on each render
+  const statsSeed = `${selectedMetric}-${forecastDays}-stats`;
+  const stats = React.useMemo(() => calculateStats(), [statsSeed, chartData.historical, chartData.predicted]);
   
   // Format value based on the selected metric
   const formatValue = (value: number) => {

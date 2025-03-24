@@ -78,21 +78,27 @@ const contentCalendarService = {
     }
   },
   
-  // Implementation for contentSlice.ts
+  // Implementation for contentSlice.ts with correct URL parameter handling
   getCalendarEntries: async (
     dateRange: CalendarEntry
   ): Promise<CalendarEntryResponse> => {
-    let url = `${API_BASE_URL}/content-calendar/?`;
+    let url = `${API_BASE_URL}/content-calendar/`;
+    let params = new URLSearchParams();
     
-    if (dateRange.startDate) url += `start_date=${dateRange.startDate}`;
-    if (dateRange.startDate && dateRange.endDate) url += `&`;
-    if (dateRange.endDate) url += `end_date=${dateRange.endDate}`;
+    if (dateRange.startDate) params.append('start_date', dateRange.startDate);
+    if (dateRange.endDate) params.append('end_date', dateRange.endDate);
+    
+    // Add the query string to the URL
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
     
     try {
       const response = await axios.get<any[]>(url);
       return { data: response.data };
     } catch (error) {
       console.error('Error fetching calendar entries:', error);
+      // Return empty data array on error to prevent UI crashes
       return { data: [] };
     }
   },
@@ -167,14 +173,23 @@ const contentCalendarService = {
     }
   },
   
-  // Implementation for contentSlice.ts
+  // Implementation for contentSlice.ts with proper URL parameter handling
   // Get calendar insights - works with both project_id and brand_id for backwards compatibility
   getCalendarInsights: async (projectId: string): Promise<{data: any[]}> => {
     try {
-      // Use project_id instead of brand_id to match API expectations
+      const url = `${API_BASE_URL}/content-calendar/insights`;
+      const params = new URLSearchParams();
+      
+      // Add project_id parameter
+      if (projectId) {
+        params.append('project_id', projectId);
+      }
+      
+      // Make the API request with properly formatted URL
       const response = await axios.get<any[]>(
-        `${API_BASE_URL}/content-calendar/insights?project_id=${projectId}`
+        `${url}?${params.toString()}`
       );
+      
       return { data: response.data || [] };
     } catch (error) {
       console.error('Error in getCalendarInsights:', error);
