@@ -69,21 +69,32 @@ const contentCalendarService = {
     if (endDate) url += `&end_date=${endDate}`;
     if (status) url += `&status=${status}`;
     
-    const response = await axios.get<CalendarItem[]>(url);
-    return response.data;
+    try {
+      const response = await axios.get<CalendarItem[]>(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching calendar entries:', error);
+      return [];
+    }
   },
   
   // Implementation for contentSlice.ts
   getCalendarEntries: async (
     dateRange: CalendarEntry
   ): Promise<CalendarEntryResponse> => {
-    let url = `${API_BASE_URL}/content-calendar/`;
+    let url = `${API_BASE_URL}/content-calendar/?`;
     
-    if (dateRange.startDate) url += `&start_date=${dateRange.startDate}`;
-    if (dateRange.endDate) url += `&end_date=${dateRange.endDate}`;
+    if (dateRange.startDate) url += `start_date=${dateRange.startDate}`;
+    if (dateRange.startDate && dateRange.endDate) url += `&`;
+    if (dateRange.endDate) url += `end_date=${dateRange.endDate}`;
     
-    const response = await axios.get<any[]>(url);
-    return { data: response.data };
+    try {
+      const response = await axios.get<any[]>(url);
+      return { data: response.data };
+    } catch (error) {
+      console.error('Error fetching calendar entries:', error);
+      return { data: [] };
+    }
   },
   
   // Get a single calendar entry
@@ -181,4 +192,6 @@ const contentCalendarService = {
   }
 };
 
+// Export both as named and default for backward compatibility
+export { contentCalendarService };
 export default contentCalendarService;

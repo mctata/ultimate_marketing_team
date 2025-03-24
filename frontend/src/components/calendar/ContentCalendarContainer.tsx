@@ -37,6 +37,7 @@ import CalendarWebSocketService, {
   UserJoinedProjectMessage,
   UserLeftProjectMessage
 } from '../../services/calendarWebSocketService';
+import contentCalendarService from '../../services/contentCalendarService';
 
 import CalendarMonthView from './CalendarMonthView';
 import CalendarWeekView from './CalendarWeekView';
@@ -564,7 +565,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           });
           
           // Bulk API call (non-optimistic for simplicity)
-          await contentCalendarService.default.bulkCreateCalendarEntries({
+          await contentCalendarService.bulkCreateCalendarEntries({
             items: bulkItems
           });
           
@@ -641,7 +642,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           
           // Bulk API call (non-optimistic for bulk items)
           if (recurringItems.length > 0) {
-            await contentCalendarService.default.bulkCreateCalendarEntries({
+            await contentCalendarService.bulkCreateCalendarEntries({
               items: recurringItems
             });
             

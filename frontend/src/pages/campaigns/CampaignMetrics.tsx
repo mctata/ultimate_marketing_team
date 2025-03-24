@@ -108,7 +108,7 @@ const CampaignMetrics = () => {
     setActiveTab(newValue);
   };
   
-  // Mock data for demo purposes
+  // Mock data with consistent values for demo purposes
   const generateMockMetrics = () => {
     const result = [];
     const days = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : 90;
@@ -117,17 +117,29 @@ const CampaignMetrics = () => {
     const baseClicks = 25;
     const baseConversions = 2;
     
+    // Create a deterministic pseudo-random function based on the current day
+    const deterministicRandom = (seed, index) => {
+      const hash = (seed + index.toString()).split('').reduce((acc, char) => {
+        return ((acc << 5) - acc) + char.charCodeAt(0);
+      }, 0);
+      return (Math.abs(hash) % 100) / 100 * 0.6 + 0.7; // Range between 0.7 and 1.3
+    };
+    
+    // Use a stable seed that won't change during renders
+    const seed = timeRange + "-seed";
+    
     for (let i = 0; i < days; i++) {
       const date = format(subDays(new Date(), days - i - 1), 'yyyy-MM-dd');
       
-      // Add some randomness to the data
+      // Use deterministic variance for stability
       const dayVariance = Math.sin(i * 0.5) * 0.3 + 1; // Creates a wave pattern
       const weekdayBoost = [1, 2, 3, 4, 5].includes(parseISO(date).getDay()) ? 1.2 : 0.8; // Weekdays get a boost
+      const stableRandom = deterministicRandom(seed, i);
       
-      const views = Math.floor(baseViews * dayVariance * weekdayBoost);
-      const clicks = Math.floor(baseClicks * dayVariance * weekdayBoost);
-      const conversions = Math.floor(baseConversions * dayVariance * weekdayBoost);
-      const cost = Math.floor((baseViews / 1000) * 2 * dayVariance); // $2 CPM
+      const views = Math.floor(baseViews * dayVariance * weekdayBoost * stableRandom);
+      const clicks = Math.floor(baseClicks * dayVariance * weekdayBoost * stableRandom);
+      const conversions = Math.floor(baseConversions * dayVariance * weekdayBoost * stableRandom);
+      const cost = Math.floor((views / 1000) * 2 * dayVariance); // $2 CPM
       const revenue = conversions * 25 * dayVariance; // $25 per conversion
       
       result.push({

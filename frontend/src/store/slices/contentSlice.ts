@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../index';
-import contentCalendarService from '../../services/contentCalendarService';
+import contentCalendarService, { contentCalendarService as calendarService } from '../../services/contentCalendarService';
 
 interface ContentItem {
   id: string;
@@ -114,7 +114,7 @@ export const fetchCalendarItems = createAsyncThunk(
         return null; // Skip API call, use cached data
       }
       
-      const response = await contentCalendarService.default.getCalendarEntries({
+      const response = await calendarService.getCalendarEntries({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate
       });
@@ -134,7 +134,7 @@ export const fetchCalendarInsights = createAsyncThunk(
   async (projectId: string, { rejectWithValue }) => {
     try {
       // Change brandId parameter to project_id to match API expectations
-      const response = await contentCalendarService.default.getCalendarInsights(projectId);
+      const response = await calendarService.getCalendarInsights(projectId);
       return response.data;
     } catch (error) {
       console.error('Error fetching calendar insights:', error);
@@ -148,7 +148,7 @@ export const fetchBestTimeRecommendations = createAsyncThunk(
   async (projectId: string, { rejectWithValue }) => {
     try {
       // Change brandId parameter to project_id to match API expectations
-      const response = await contentCalendarService.default.getBestTimeRecommendations(projectId);
+      const response = await calendarService.getBestTimeRecommendations(projectId);
       return response.data;
     } catch (error) {
       console.error('Error fetching best time recommendations:', error);
@@ -161,7 +161,7 @@ export const createCalendarItem = createAsyncThunk(
   'content/createCalendarItem',
   async (item: Omit<CalendarItem, 'id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
     try {
-      const response = await contentCalendarService.default.createCalendarEntry(item);
+      const response = await calendarService.createCalendarEntry(item);
       return response.data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to create calendar item');
@@ -173,7 +173,7 @@ export const updateCalendarItem = createAsyncThunk(
   'content/updateCalendarItem',
   async (item: CalendarItem, { rejectWithValue }) => {
     try {
-      const response = await contentCalendarService.default.updateCalendarEntry(item.id, item);
+      const response = await calendarService.updateCalendarEntry(item.id, item);
       return response.data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to update calendar item');
@@ -185,7 +185,7 @@ export const deleteCalendarItem = createAsyncThunk(
   'content/deleteCalendarItem',
   async (itemId: string, { rejectWithValue }) => {
     try {
-      await contentCalendarService.default.deleteCalendarEntry(itemId);
+      await calendarService.deleteCalendarEntry(itemId);
       return itemId;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete calendar item');
@@ -197,7 +197,7 @@ export const publishCalendarItem = createAsyncThunk(
   'content/publishCalendarItem',
   async (itemId: string, { rejectWithValue }) => {
     try {
-      const response = await contentCalendarService.default.publishCalendarEntry(itemId);
+      const response = await calendarService.publishCalendarEntry(itemId);
       return response.data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to publish calendar item');

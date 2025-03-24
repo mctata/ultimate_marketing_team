@@ -108,8 +108,18 @@ const CampaignPerformanceForecasting = () => {
     setForecastDays(event.target.value as number);
   };
   
-  // Generate mock data for the demo if API data is not available
+  // Generate consistent mock data for the demo if API data is not available
   const getMockData = () => {
+    // Use a predictable seed based on date and selected metric to ensure consistent values
+    const seed = selectedMetric + forecastDays.toString();
+    const pseudoRandom = (index) => {
+      // Simple deterministic function that looks random but returns the same value for same inputs
+      const hash = (seed + index.toString()).split('').reduce((acc, char) => {
+        return ((acc << 5) - acc) + char.charCodeAt(0);
+      }, 0);
+      return (Math.abs(hash % 1000) / 1000) * 0.2 + 0.9; // Range between 0.9 and 1.1
+    };
+    
     const result = {
       historical: [],
       predicted: []
@@ -138,8 +148,8 @@ const CampaignPerformanceForecasting = () => {
         roi: 1.5 * weekendMultiplier * trendGrowth
       };
       
-      // Add some randomness for realism
-      const randomFactor = 0.9 + Math.random() * 0.2; // ±10% randomness
+      // Use deterministic randomness for stability
+      const randomFactor = pseudoRandom(i);
       
       result.historical.push({
         date,
@@ -156,7 +166,6 @@ const CampaignPerformanceForecasting = () => {
       const weekendMultiplier = [0, 6].includes(dayOfWeek) ? 0.8 : 1;
       const trendGrowth = 1 + ((30 + i) / 100); // Continue the trend
       
-      // Base values with some added growth
       const lastHistoricalPoint = result.historical[result.historical.length - 1];
       const growthFactor = 1.02; // 2% growth in prediction
       
@@ -170,8 +179,8 @@ const CampaignPerformanceForecasting = () => {
         roi: 1.5 * weekendMultiplier * trendGrowth * 1.03
       };
       
-      // Add some randomness and increasing uncertainty
-      const randomFactor = 0.9 + Math.random() * 0.2; // ±10% randomness
+      // Use deterministic randomness for stability
+      const randomFactor = pseudoRandom(30 + i);
       const confidenceVariance = 0.1 + (i / forecastDays) * 0.2; // Uncertainty grows with time
       
       const predictedValue = Math.round(baseValues[selectedMetric] * randomFactor * 100) / 100;

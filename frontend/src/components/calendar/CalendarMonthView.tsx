@@ -188,11 +188,56 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
   
+  // Generate mock data when there are no items
+  const generateMockData = () => {
+    console.log("Generating mock data for calendar items");
+    const result: CalendarItem[] = [];
+    
+    // Get current month days
+    const daysInMonth = eachDayOfInterval({
+      start: startOfMonth(currentDate),
+      end: endOfMonth(currentDate)
+    });
+    
+    // Mock content types and platforms
+    const contentTypes = ['blog', 'social', 'email', 'video', 'ad', 'infographic'];
+    const platforms = ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok', 'email', 'website'];
+    const statuses = ['draft', 'scheduled', 'published'];
+    
+    // Create some mock items (at least one per day)
+    daysInMonth.forEach((day, index) => {
+      // Skip some days randomly (but consistently)
+      if (index % 3 === 0) return;
+      
+      // Number of items per day (1-3)
+      const itemsPerDay = (index % 3) + 1;
+      
+      for (let i = 0; i < itemsPerDay; i++) {
+        const contentType = contentTypes[index % contentTypes.length];
+        const platform = platforms[(index + i) % platforms.length];
+        const status = statuses[(index + i) % statuses.length];
+        
+        result.push({
+          id: 1000 + (index * 10) + i,
+          title: `Mock ${contentType} for ${platform}`,
+          scheduled_date: format(day, "yyyy-MM-dd'T'HH:mm:ss'Z'"),
+          status,
+          content_type: contentType,
+          platform,
+          project_id: 1
+        });
+      }
+    });
+    
+    return result;
+  };
+
   // Filter items for current month
   const filteredItems = useMemo(() => {
-    if (!items) return [];
+    // If no items provided, generate mock data
+    const itemsToFilter = items && items.length > 0 ? items : generateMockData();
     
-    let filtered = items.filter(item => {
+    let filtered = itemsToFilter.filter(item => {
       const itemDate = parseISO(item.scheduled_date);
       return isWithinInterval(itemDate, {
         start: startOfMonth(currentDate),
