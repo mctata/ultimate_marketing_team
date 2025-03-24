@@ -17,6 +17,19 @@ interface ExtendedTemplate extends Template {
   industries: string[];
   is_premium: boolean;
   preview_image?: string;
+  content: string;
+  dynamic_fields: Record<string, {
+    label: string;
+    description: string;
+    default: string;
+    multiline: boolean;
+  }>;
+  tone_options?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    modifications: Record<string, any>;
+  }>;
 }
 
 const healthWellnessTemplates: ExtendedTemplate[] = [
@@ -31,6 +44,7 @@ const healthWellnessTemplates: ExtendedTemplate[] = [
     categories: ['educational-content', 'brand-awareness'],
     industries: ['health-wellness', 'fitness'],
     is_premium: false,
+    preview_image: 'https://images.unsplash.com/photo-1517971129774-8a2b38fa128e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60', // Photo by Toa Heftiba on Unsplash
     template_content: `You are writing a blog post about wellness tips related to {{specific_topic}}. 
 The post should be targeted at {{target_audience}} with a {{tone}} tone.
 

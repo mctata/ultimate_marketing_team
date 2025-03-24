@@ -1,6 +1,524 @@
 // Health & Wellness Templates
 export const healthWellnessTemplates = [
   {
+    id: "wellness-newsletter",
+    title: "Health & Wellness Newsletter",
+    description: "A professional monthly newsletter to keep your audience informed and engaged with your wellness business.",
+    format_id: "email-newsletter",
+    preview_image: "https://images.unsplash.com/photo-1511649475669-e288648b2339?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60", // Photo by Hope House Press on Unsplash
+  
+    content: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{newsletter_title}</title>
+    <style type="text/css">
+        body, p, div, h1, h2, h3, h4, h5, h6 {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            color: #333333;
+        }
+        .header {
+            background-color: {primary_color};
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .content {
+            padding: 20px;
+            background-color: #ffffff;
+        }
+        .footer {
+            padding: 20px;
+            background-color: #f8f8f8;
+            text-align: center;
+            font-size: 12px;
+            color: #666666;
+        }
+        .featured-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .article {
+            margin-bottom: 30px;
+        }
+        .article-title {
+            color: {primary_color};
+            margin-bottom: 10px;
+        }
+        .tip-box {
+            background-color: #f0f8ff;
+            border-left: 4px solid {primary_color};
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: {primary_color};
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .social-icons {
+            margin-top: 15px;
+        }
+        .social-icon {
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{newsletter_title}</h1>
+        <p>{newsletter_subtitle}</p>
+    </div>
+    
+    <div class="content">
+        <!-- Welcome Message -->
+        <p style="margin-bottom: 20px;">{greeting},</p>
+        <p style="margin-bottom: 20px;">{welcome_message}</p>
+        
+        <!-- Main Feature Article -->
+        <div class="article">
+            <h2 class="article-title">{feature_article_title}</h2>
+            <img src="{feature_image_url}" alt="{feature_article_title}" class="featured-image">
+            <p style="margin-bottom: 15px;">{feature_article_intro}</p>
+            <p style="margin-bottom: 15px;">{feature_article_content}</p>
+            <p style="margin-bottom: 15px;">{feature_article_conclusion}</p>
+            
+            <div class="tip-box">
+                <h3>Pro Tip:</h3>
+                <p>{feature_article_tip}</p>
+            </div>
+            
+            <a href="{feature_article_link}" class="cta-button">Read Full Article</a>
+        </div>
+        
+        <!-- Quick Tips Section -->
+        <div class="article">
+            <h2 class="article-title">{quick_tips_title}</h2>
+            <p style="margin-bottom: 15px;">{quick_tips_intro}</p>
+            <ul style="padding-left: 20px; margin-bottom: 20px;">
+                <li style="margin-bottom: 10px;">{quick_tip_1}</li>
+                <li style="margin-bottom: 10px;">{quick_tip_2}</li>
+                <li style="margin-bottom: 10px;">{quick_tip_3}</li>
+            </ul>
+        </div>
+        
+        <!-- Upcoming Events Section -->
+        <div class="article">
+            <h2 class="article-title">Upcoming Events</h2>
+            <p style="margin-bottom: 15px;">{events_intro}</p>
+            
+            <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eeeeee;">
+                <h3 style="color: {primary_color};">{event_1_title}</h3>
+                <p style="margin-bottom: 5px;"><strong>Date:</strong> {event_1_date} | <strong>Time:</strong> {event_1_time}</p>
+                <p style="margin-bottom: 5px;"><strong>Location:</strong> {event_1_location}</p>
+                <p style="margin-bottom: 10px;">{event_1_description}</p>
+                <a href="{event_1_link}" style="color: {primary_color}; text-decoration: underline;">Learn More & Register</a>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <h3 style="color: {primary_color};">{event_2_title}</h3>
+                <p style="margin-bottom: 5px;"><strong>Date:</strong> {event_2_date} | <strong>Time:</strong> {event_2_time}</p>
+                <p style="margin-bottom: 5px;"><strong>Location:</strong> {event_2_location}</p>
+                <p style="margin-bottom: 10px;">{event_2_description}</p>
+                <a href="{event_2_link}" style="color: {primary_color}; text-decoration: underline;">Learn More & Register</a>
+            </div>
+        </div>
+        
+        <!-- Product/Service Spotlight -->
+        <div class="article">
+            <h2 class="article-title">{spotlight_title}</h2>
+            <img src="{spotlight_image_url}" alt="{spotlight_title}" class="featured-image">
+            <p style="margin-bottom: 15px;">{spotlight_description}</p>
+            <p style="margin-bottom: 15px;"><strong>Special Offer:</strong> {spotlight_offer}</p>
+            <a href="{spotlight_link}" class="cta-button">Learn More</a>
+        </div>
+        
+        <!-- Client Success Story -->
+        <div class="article">
+            <h2 class="article-title">Client Success Story</h2>
+            <p style="font-style: italic; margin-bottom: 15px;">{testimonial_text}</p>
+            <p style="margin-bottom: 15px;">- {testimonial_client}, {testimonial_description}</p>
+        </div>
+        
+        <!-- Sign-off -->
+        <p style="margin-top: 30px;">{sign_off_message}</p>
+        <p style="margin-bottom: 30px;">{sender_name}<br>{sender_title}<br>{business_name}</p>
+    </div>
+    
+    <div class="footer">
+        <p style="margin-bottom: 15px;">{business_name} | {business_address} | {business_phone}</p>
+        <div class="social-icons">
+            <a href="{facebook_url}" class="social-icon">Facebook</a>
+            <a href="{instagram_url}" class="social-icon">Instagram</a>
+            <a href="{twitter_url}" class="social-icon">Twitter</a>
+        </div>
+        <p style="margin-top: 15px;">
+            <a href="{unsubscribe_link}" style="color: #666666; text-decoration: underline;">Unsubscribe</a> | 
+            <a href="{privacy_policy_link}" style="color: #666666; text-decoration: underline;">Privacy Policy</a>
+        </p>
+        
+        <p style="margin-top: 15px; font-size: 11px;">Image credits: Featured article photo by <a href="https://unsplash.com/" style="color: #666666; text-decoration: underline;">Photographer Name on Unsplash</a></p>
+    </div>
+</body>
+</html>`,
+    
+    dynamic_fields: {
+      newsletter_title: {
+        label: "Newsletter Title",
+        description: "Main title for your newsletter",
+        default: "Wellness Monthly - June 2025",
+        multiline: false
+      },
+      newsletter_subtitle: {
+        label: "Newsletter Subtitle",
+        description: "Subtitle or slogan for your newsletter",
+        default: "Your Monthly Guide to Health, Wellness, and Mindful Living",
+        multiline: false
+      },
+      primary_color: {
+        label: "Primary Brand Color",
+        description: "Hex code for your brand's primary color",
+        default: "#4CAF50",
+        multiline: false
+      },
+      greeting: {
+        label: "Greeting",
+        description: "How you address your newsletter recipients",
+        default: "Dear Wellness Community",
+        multiline: false
+      },
+      welcome_message: {
+        label: "Welcome Message",
+        description: "Opening paragraph welcoming readers",
+        default: "Welcome to our June newsletter! Summer is finally here, and we're excited to share some seasonal wellness tips, upcoming events, and special offers designed to help you thrive during these warmer months.",
+        multiline: true
+      },
+      feature_article_title: {
+        label: "Feature Article Title",
+        description: "Title of your main article",
+        default: "Summer Hydration: Why It Matters More Than You Think",
+        multiline: false
+      },
+      feature_image_url: {
+        label: "Feature Image URL",
+        description: "URL for the feature article image",
+        default: "https://images.unsplash.com/photo-1523362628745-0c100150b504?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        multiline: false
+      },
+      feature_article_intro: {
+        label: "Feature Article Intro",
+        description: "Introduction paragraph for the feature article",
+        default: "As temperatures rise, staying properly hydrated becomes even more crucial for your health and wellbeing. Many people underestimate how much water they need during summer months, and even mild dehydration can have significant effects on your energy, cognition, and overall health.",
+        multiline: true
+      },
+      feature_article_content: {
+        label: "Feature Article Content",
+        description: "Main content for the feature article",
+        default: "The average adult loses approximately 2-3 liters of water per day through normal bodily functions like breathing, sweating, and urination. During summer heat, this amount can increase dramatically, especially if you're active outdoors. Research shows that even 1-2% dehydration can impair cognitive performance, reduce endurance, and trigger headaches.",
+        multiline: true
+      },
+      feature_article_conclusion: {
+        label: "Feature Article Conclusion",
+        description: "Concluding paragraph for the feature article",
+        default: "Rather than waiting until you feel thirsty (which is actually a late sign of dehydration), we recommend developing a consistent hydration routine. This might include starting your day with water, carrying a water bottle with measurement markings, or using a hydration tracking app.",
+        multiline: true
+      },
+      feature_article_tip: {
+        label: "Feature Article Tip",
+        description: "Expert tip related to the feature article",
+        default: "Add natural flavor to your water with cucumber slices, berries, or herbs like mint to make hydration more enjoyable. These additions provide subtle flavor without the sugar of commercial drinks.",
+        multiline: true
+      },
+      feature_article_link: {
+        label: "Feature Article Link",
+        description: "Link to the full article on your website",
+        default: "https://yourwellnessbusiness.com/blog/summer-hydration-guide",
+        multiline: false
+      },
+      quick_tips_title: {
+        label: "Quick Tips Title",
+        description: "Title for the quick tips section",
+        default: "Quick Wellness Tips for June",
+        multiline: false
+      },
+      quick_tips_intro: {
+        label: "Quick Tips Intro",
+        description: "Introduction for the quick tips section",
+        default: "Looking for simple ways to enhance your wellbeing this month? Here are three easy-to-implement tips that can make a big difference:",
+        multiline: true
+      },
+      quick_tip_1: {
+        label: "Quick Tip 1",
+        description: "First quick wellness tip",
+        default: "Practice 'feet on grass' for 5 minutes daily – this simple grounding technique has been shown to reduce stress hormones and improve mood.",
+        multiline: true
+      },
+      quick_tip_2: {
+        label: "Quick Tip 2",
+        description: "Second quick wellness tip",
+        default: "Add one extra serving of leafy greens to your daily meals – summer is perfect for light salads that help keep you cool while providing essential nutrients.",
+        multiline: true
+      },
+      quick_tip_3: {
+        label: "Quick Tip 3",
+        description: "Third quick wellness tip",
+        default: "Try a 'digital sunset' – power down electronic devices 1-2 hours before bed to improve sleep quality during these longer summer days.",
+        multiline: true
+      },
+      events_intro: {
+        label: "Events Intro",
+        description: "Introduction for the upcoming events section",
+        default: "We have some exciting events planned this month! Join us for these opportunities to connect, learn, and enhance your wellness journey:",
+        multiline: true
+      },
+      event_1_title: {
+        label: "Event 1 Title",
+        description: "Title of first event",
+        default: "Summer Solstice Yoga Retreat",
+        multiline: false
+      },
+      event_1_date: {
+        label: "Event 1 Date",
+        description: "Date of first event",
+        default: "June 21, 2025",
+        multiline: false
+      },
+      event_1_time: {
+        label: "Event 1 Time",
+        description: "Time of first event",
+        default: "6:00 AM - 9:00 AM",
+        multiline: false
+      },
+      event_1_location: {
+        label: "Event 1 Location",
+        description: "Location of first event",
+        default: "Sunrise Park (meet at the main pavilion)",
+        multiline: false
+      },
+      event_1_description: {
+        label: "Event 1 Description",
+        description: "Description of first event",
+        default: "Welcome the longest day of the year with our special sunrise yoga session, followed by a guided meditation and nutritious breakfast. This event is suitable for all levels.",
+        multiline: true
+      },
+      event_1_link: {
+        label: "Event 1 Link",
+        description: "Registration link for first event",
+        default: "https://yourwellnessbusiness.com/events/summer-solstice-yoga",
+        multiline: false
+      },
+      event_2_title: {
+        label: "Event 2 Title",
+        description: "Title of second event",
+        default: "Nutrition Workshop: Summer Foods for Optimal Energy",
+        multiline: false
+      },
+      event_2_date: {
+        label: "Event 2 Date",
+        description: "Date of second event",
+        default: "June 28, 2025",
+        multiline: false
+      },
+      event_2_time: {
+        label: "Event 2 Time",
+        description: "Time of second event",
+        default: "2:00 PM - 4:00 PM",
+        multiline: false
+      },
+      event_2_location: {
+        label: "Event 2 Location",
+        description: "Location of second event",
+        default: "Wellness Center, Room 201",
+        multiline: false
+      },
+      event_2_description: {
+        label: "Event 2 Description",
+        description: "Description of second event",
+        default: "Learn how to boost your energy naturally with seasonal summer foods. Our nutritionist will share recipes, meal planning tips, and nutritional information for optimal wellbeing during hot weather.",
+        multiline: true
+      },
+      event_2_link: {
+        label: "Event 2 Link",
+        description: "Registration link for second event",
+        default: "https://yourwellnessbusiness.com/events/summer-nutrition-workshop",
+        multiline: false
+      },
+      spotlight_title: {
+        label: "Spotlight Title",
+        description: "Title for the product/service spotlight section",
+        default: "Summer Special: Personalized Wellness Assessment",
+        multiline: false
+      },
+      spotlight_image_url: {
+        label: "Spotlight Image URL",
+        description: "URL for the spotlight section image",
+        default: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        multiline: false
+      },
+      spotlight_description: {
+        label: "Spotlight Description",
+        description: "Description of the featured product or service",
+        default: "Our comprehensive wellness assessment includes a detailed health history review, personalized nutrition consultation, fitness evaluation, and stress management strategy session – all tailored to your unique needs and goals.",
+        multiline: true
+      },
+      spotlight_offer: {
+        label: "Spotlight Offer",
+        description: "Special promotion or discount details",
+        default: "20% off all wellness assessments booked during June. Use code SUMMER20 when scheduling online.",
+        multiline: true
+      },
+      spotlight_link: {
+        label: "Spotlight Link",
+        description: "Link to the featured product or service",
+        default: "https://yourwellnessbusiness.com/services/wellness-assessment",
+        multiline: false
+      },
+      testimonial_text: {
+        label: "Testimonial Text",
+        description: "Client testimonial quote",
+        default: "The personalized wellness assessment completely changed my approach to health. Instead of following generic advice, I now have a customized plan that works with my lifestyle and specific needs. After just three months, my energy levels have increased dramatically and I've finally established sustainable healthy habits.",
+        multiline: true
+      },
+      testimonial_client: {
+        label: "Testimonial Client",
+        description: "Name of the client giving the testimonial",
+        default: "Sarah M.",
+        multiline: false
+      },
+      testimonial_description: {
+        label: "Testimonial Description",
+        description: "Brief description of the client (optional)",
+        default: "Wellness Assessment Client since March 2025",
+        multiline: false
+      },
+      sign_off_message: {
+        label: "Sign-off Message",
+        description: "Final message before signature",
+        default: "We hope you enjoy the warm days ahead and look forward to supporting your wellness journey this summer. As always, reach out if you have any questions or feedback!",
+        multiline: true
+      },
+      sender_name: {
+        label: "Sender Name",
+        description: "Name of the person sending the newsletter",
+        default: "Dr. Alex Johnson",
+        multiline: false
+      },
+      sender_title: {
+        label: "Sender Title",
+        description: "Title of the sender",
+        default: "Wellness Director",
+        multiline: false
+      },
+      business_name: {
+        label: "Business Name",
+        description: "Your business or organization name",
+        default: "Complete Wellness Center",
+        multiline: false
+      },
+      business_address: {
+        label: "Business Address",
+        description: "Your business address",
+        default: "123 Health Street, Wellnessville, CA 90210",
+        multiline: false
+      },
+      business_phone: {
+        label: "Business Phone",
+        description: "Your business phone number",
+        default: "(555) 123-4567",
+        multiline: false
+      },
+      facebook_url: {
+        label: "Facebook URL",
+        description: "Link to your Facebook page",
+        default: "https://facebook.com/yourwellnessbusiness",
+        multiline: false
+      },
+      instagram_url: {
+        label: "Instagram URL",
+        description: "Link to your Instagram profile",
+        default: "https://instagram.com/yourwellnessbusiness",
+        multiline: false
+      },
+      twitter_url: {
+        label: "Twitter URL",
+        description: "Link to your Twitter profile",
+        default: "https://twitter.com/yourwellnessbiz",
+        multiline: false
+      },
+      unsubscribe_link: {
+        label: "Unsubscribe Link",
+        description: "Link for unsubscribing from newsletter",
+        default: "https://yourwellnessbusiness.com/unsubscribe",
+        multiline: false
+      },
+      privacy_policy_link: {
+        label: "Privacy Policy Link",
+        description: "Link to your privacy policy",
+        default: "https://yourwellnessbusiness.com/privacy-policy",
+        multiline: false
+      }
+    },
+    
+    tone_options: [
+      {
+        id: "professional",
+        name: "Professional/Formal",
+        description: "Polished, professional tone with health expertise",
+        modifications: {}
+      },
+      {
+        id: "casual",
+        name: "Casual/Friendly",
+        description: "Warm, approachable tone focused on connection",
+        modifications: {
+          newsletter_subtitle: "Your Friendly Guide to Feeling Awesome This Month!",
+          greeting: "Hey there wellness friends!",
+          welcome_message: "Can you believe it's June already? Summer is finally here, and we've got so many cool tips, fun events, and special deals to share with you this month. Let's dive in!",
+          feature_article_intro: "Staying hydrated in the summer heat isn't just good advice – it's essential! When those temperatures climb, your body needs way more water than you might realize. Let's talk about why keeping your water bottle handy is one of the best things you can do for yourself this season.",
+          feature_article_content: "Did you know your body loses about 2-3 liters of water every single day just by doing normal stuff like breathing and sweating? And that's on a regular day! Add in summer heat and maybe a workout, and you're looking at a lot more. Even being just a little dehydrated (like 1-2%) can make you feel foggy-headed, sap your energy, and give you those annoying headaches nobody wants.",
+          feature_article_conclusion: "Don't wait until you're super thirsty to drink up – by then, you're already dehydrated! Try making hydration a fun habit instead. Start your morning with a big glass of water, carry around a cute water bottle with measurements on it, or try one of those hydration-tracking apps that sends you friendly reminders throughout the day.",
+          quick_tips_intro: "Want some super simple ways to feel amazing this month? Here are three easy things you can try (that actually work!):",
+          events_intro: "We've got some really fun events coming up! Join us and connect with other awesome people on their wellness journey:",
+          sign_off_message: "Hope you have an amazing month soaking up that sunshine (with sunscreen, of course)! We're always here if you need anything – just reach out and say hi!",
+        }
+      },
+      {
+        id: "motivational",
+        name: "Motivational/Inspiring",
+        description: "Energetic, inspiring tone focused on transformation",
+        modifications: {
+          newsletter_subtitle: "Transforming Lives Through Wellness - Your Monthly Inspiration",
+          greeting: "Dear Wellness Warrior,",
+          welcome_message: "June brings new opportunities for growth, transformation, and exceptional wellbeing! This month, we're focusing on powerful strategies to help you thrive during these summer months and continue your journey toward your highest potential.",
+          feature_article_intro: "Proper hydration is not just a health recommendation—it's a cornerstone of peak performance and optimal living. As we embrace the summer heat, understanding the transformative power of proper hydration can be the difference between merely surviving and truly thriving.",
+          feature_article_content: "Your remarkable body loses approximately 2-3 liters of water daily through essential functions. During summer, this demand increases dramatically, creating either an opportunity for optimal nourishment or a challenge to overcome. Research conclusively shows that even minimal dehydration significantly impacts your cognitive abilities, physical performance, and overall vitality.",
+          feature_article_conclusion: "Champions don't wait for thirst—they proactively create systems for success. We challenge you to elevate your hydration strategy by implementing a powerful morning water ritual, carrying a performance-tracking water bottle, or leveraging technology to ensure consistent hydration throughout your day of excellence.",
+          quick_tips_intro: "Here are three game-changing practices to transform your wellbeing this month:",
+          events_intro: "Extraordinary growth happens when we connect with like-minded individuals! Join us for these transformative events:",
+          sign_off_message: "Remember, every choice you make is either moving you toward or away from your best self. Choose excellence in all things, embrace the journey, and know that we're honored to support your path to greatness!",
+        }
+      }
+    ],
+    is_featured: true,
+    is_premium: true,
+    categories: ["educational-content", "customer-acquisition", "brand-awareness"],
+    industries: ["health-wellness", "nutrition", "fitness", "mental-health", "yoga", "coaching"],
+    created_at: "2025-03-20T08:00:00Z",
+    updated_at: "2025-03-20T08:00:00Z"
+  },
+  {
     id: "wellness-transformation-instagram",
     title: "Client Transformation - Instagram Post",
     description: "Showcase client success stories and transformations with this engaging and inspirational template.",

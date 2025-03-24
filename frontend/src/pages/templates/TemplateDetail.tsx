@@ -31,7 +31,7 @@ import {
   Share as ShareIcon,
   Edit as EditIcon,
   Preview as PreviewIcon,
-  Generate as GenerateIcon,
+  AutoAwesome as GenerateIcon,
   Save as SaveIcon
 } from '@mui/icons-material';
 import contentGenerationApi, { 
@@ -202,27 +202,34 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
     setGenerationError(null);
     
     try {
-      // In a real implementation, this would call the API
+      // For implementing an actual API call in the future
       // const response = await contentGenerationApi.generateContent({
       //   content_type: template!.content_type,
       //   template_id: template!.id,
       //   variables: formValues,
       // });
       
-      // For demo purposes, simulate a response with the template content
-      // with placeholders replaced by form values
-      let sampleContent = template!.template_content;
+      // For demo purposes, process the content with variable replacement
+      let generatedResult = template!.content;
       
-      // Replace variables in the template content
+      // First, apply selected tone modifications if applicable
+      if (selectedTone && template!.tone_options) {
+        const toneOption = template!.tone_options.find(t => t.id === selectedTone);
+        if (toneOption && toneOption.modifications && toneOption.modifications.content) {
+          generatedResult = toneOption.modifications.content;
+        }
+      }
+      
+      // Replace all dynamic field placeholders
       Object.entries(formValues).forEach(([key, value]) => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        sampleContent = sampleContent.replace(regex, String(value));
+        const regex = new RegExp(`{${key}}`, 'g');
+        generatedResult = generatedResult.replace(regex, String(value));
       });
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setGeneratedContent(sampleContent);
+      setGeneratedContent(generatedResult);
     } catch (err: any) {
       setGenerationError(err.message || 'Error generating content');
       console.error('Error generating content:', err);
@@ -443,6 +450,25 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
         {/* Preview Tab */}
         <TabPanel value={tabValue} index={0}>
           <Paper elevation={0} variant="outlined" sx={{ p: 3 }}>
+            {template.preview_image && (
+              <Box sx={{ mb: 3, textAlign: 'center' }}>
+                <img 
+                  src={template.preview_image} 
+                  alt={`Preview of ${template.title}`}
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '300px', 
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                />
+                {template.preview_image.includes('unsplash.com') && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    Photo via <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>
+                  </Typography>
+                )}
+              </Box>
+            )}
             <Typography variant="h6" gutterBottom>Template Structure</Typography>
             <pre style={{ 
               whiteSpace: 'pre-wrap', 
