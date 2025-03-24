@@ -30,6 +30,9 @@ import {
   Description as TemplateIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Science as ScienceIcon,
+  MonetizationOn as MonetizationOnIcon,
+  FormatListBulleted as ListIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useSelector } from 'react-redux';
@@ -57,7 +60,16 @@ const menuItems = [
       { text: 'Template Admin (Admin Only)', path: '/content/templates/admin' }
     ]
   },
-  { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
+  { 
+    text: 'Campaigns', 
+    icon: <CampaignIcon />, 
+    path: '/campaigns',
+    subItems: [
+      { text: 'Campaign List', icon: <ListIcon />, path: '/campaigns' },
+      { text: 'A/B Testing', icon: <ScienceIcon />, path: '/campaigns/:id/ab-testing' },
+      { text: 'ROI Analytics', icon: <MonetizationOnIcon />, path: '/campaigns/roi-analytics' }
+    ]
+  },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
@@ -81,16 +93,22 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   // Check if current location is under a parent path
   useEffect(() => {
     menuItems.forEach(item => {
-      if (item.subItems && item.subItems.some(sub => location.pathname.startsWith(sub.path))) {
+      if (item.subItems && item.subItems.some(sub => {
+        const path = sub.path.replace(':id', ''); // Handle dynamic routes like :id
+        return location.pathname.startsWith(path);
+      })) {
         setExpandedItem(item.text);
       }
     });
   }, [location.pathname]);
   
   const handleNavigation = (path: string) => {
-    navigate(path);
-    if (theme) {
-      onClose();
+    // Only navigate if the path doesn't contain a :id parameter
+    if (!path.includes(':id')) {
+      navigate(path);
+      if (theme) {
+        onClose();
+      }
     }
   };
   
@@ -209,7 +227,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                     <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
                       <ListItemButton
                         onClick={() => handleNavigation(subItem.path)}
-                        selected={location.pathname === subItem.path}
+                        selected={location.pathname.includes(subItem.path.replace(':id', ''))}
                         sx={{
                           minHeight: 36,
                           justifyContent: 'initial',
@@ -224,6 +242,17 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                           },
                         }}
                       >
+                        {subItem.icon && (
+                          <ListItemIcon 
+                            sx={{
+                              minWidth: 0,
+                              mr: 1.5,
+                              fontSize: '1.25rem'
+                            }}
+                          >
+                            {subItem.icon}
+                          </ListItemIcon>
+                        )}
                         <ListItemText
                           primary={subItem.text}
                           primaryTypographyProps={{ fontSize: '0.875rem' }}
