@@ -34,7 +34,6 @@ import {
 } from '@mui/icons-material';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
 import { useTemplates } from '../../hooks/useContentGeneration';
-import { Generate } from '../../hooks/useContentGeneration';
 import contentGenerationApi from '../../services/contentGenerationService';
 import { useToast } from '../../components/common/ToastNotification';
 import useApiError from '../../hooks/useApiError';

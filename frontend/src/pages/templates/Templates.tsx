@@ -25,7 +25,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
-import { Generate } from '../../hooks/useContentGeneration';
 
 // Mock template categories
 const templateCategories = [

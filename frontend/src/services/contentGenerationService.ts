@@ -184,11 +184,12 @@ const contentGenerationApi = {
     api.post<ABTest>(`/content-generation/ab-tests/${testId}/stop`, {}),
 };
 
-// Direct export for Generate function
-export const Generate = async (
-  request: GenerationRequest
-): Promise<GenerationResponse> => {
-  return contentGenerationApi.generateContent(request);
-};
+// Function has been moved to useContentGeneration.ts
+// Kept here as a comment to document the change
+// export const Generate = async (
+//   request: GenerationRequest
+// ): Promise<GenerationResponse> => {
+//   return contentGenerationApi.generateContent(request);
+// };
 
 export default contentGenerationApi;
