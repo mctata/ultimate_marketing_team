@@ -85,9 +85,15 @@ interface ContentDraft {
 // Define props for ContentCalendarContainer
 interface ContentCalendarContainerProps {
   projectId: number;
+  recommendedDate?: Date | null;
+  recommendedPlatform?: string | null;
 }
 
-const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ projectId }) => {
+const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ 
+  projectId,
+  recommendedDate,
+  recommendedPlatform
+}) => {
   const theme = useTheme();
   const dispatch = useDispatch();
   
@@ -391,6 +397,11 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   // Handle add click on a specific date
   const handleAddClick = (date: Date) => {
     setSelectedItem(null);
+    // If a recommended date is supplied, use that instead of the clicked date
+    if (recommendedDate) {
+      // Let the user know we're using the recommended date
+      setSuccessMessage(`Using recommended optimal posting time: ${recommendedDate.toLocaleTimeString()} for ${recommendedPlatform || 'content'}`);
+    }
     setScheduleDialogOpen(true);
   };
   
@@ -982,6 +993,13 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
           content_type: selectedItem.content_type || '',
           scheduled_date: new Date(selectedItem.scheduledDate),
           project_id: selectedItem.project_id
+        } : recommendedDate ? {
+          // Use recommended data when available
+          content_draft_id: 0, // Will need to be selected by user
+          platform: recommendedPlatform || '',
+          content_type: '',
+          scheduled_date: recommendedDate,
+          project_id: projectId
         } : undefined}
         contentDrafts={contentDrafts.map(d => ({ id: d.id, title: d.title }))}
         platforms={platformOptions}
@@ -989,6 +1007,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
         projectId={projectId}
         bestTimeRecommendations={bestTimeRecommendations}
         loading={loading}
+        highlightPlatform={recommendedPlatform || undefined}
       />
       
       {/* Success snackbar */}
