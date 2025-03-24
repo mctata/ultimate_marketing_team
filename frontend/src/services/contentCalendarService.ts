@@ -14,6 +14,16 @@ export interface CalendarItem {
   platform?: string;
 }
 
+// Type interfaces needed by contentSlice.ts
+export interface CalendarEntry {
+  startDate: string;
+  endDate: string;
+}
+
+export interface CalendarEntryResponse {
+  data: any[];
+}
+
 export interface BestTimeRecommendation {
   platform: string;
   day_of_week: number;
@@ -46,8 +56,8 @@ export interface BulkScheduleRequest {
 }
 
 const contentCalendarService = {
-  // Get calendar entries
-  getCalendarEntries: async (
+  // Get calendar entries (original implementation)
+  getCalendarEntriesOriginal: async (
     projectId: number, 
     startDate?: string, 
     endDate?: string, 
@@ -61,6 +71,19 @@ const contentCalendarService = {
     
     const response = await axios.get<CalendarItem[]>(url);
     return response.data;
+  },
+  
+  // Implementation for contentSlice.ts
+  getCalendarEntries: async (
+    dateRange: CalendarEntry
+  ): Promise<CalendarEntryResponse> => {
+    let url = `${API_BASE_URL}/content-calendar/`;
+    
+    if (dateRange.startDate) url += `&start_date=${dateRange.startDate}`;
+    if (dateRange.endDate) url += `&end_date=${dateRange.endDate}`;
+    
+    const response = await axios.get<any[]>(url);
+    return { data: response.data };
   },
   
   // Get a single calendar entry
@@ -125,6 +148,23 @@ const contentCalendarService = {
       `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
     );
     return response.data;
+  },
+  
+  // Implementation for contentSlice.ts
+  // Get calendar insights
+  getCalendarInsights: async (brandId: string): Promise<{data: any[]}> => {
+    const response = await axios.get<any[]>(
+      `${API_BASE_URL}/content-calendar/insights?brand_id=${brandId}`
+    );
+    return { data: response.data };
+  },
+  
+  // Publish a calendar entry
+  publishCalendarEntry: async (entryId: string): Promise<{data: any}> => {
+    const response = await axios.post<any>(
+      `${API_BASE_URL}/content-calendar/${entryId}/publish`
+    );
+    return { data: response.data };
   }
 };
 
