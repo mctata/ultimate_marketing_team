@@ -22,7 +22,8 @@ import {
   Alert,
   Card,
   CardContent,
-  Tooltip
+  Tooltip,
+  ButtonGroup
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -33,7 +34,8 @@ import {
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon,
   TrendingUp as TrendingUpIcon,
-  AttachMoney as AttachMoneyIcon
+  AttachMoney as AttachMoneyIcon,
+  Splitscreen as SplitscreenIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fetchCampaigns, deleteCampaign, setFilters, selectCampaigns, selectCampaignsLoading, selectCampaignsError, selectCampaignFilters } from '../../store/slices/campaignSlice';
@@ -121,6 +123,10 @@ const CampaignList = () => {
   
   const handleViewMetrics = (id: string) => {
     navigate(`/campaigns/${id}/metrics`);
+  };
+  
+  const handleViewABTesting = (id: string) => {
+    navigate(`/campaigns/${id}/ab-testing`);
   };
   
   const handleToggleCampaignStatus = (campaign: Campaign) => {
@@ -387,17 +393,25 @@ const CampaignList = () => {
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="View Metrics">
-                          <Button 
-                            size="small" 
-                            variant="outlined" 
-                            color="info" 
-                            sx={{ ml: 1 }}
-                            onClick={() => handleViewMetrics(campaign.id)}
-                          >
-                            Metrics
-                          </Button>
-                        </Tooltip>
+                        <ButtonGroup variant="outlined" size="small" sx={{ ml: 1 }}>
+                          <Tooltip title="View Metrics">
+                            <Button 
+                              color="info" 
+                              onClick={() => handleViewMetrics(campaign.id)}
+                            >
+                              Metrics
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="A/B Testing">
+                            <Button 
+                              color="secondary"
+                              onClick={() => handleViewABTesting(campaign.id)}
+                              startIcon={<SplitscreenIcon />}
+                            >
+                              A/B Test
+                            </Button>
+                          </Tooltip>
+                        </ButtonGroup>
                       </TableCell>
                     </TableRow>
                   ))}
