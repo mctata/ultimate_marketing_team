@@ -47,7 +47,6 @@ const menuItems = [
     icon: <ArticleIcon />, 
     path: '/content',
     subItems: [
-      { text: 'Content', path: '/content' },
       { text: 'Content Library', path: '/content/library' },
       { text: 'Content Calendar', path: '/content/calendar' },
       { text: 'Templates Library', path: '/content/templates' },
