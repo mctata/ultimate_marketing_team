@@ -16,8 +16,6 @@ import {
   styled,
   Theme,
   useMediaQuery,
-  Menu,
-  MenuItem,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -68,12 +66,7 @@ const menuItems = [
     path: '/campaigns',
     subItems: [
       { text: 'Campaign List', icon: <ListIcon />, path: '/campaigns' },
-      { 
-        text: 'A/B Testing', 
-        icon: <ScienceIcon />, 
-        path: '/campaigns/:id/ab-testing',
-        dynamic: true 
-      },
+      { text: 'A/B Testing', icon: <ScienceIcon />, path: '/campaigns/ab-testing' },
       { text: 'ROI Analytics', icon: <MonetizationOnIcon />, path: '/campaigns/roi-analytics' }
     ]
   },
@@ -96,16 +89,6 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   const theme = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
   const user = useSelector((state: RootState) => state.auth.user);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [activeDynamicItem, setActiveDynamicItem] = useState<any>(null);
-  
-  // Mock campaign data for demo purposes
-  const mockCampaigns = [
-    { id: '1', name: 'Summer Collection Launch' },
-    { id: '2', name: 'Q2 Lead Generation' },
-    { id: '3', name: 'Product Launch: Home Fitness' },
-    { id: '4', name: 'Interior Design Spring Showcase' },
-  ];
   
   // Check if current location is under a parent path
   useEffect(() => {
@@ -119,12 +102,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
     });
   }, [location.pathname]);
   
-  const handleNavigation = (path: string, isDynamic?: boolean) => {
-    if (isDynamic) {
-      // For dynamic routes, show a menu with available campaigns
-      return;
-    }
-    
+  const handleNavigation = (path: string) => {
     navigate(path);
     if (theme) {
       onClose();
@@ -134,27 +112,6 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   const toggleExpand = (itemText: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedItem(expandedItem === itemText ? null : itemText);
-  };
-  
-  const handleDynamicItemClick = (e: React.MouseEvent<HTMLElement>, item: any) => {
-    e.stopPropagation();
-    setActiveDynamicItem(item);
-    setMenuAnchorEl(e.currentTarget);
-  };
-  
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-  };
-  
-  const handleCampaignSelect = (campaignId: string) => {
-    if (activeDynamicItem) {
-      const dynamicPath = activeDynamicItem.path.replace(':id', campaignId);
-      navigate(dynamicPath);
-      setMenuAnchorEl(null);
-      if (theme) {
-        onClose();
-      }
-    }
   };
   
   const drawerContent = (
@@ -266,11 +223,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                   return (
                     <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
                       <ListItemButton
-                        onClick={(e) => 
-                          subItem.dynamic 
-                            ? handleDynamicItemClick(e, subItem) 
-                            : handleNavigation(subItem.path)
-                        }
+                        onClick={() => handleNavigation(subItem.path)}
                         selected={location.pathname.includes(subItem.path.replace(':id', ''))}
                         sx={{
                           minHeight: 36,
@@ -310,34 +263,6 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
           </React.Fragment>
         ))}
       </List>
-      
-      {/* Campaign selection menu for A/B Testing */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
-      >
-        <Typography sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
-          Select a Campaign
-        </Typography>
-        <Divider />
-        {mockCampaigns.map((campaign) => (
-          <MenuItem 
-            key={campaign.id} 
-            onClick={() => handleCampaignSelect(campaign.id)}
-          >
-            {campaign.name}
-          </MenuItem>
-        ))}
-      </Menu>
       
       <Divider sx={{ mt: 2 }} />
       
