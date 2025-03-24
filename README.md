@@ -316,6 +316,38 @@ The Ultimate Marketing Team consists of five specialized AI agents:
 
 All agents inherit from BaseAgent, which provides core messaging and event handling functionality.
 
+### Real-time Collaboration
+
+The platform includes a comprehensive real-time collaboration system:
+
+1. **WebSocket Architecture**:
+   - Dedicated WebSocket endpoints for different features
+   - Connection management with automatic reconnection
+   - Authentication using JWT tokens
+   - Room-based collaboration model
+   - Real-time event broadcasting
+
+2. **Content Calendar Collaboration**:
+   - Real-time updates when calendar items are created, modified, or deleted
+   - Content locking to prevent simultaneous editing conflicts
+   - User presence awareness to show who's viewing the calendar
+   - Optimistic UI updates with server confirmation
+   - Conflict detection and resolution for simultaneous operations
+
+3. **Performance Optimizations**:
+   - Client-side caching with selective invalidation
+   - Normalized state structure for efficient updates
+   - Throttled event broadcasting for high-frequency updates
+   - Connection pooling for efficient server resources
+   - Metrics tracking for performance monitoring
+
+4. **Security Features**:
+   - Authenticated connections using JWT tokens
+   - Permission validation for all operations
+   - Rate limiting to prevent abuse
+   - Audit logging for security monitoring
+   - Content access control based on user permissions
+
 ### Analytics & Recommendations System
 
 The platform includes advanced analytics and recommendation capabilities:
