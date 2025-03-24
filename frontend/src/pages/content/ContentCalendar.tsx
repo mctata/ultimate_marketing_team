@@ -1,22 +1,38 @@
 import { useState } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Paper, Snackbar, Alert } from '@mui/material';
+import ContentCalendarContainer from '../../components/calendar/ContentCalendarContainer';
 
 const ContentCalendar = () => {
+  const [projectId, setProjectId] = useState(1); // Default project ID
+  const [showHelpTip, setShowHelpTip] = useState(true);
+  
+  const handleCloseHelpTip = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setShowHelpTip(false);
+  };
+
   return (
     <Box>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Content Calendar
-        </Typography>
-        
-        <Button variant="contained">
-          Schedule Content
-        </Button>
-      </Box>
+      <ContentCalendarContainer projectId={projectId} />
       
-      <Typography variant="body1">
-        Content calendar view coming soon.
-      </Typography>
+      {/* Help Tip Snackbar */}
+      <Snackbar
+        open={showHelpTip}
+        autoHideDuration={10000}
+        onClose={handleCloseHelpTip}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseHelpTip} 
+          severity="info" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          Try the different calendar views (month, week, list) for better visualization of your content schedule
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
