@@ -1078,8 +1078,8 @@ const Templates: React.FC = () => {
                     Email Preview
                   </Typography>
                   <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 1 }}>
-                    From: Your Brand <noreply@yourbrand.com><br />
-                    To: Recipient <recipient@example.com><br />
+                    From: Your Brand &lt;noreply@yourbrand.com&gt;<br />
+                    To: Recipient &lt;recipient@example.com&gt;<br />
                     Subject: {generatedContent?.split('\n')[0].replace('Subject: ', '')}
                   </Typography>
                 </Box>
