@@ -487,7 +487,10 @@ const ContentLibrary = () => {
                       label={category} 
                       size="small" 
                       variant="outlined" 
-                      onClick={() => setCategoryFilter(category)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCategoryFilter(category);
+                      }}
                     />
                   ))}
                 </Box>

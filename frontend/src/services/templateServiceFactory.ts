@@ -5,8 +5,8 @@
  * It checks API availability and falls back to mock data when the API is unavailable.
  */
 
-import * as realTemplateService from '../../../src/services/templateService';
-import * as mockTemplateService from '../../../src/services/mockTemplateService';
+import * as realTemplateService from './templateService';
+import * as mockTemplateService from './mockTemplateService';
 import api from './api';
 
 // Cache for API check

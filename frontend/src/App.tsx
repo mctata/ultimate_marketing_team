@@ -216,7 +216,6 @@ function App() {
           <Route path="brands/new" element={<BrandNew />} />
           <Route path="brands/:id" element={<BrandDetail />} />
           <Route path="content" element={<Content />} />
-          <Route path="content/library" element={<ContentLibrary />} />
           <Route path="content/calendar" element={<ContentCalendar />} />
           <Route path="content/:id" element={<ContentDetail />} />
           <Route path="campaigns" element={<Campaigns />} />

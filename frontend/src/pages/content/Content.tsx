@@ -321,7 +321,7 @@ const Content = () => {
         <Button 
           variant="outlined" 
           endIcon={<ArrowForwardIcon />}
-          onClick={() => navigate('/content/library')}
+          onClick={() => {}}
         >
           View Full Library
         </Button>
