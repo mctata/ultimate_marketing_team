@@ -101,6 +101,13 @@ export const useTemplates = () => {
   };
 };
 
+// Generate content function - standalone export
+export const Generate = async (
+  request: GenerationRequest
+): Promise<GenerationResponse> => {
+  return contentGenerationApi.generateContent(request);
+};
+
 // Hook for content generation
 export const useContentGeneration = () => {
   const queryClient = useQueryClient();
