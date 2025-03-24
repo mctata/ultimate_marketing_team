@@ -61,6 +61,70 @@ const platformOptions = [
   { value: 'google', label: 'Google Ads' },
 ];
 
+// Mock campaigns for development
+const mockCampaigns: Campaign[] = [
+  {
+    id: '1',
+    name: 'Summer Product Launch',
+    description: 'Promotional campaign for new summer products',
+    status: 'active',
+    start_date: '2025-05-01',
+    end_date: '2025-08-31',
+    budget: 5000,
+    platform: 'facebook',
+    target_audience: { age: '18-34', interests: ['fashion', 'summer'] },
+    brand_id: '1',
+    content_ids: ['1', '2', '3'],
+    created_at: '2025-03-15',
+    updated_at: '2025-03-15'
+  },
+  {
+    id: '2',
+    name: 'Holiday Season Sale',
+    description: 'Black Friday and Christmas promotional campaign',
+    status: 'draft',
+    start_date: '2025-11-15',
+    end_date: '2025-12-31',
+    budget: 8000,
+    platform: 'google',
+    target_audience: { age: '25-54', interests: ['shopping', 'deals'] },
+    brand_id: '1',
+    content_ids: ['4', '5'],
+    created_at: '2025-03-10',
+    updated_at: '2025-03-12'
+  },
+  {
+    id: '3',
+    name: 'Spring Collection Launch',
+    description: 'Introducing the new spring fashion collection',
+    status: 'paused',
+    start_date: '2025-02-15',
+    end_date: '2025-04-30',
+    budget: 4500,
+    platform: 'instagram',
+    target_audience: { age: '18-34', gender: 'female', interests: ['fashion', 'lifestyle'] },
+    brand_id: '1',
+    content_ids: ['6', '7', '8'],
+    created_at: '2025-01-20',
+    updated_at: '2025-02-25'
+  },
+  {
+    id: '4',
+    name: 'Customer Loyalty Program',
+    description: 'Campaign to promote our new customer loyalty program',
+    status: 'completed',
+    start_date: '2025-01-01',
+    end_date: '2025-02-28',
+    budget: 3000,
+    platform: 'linkedin',
+    target_audience: { age: '25-54', interests: ['loyalty', 'rewards'] },
+    brand_id: '1',
+    content_ids: ['9', '10'],
+    created_at: '2024-12-15',
+    updated_at: '2025-03-01'
+  },
+];
+
 const CampaignList = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -135,24 +199,29 @@ const CampaignList = () => {
     console.log(`Changing status of campaign ${campaign.id} from ${campaign.status} to ${newStatus}`);
   };
   
+  // Use mock campaigns if no real campaigns are loaded (for development)
+  const displayCampaigns = campaigns.length > 0 ? campaigns : mockCampaigns;
+  
   // Filter campaigns based on search term
-  const filteredCampaigns = campaigns.filter(campaign => {
+  const filteredCampaigns = displayCampaigns.filter(campaign => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           campaign.description.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesPlatform = platformFilter === 'all' || 
                            campaign.platform.toLowerCase() === platformFilter.toLowerCase();
     
-    return matchesSearch && matchesPlatform;
+    const matchesStatus = statusFilter === '' || campaign.status === statusFilter;
+    
+    return matchesSearch && matchesPlatform && matchesStatus;
   });
   
   // Calculate some campaign stats for the dashboard
   const getActiveCampaignsCount = () => {
-    return campaigns.filter(campaign => campaign.status === 'active').length;
+    return displayCampaigns.filter(campaign => campaign.status === 'active').length;
   };
   
   const getTotalBudget = () => {
-    return campaigns.reduce((total, campaign) => total + campaign.budget, 0);
+    return displayCampaigns.reduce((total, campaign) => total + campaign.budget, 0);
   };
   
   return (
@@ -201,7 +270,7 @@ const CampaignList = () => {
               <Box sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
                 <AttachMoneyIcon color="primary" sx={{ mr: 1 }} fontSize="small" />
                 <Typography variant="body2" color="textSecondary">
-                  {campaigns.length} campaigns
+                  {displayCampaigns.length} campaigns
                 </Typography>
               </Box>
             </CardContent>
