@@ -21,7 +21,12 @@ import {
   Select, 
   MenuItem, 
   SelectChangeEvent,
-  IconButton
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Modal
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon, 
@@ -32,7 +37,10 @@ import {
   Edit as EditIcon,
   Preview as PreviewIcon,
   AutoAwesome as GenerateIcon,
-  Save as SaveIcon
+  Save as SaveIcon,
+  Image as ImageIcon,
+  Search as SearchIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import contentGenerationApi, { 
   Template, 
@@ -40,6 +48,35 @@ import contentGenerationApi, {
   TemplateVariable 
 } from '../../services/contentGenerationService';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
+
+// Simple markdown to HTML converter for preview purposes
+const markdownToHtml = (markdown: string): string => {
+  let html = markdown;
+  
+  // Convert headers
+  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  
+  // Convert bold and italic
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Convert lists
+  html = html.replace(/^\s*-\s*(.*$)/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n)+/g, '<ul>$&</ul>');
+  
+  // Convert paragraph breaks
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = html.replace(/<\/p><p>$/, '');
+  
+  // Wrap in paragraphs if not already
+  if (!html.startsWith('<h1>') && !html.startsWith('<ul>') && !html.startsWith('<p>')) {
+    html = '<p>' + html + '</p>';
+  }
+  
+  return html;
+};
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -90,6 +127,10 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
   const [selectedTone, setSelectedTone] = useState<string>('');
   const [variableErrors, setVariableErrors] = useState<Record<string, string>>({});
   const [isContentCopied, setIsContentCopied] = useState(false);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Load template data
   useEffect(() => {
@@ -248,6 +289,76 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
       .catch(err => {
         console.error('Error copying to clipboard:', err);
       });
+  };
+  
+  // Handle image search
+  const handleOpenImageSearch = () => {
+    setImageSearchOpen(true);
+    if (searchQuery === '') {
+      // Initialize with a default query based on template type
+      if (template?.content_type === 'blog') {
+        setSearchQuery('wellness blog');
+      } else if (template?.content_type === 'email') {
+        setSearchQuery('healthy food');
+      } else if (template?.content_type === 'social') {
+        setSearchQuery('fitness lifestyle');
+      } else {
+        setSearchQuery('wellness');
+      }
+      handleImageSearch();
+    }
+  };
+  
+  const handleImageSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setSearchLoading(true);
+    try {
+      // Mock API call to Unsplash or similar service
+      // In production, this would be a real API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock search results
+      const mockResults = [
+        'https://images.unsplash.com/photo-1545205597-3d9d02c29597?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1490645935967-10de6ba17061?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1506126613408-eca07ce68773?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1517971129774-8a2b38fa128e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1487530811176-3780de880c2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1455853659719-4b521eebc76d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+      ];
+      
+      setSearchResults(mockResults);
+    } catch (error) {
+      console.error('Error searching for images:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+  
+  const handleSelectImage = (imageUrl: string) => {
+    // Find the image-related field in form values and update it
+    if (formValues['main_image_url']) {
+      setFormValues({
+        ...formValues,
+        main_image_url: imageUrl
+      });
+    } else if (formValues['preview_image']) {
+      setFormValues({
+        ...formValues,
+        preview_image: imageUrl
+      });
+    } else if (template?.preview_image) {
+      // Create a copy of the template with the new image
+      setTemplate({
+        ...template,
+        preview_image: imageUrl
+      });
+    }
+    
+    setImageSearchOpen(false);
   };
   
   // Submit rating
@@ -451,7 +562,7 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
         <TabPanel value={tabValue} index={0}>
           <Paper elevation={0} variant="outlined" sx={{ p: 3 }}>
             {template.preview_image && (
-              <Box sx={{ mb: 3, textAlign: 'center' }}>
+              <Box sx={{ mb: 3, textAlign: 'center', position: 'relative' }}>
                 <img 
                   src={template.preview_image} 
                   alt={`Preview of ${template.title}`}
@@ -467,6 +578,21 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
                     Photo via <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>
                   </Typography>
                 )}
+                <IconButton
+                  onClick={handleOpenImageSearch}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                    }
+                  }}
+                  size="small"
+                >
+                  <ImageIcon />
+                </IconButton>
               </Box>
             )}
             <Typography variant="h6" gutterBottom>Template Structure</Typography>
@@ -582,11 +708,71 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
                         sx={{ 
                           p: 2, 
                           backgroundColor: '#f9f9f9',
-                          whiteSpace: 'pre-line', 
+                          overflowY: 'auto',
                           height: '100%'
                         }}
                       >
-                        {generatedContent}
+                        {generatedContent.includes('<html') || generatedContent.includes('<!DOCTYPE') ? (
+                          <Box sx={{ height: '100%' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                              HTML Email Preview:
+                            </Typography>
+                            <Box sx={{ 
+                              border: '1px solid #ddd', 
+                              borderRadius: '4px',
+                              height: 'calc(100% - 30px)',
+                              overflow: 'auto'
+                            }}>
+                              <iframe 
+                                srcDoc={generatedContent}
+                                title="HTML Email Preview"
+                                style={{ 
+                                  width: '100%', 
+                                  height: '100%', 
+                                  border: 'none' 
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        ) : generatedContent.startsWith('#') || generatedContent.includes('##') ? (
+                          <Box sx={{ 
+                            p: 1, 
+                            whiteSpace: 'pre-line',
+                            '& h1': { fontSize: '1.5rem', mt: 0, mb: 2 },
+                            '& h2': { fontSize: '1.25rem', mt: 2, mb: 1 },
+                            '& h3': { fontSize: '1.1rem', fontWeight: 'bold', mt: 1.5, mb: 0.75 },
+                            '& p': { mb: 1.5 },
+                            '& ul, & ol': { pl: 2.5, mb: 1.5 }
+                          }} 
+                          dangerouslySetInnerHTML={{ __html: markdownToHtml(generatedContent) }} 
+                          />
+                        ) : generatedContent.includes('📷') ? (
+                          <Box sx={{ whiteSpace: 'pre-line' }}>
+                            <Box sx={{ 
+                              border: '1px dashed #ccc', 
+                              p: 2, 
+                              mb: 2, 
+                              borderRadius: '4px',
+                              backgroundColor: '#f0f0f0',
+                              textAlign: 'center'
+                            }}>
+                              <Typography variant="caption" color="text.secondary">Instagram Post Preview</Typography>
+                              <Typography variant="body2" sx={{ mt: 1 }}>
+                                {generatedContent.split('\n\n')[0]}
+                              </Typography>
+                            </Box>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                              {generatedContent.split('\n\n')[1]}
+                            </Typography>
+                            <Typography>
+                              {generatedContent.split('\n\n').slice(2).join('\n\n')}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography sx={{ whiteSpace: 'pre-line' }}>
+                            {generatedContent}
+                          </Typography>
+                        )}
                       </Paper>
                     ) : (
                       <Box sx={{ 
@@ -646,6 +832,117 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode = false, useMo
           </TabPanel>
         )}
       </Box>
+      
+      {/* Image Search Modal */}
+      <Dialog 
+        open={imageSearchOpen} 
+        onClose={() => setImageSearchOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Search Stock Images
+          <IconButton
+            onClick={() => setImageSearchOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth
+              placeholder="Search for images (e.g., wellness, healthy food, yoga)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleImageSearch()}
+              sx={{ flexGrow: 1 }}
+            />
+            <Button 
+              variant="contained" 
+              onClick={handleImageSearch}
+              startIcon={<SearchIcon />}
+              disabled={searchLoading}
+            >
+              Search
+            </Button>
+          </Box>
+          
+          {searchLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {searchResults.map((imageUrl, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      borderRadius: 1,
+                      '&:hover': {
+                        '& .overlay': {
+                          opacity: 1
+                        },
+                        '& img': {
+                          transform: 'scale(1.05)'
+                        }
+                      }
+                    }}
+                    onClick={() => handleSelectImage(imageUrl)}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Search result ${index + 1}`}
+                      style={{
+                        width: '100%',
+                        height: '150px',
+                        objectFit: 'cover',
+                        transition: 'transform 0.3s ease'
+                      }}
+                    />
+                    <Box
+                      className="overlay"
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease'
+                      }}
+                    >
+                      <Button variant="contained" color="primary" size="small">
+                        Select
+                      </Button>
+                    </Box>
+                  </Box>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                    Unsplash
+                  </Typography>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+          
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
+            Images provided by Unsplash. Images are for preview purposes only.
+            <br />
+            Usage may require proper licensing and attribution.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImageSearchOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
