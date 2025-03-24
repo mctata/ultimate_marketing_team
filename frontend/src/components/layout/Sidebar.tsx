@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -28,6 +28,8 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Description as TemplateIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useSelector } from 'react-redux';
@@ -74,12 +76,27 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   const { logout } = useAuth();
   const theme = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
   const user = useSelector((state: RootState) => state.auth.user);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  
+  // Check if current location is under a parent path
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.subItems && item.subItems.some(sub => location.pathname.startsWith(sub.path))) {
+        setExpandedItem(item.text);
+      }
+    });
+  }, [location.pathname]);
   
   const handleNavigation = (path: string) => {
     navigate(path);
     if (theme) {
       onClose();
     }
+  };
+  
+  const toggleExpand = (itemText: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedItem(expandedItem === itemText ? null : itemText);
   };
   
   const drawerContent = (
@@ -138,7 +155,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
           <React.Fragment key={item.text}>
             <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
               <ListItemButton
-                onClick={() => handleNavigation(item.path)}
+                onClick={item.subItems ? (e) => toggleExpand(item.text, e) : () => handleNavigation(item.path)}
                 selected={location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path))}
                 sx={{
                   minHeight: 48,
@@ -171,11 +188,16 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                   primary={item.text}
                   sx={{ opacity: open ? 1 : 0 }}
                 />
+                {open && item.subItems && (
+                  expandedItem === item.text ? 
+                  <ExpandLessIcon fontSize="small" /> : 
+                  <ExpandMoreIcon fontSize="small" />
+                )}
               </ListItemButton>
             </ListItem>
             
             {/* Sub-items */}
-            {item.subItems && open && (
+            {item.subItems && open && expandedItem === item.text && (
               <Box sx={{ pl: 4 }}>
                 {item.subItems.map((subItem) => {
                   // Only show admin items to users with admin role
