@@ -75,7 +75,9 @@ async def root():
     return {
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "status": "online"
+        "status": "online",
+        "debug": True,
+        "message": "API server is running with updated endpoint"
     }
 
 # Basic Health check endpoint

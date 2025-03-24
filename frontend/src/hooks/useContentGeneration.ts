@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import contentGenerationApi, {
   Template,
   GenerationRequest,
+  GenerationResponse,
   ContentVariation,
   TaskStatusResponse,
   QualityAssessment,
