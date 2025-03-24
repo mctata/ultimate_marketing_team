@@ -131,11 +131,13 @@ export const fetchCalendarItems = createAsyncThunk(
 
 export const fetchCalendarInsights = createAsyncThunk(
   'content/fetchCalendarInsights',
-  async (brandId: string, { rejectWithValue }) => {
+  async (projectId: string, { rejectWithValue }) => {
     try {
-      const response = await contentCalendarService.default.getCalendarInsights(brandId);
+      // Change brandId parameter to project_id to match API expectations
+      const response = await contentCalendarService.default.getCalendarInsights(projectId);
       return response.data;
     } catch (error) {
+      console.error('Error fetching calendar insights:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch calendar insights');
     }
   }
@@ -143,11 +145,13 @@ export const fetchCalendarInsights = createAsyncThunk(
 
 export const fetchBestTimeRecommendations = createAsyncThunk(
   'content/fetchBestTimeRecommendations',
-  async (brandId: string, { rejectWithValue }) => {
+  async (projectId: string, { rejectWithValue }) => {
     try {
-      const response = await contentCalendarService.default.getBestTimeRecommendations(brandId);
+      // Change brandId parameter to project_id to match API expectations
+      const response = await contentCalendarService.default.getBestTimeRecommendations(projectId);
       return response.data;
     } catch (error) {
+      console.error('Error fetching best time recommendations:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch best time recommendations');
     }
   }

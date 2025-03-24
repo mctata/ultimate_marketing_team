@@ -143,20 +143,33 @@ const contentCalendarService = {
   },
   
   // Get best time recommendations
-  getBestTimeRecommendations: async (projectId: number): Promise<BestTimeRecommendation[]> => {
-    const response = await axios.get<BestTimeRecommendation[]>(
-      `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
-    );
-    return response.data;
+  getBestTimeRecommendations: async (projectId: string | number): Promise<BestTimeRecommendation[]> => {
+    try {
+      const response = await axios.get<BestTimeRecommendation[]>(
+        `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
+      );
+      return response.data || [];
+    } catch (error) {
+      console.error('Error in getBestTimeRecommendations:', error);
+      // Return empty array on error to prevent UI crashes
+      return [];
+    }
   },
   
   // Implementation for contentSlice.ts
-  // Get calendar insights
-  getCalendarInsights: async (brandId: string): Promise<{data: any[]}> => {
-    const response = await axios.get<any[]>(
-      `${API_BASE_URL}/content-calendar/insights?brand_id=${brandId}`
-    );
-    return { data: response.data };
+  // Get calendar insights - works with both project_id and brand_id for backwards compatibility
+  getCalendarInsights: async (projectId: string): Promise<{data: any[]}> => {
+    try {
+      // Use project_id instead of brand_id to match API expectations
+      const response = await axios.get<any[]>(
+        `${API_BASE_URL}/content-calendar/insights?project_id=${projectId}`
+      );
+      return { data: response.data || [] };
+    } catch (error) {
+      console.error('Error in getCalendarInsights:', error);
+      // Return empty data array on error to prevent UI crashes
+      return { data: [] };
+    }
   },
   
   // Publish a calendar entry

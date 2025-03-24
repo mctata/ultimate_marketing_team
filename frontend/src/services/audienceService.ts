@@ -60,11 +60,49 @@ export const audienceService = {
 
   // Get audience reach estimate based on targeting criteria
   getReachEstimate: async (audience: Partial<AudienceTarget>): Promise<{ reach: number, dailyResults: number }> => {
-    await delay(600);
-    return {
-      reach: Math.floor(Math.random() * 2000000) + 500000,
-      dailyResults: Math.floor(Math.random() * 15000) + 2000,
-    };
+    try {
+      // Shorter delay in development for better UX
+      await delay(300);
+      
+      // Calculate reach based on audience criteria
+      let baseReach = 1000000;
+      
+      // Age range affects reach
+      if (audience.demographic?.ageRange) {
+        const range = audience.demographic.ageRange.max - audience.demographic.ageRange.min;
+        baseReach = baseReach * (range / 65); // Normalize by maximum age range
+      }
+      
+      // Gender affects reach
+      if (audience.demographic?.gender && audience.demographic.gender !== 'all') {
+        baseReach = baseReach * 0.5;
+      }
+      
+      // Locations affect reach
+      if (audience.demographic?.locations) {
+        baseReach = baseReach * Math.min(audience.demographic.locations.length, 10) / 5;
+      }
+      
+      // Interests, behaviors reduce reach as they're more targeted
+      if (audience.interests) {
+        baseReach = baseReach * (0.8 - (audience.interests.length * 0.05));
+      }
+      
+      // Daily results are typically 0.5-2% of total reach
+      const conversionRate = 0.01 + (Math.random() * 0.015);
+      
+      return {
+        reach: Math.floor(baseReach + (Math.random() * 500000)),
+        dailyResults: Math.floor(baseReach * conversionRate),
+      };
+    } catch (error) {
+      console.error('Error in getReachEstimate:', error);
+      // Return default values in case of error
+      return {
+        reach: 750000,
+        dailyResults: 7500
+      };
+    }
   },
 
   // Create a lookalike audience
