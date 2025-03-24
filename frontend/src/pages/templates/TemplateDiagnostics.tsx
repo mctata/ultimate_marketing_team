@@ -33,6 +33,8 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
+import { useTemplates } from '../../hooks/useContentGeneration';
+import contentGenerationApi from '../../services/contentGenerationService';
 
 interface TemplateIssue {
   id: string;
@@ -59,92 +61,209 @@ const TemplateDiagnostics: React.FC = () => {
   const [metrics, setMetrics] = useState<TemplateMetrics | null>(null);
   const [issues, setIssues] = useState<TemplateIssue[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  
+  // Get templates from API
+  const { templatesQuery } = useTemplates();
 
+  // Helper function to validate templates and find issues
+  const validateTemplates = (templates: any[]): TemplateIssue[] => {
+    const issues: TemplateIssue[] = [];
+    
+    templates.forEach(template => {
+      // Check for missing content
+      if (!template.template_content && !template.content) {
+        issues.push({
+          id: `error-${template.id}-missing-content`,
+          templateId: template.id,
+          templateName: template.name || template.title,
+          issueType: 'error',
+          message: 'Template content is missing',
+          location: 'template_content',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Check for missing variables
+      if (!template.variables || template.variables.length === 0) {
+        issues.push({
+          id: `warning-${template.id}-missing-variables`,
+          templateId: template.id,
+          templateName: template.name || template.title,
+          issueType: 'warning',
+          message: 'Template has no variables defined',
+          location: 'variables',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Check for variables without descriptions
+      if (template.variables && template.variables.length > 0) {
+        template.variables.forEach((variable: any) => {
+          if (!variable.description) {
+            issues.push({
+              id: `info-${template.id}-var-${variable.name}-no-desc`,
+              templateId: template.id,
+              templateName: template.name || template.title,
+              issueType: 'info',
+              message: `Variable "${variable.name}" has no description`,
+              location: `variables.${variable.name}`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        });
+      }
+      
+      // Check for sample output
+      if (!template.sample_output) {
+        issues.push({
+          id: `info-${template.id}-no-sample`,
+          templateId: template.id,
+          templateName: template.name || template.title,
+          issueType: 'info',
+          message: 'Template has no sample output provided',
+          location: 'sample_output',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Check for unused variables in content
+      if (template.variables && template.variables.length > 0 && (template.template_content || template.content)) {
+        const contentStr = template.template_content || template.content;
+        template.variables.forEach((variable: any) => {
+          const varName = variable.name;
+          if (!contentStr.includes(`{{${varName}}}`) && !contentStr.includes(`{${varName}}`)) {
+            issues.push({
+              id: `warning-${template.id}-unused-var-${varName}`,
+              templateId: template.id,
+              templateName: template.name || template.title,
+              issueType: 'warning',
+              message: `Variable "${varName}" appears to be unused in template content`,
+              location: `variables.${varName}`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        });
+      }
+    });
+    
+    return issues;
+  };
+  
   useEffect(() => {
     const loadDiagnostics = async () => {
       setLoading(true);
+      setApiError(null);
+      
       try {
-        // In a real implementation, this would call the API
-        // Simulating API call with timeout
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        let templates = [];
         
-        // Generate mock metrics based on actual templates
-        const totalTemplates = healthWellnessTemplates.length;
-        const errorTemplates = Math.floor(Math.random() * 2); // 0-1 templates with errors
-        const activeTemplates = totalTemplates - errorTemplates;
+        if (templatesQuery.isSuccess && templatesQuery.data) {
+          // Use API data if available
+          templates = templatesQuery.data;
+        } else if (templatesQuery.isError) {
+          console.error('API error loading templates, falling back to local data');
+          templates = healthWellnessTemplates;
+          setApiError('Could not load templates from API, using local templates instead.');
+        } else {
+          // If query is still loading, use local templates as fallback
+          templates = healthWellnessTemplates;
+        }
+        
+        // Calculate metrics
+        const totalTemplates = templates.length;
+        const activeTemplates = templates.filter(t => t.status !== 'inactive' && t.status !== 'archived').length;
+        const errorTemplates = validateTemplates(templates).filter(i => i.issueType === 'error').length;
         
         // Calculate average variables per template
-        const totalVariables = healthWellnessTemplates.reduce(
-          (sum, template) => sum + template.variables.length, 
+        const totalVariables = templates.reduce(
+          (sum, template) => sum + (template.variables ? template.variables.length : 0), 
           0
         );
         const averageVariables = totalVariables / totalTemplates;
+        
+        // Calculate usage metrics
+        const totalUsage = templates.reduce(
+          (sum, template) => sum + (template.usage_count || 0), 
+          0
+        );
         
         setMetrics({
           totalTemplates,
           activeTemplates,
           errorTemplates,
           averageVariables,
-          usageCount: Math.floor(Math.random() * 1000)
+          usageCount: totalUsage
         });
         
-        // Generate sample issues
-        const mockIssues: TemplateIssue[] = [
-          {
-            id: '1',
-            templateId: healthWellnessTemplates[0].id,
-            templateName: healthWellnessTemplates[0].name,
-            issueType: 'warning',
-            message: 'Template content contains potentially unused variables',
-            location: 'template_content',
-            timestamp: new Date().toISOString()
-          },
-          {
-            id: '2',
-            templateId: healthWellnessTemplates[1].id,
-            templateName: healthWellnessTemplates[1].name,
-            issueType: 'info',
-            message: 'Template has missing sample output for all tone variations',
-            location: 'sample_output',
-            timestamp: new Date(Date.now() - 86400000).toISOString()
-          }
-        ];
+        // Generate issues by validating templates
+        const detectedIssues = validateTemplates(templates);
+        setIssues(detectedIssues);
         
-        setIssues(mockIssues);
       } catch (error) {
         console.error('Error loading template diagnostics:', error);
+        setApiError('An error occurred while analyzing templates. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     
     loadDiagnostics();
-  }, []);
+  }, [templatesQuery.data, templatesQuery.isSuccess, templatesQuery.isError]);
   
   const handleRefresh = async () => {
     setRefreshing(true);
+    setApiError(null);
+    
     try {
-      // Simulate refresh with timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Refresh templates data from API
+      await templatesQuery.refetch();
       
-      // Update metrics with slightly different values
-      if (metrics) {
-        setMetrics({
-          ...metrics,
-          errorTemplates: Math.floor(Math.random() * 2),
-          usageCount: metrics.usageCount + Math.floor(Math.random() * 50)
-        });
+      // Give a small delay to make sure we have the latest data
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      let templates = [];
+      
+      if (templatesQuery.isSuccess && templatesQuery.data) {
+        templates = templatesQuery.data;
+      } else if (templatesQuery.isError) {
+        console.error('API error refreshing templates, falling back to local data');
+        templates = healthWellnessTemplates;
+        setApiError('Could not refresh templates from API, using local templates instead.');
+      } else {
+        templates = healthWellnessTemplates;
       }
       
-      // Update timestamp on issues
-      setIssues(prevIssues => 
-        prevIssues.map(issue => ({
-          ...issue,
-          timestamp: new Date().toISOString()
-        }))
+      // Recalculate metrics
+      const totalTemplates = templates.length;
+      const activeTemplates = templates.filter(t => t.status !== 'inactive' && t.status !== 'archived').length;
+      const errorTemplates = validateTemplates(templates).filter(i => i.issueType === 'error').length;
+      
+      const totalVariables = templates.reduce(
+        (sum, template) => sum + (template.variables ? template.variables.length : 0), 
+        0
       );
+      const averageVariables = totalVariables / totalTemplates;
+      
+      const totalUsage = templates.reduce(
+        (sum, template) => sum + (template.usage_count || 0), 
+        0
+      );
+      
+      setMetrics({
+        totalTemplates,
+        activeTemplates,
+        errorTemplates,
+        averageVariables,
+        usageCount: totalUsage
+      });
+      
+      // Generate fresh issues by validating all templates
+      const detectedIssues = validateTemplates(templates);
+      setIssues(detectedIssues);
     } catch (error) {
       console.error('Error refreshing diagnostics:', error);
+      setApiError('An error occurred while refreshing data. Please try again.');
     } finally {
       setRefreshing(false);
     }
@@ -202,6 +321,13 @@ const TemplateDiagnostics: React.FC = () => {
         </Box>
       ) : (
         <>
+          {/* Error alert */}
+          {apiError && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {apiError}
+            </Alert>
+          )}
+          
           {/* Metrics Summary */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {metrics && (
