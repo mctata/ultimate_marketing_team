@@ -47,7 +47,7 @@ const menuItems = [
     icon: <ArticleIcon />, 
     path: '/content',
     subItems: [
-      { text: 'Content Overview', path: '/content' },
+      { text: 'Content', path: '/content' },
       { text: 'Content Library', path: '/content/library' },
       { text: 'Content Calendar', path: '/content/calendar' },
       { text: 'Templates Library', path: '/content/templates' },
@@ -139,7 +139,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
           <React.Fragment key={item.text}>
             <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
               <ListItemButton
-                onClick={() => item.subItems ? null : handleNavigation(item.path)}
+                onClick={() => handleNavigation(item.path)}
                 selected={location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path))}
                 sx={{
                   minHeight: 48,
