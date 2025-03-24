@@ -8,13 +8,29 @@ import { Template } from './services/contentGenerationService';
  * focused on health, wellness, fitness, nutrition, and mental health topics.
  */
 
-const healthWellnessTemplates: Template[] = [
+// Define the extended template interface with properties used in Templates.tsx
+interface ExtendedTemplate extends Template {
+  title: string;
+  description: string;
+  format_id: string;
+  categories: string[];
+  industries: string[];
+  is_premium: boolean;
+  preview_image?: string;
+}
+
+const healthWellnessTemplates: ExtendedTemplate[] = [
   // Blog Post Templates
   {
     id: 'health-blog-wellness-tips',
     name: 'Wellness Tips Blog Post',
+    title: 'Wellness Tips Blog Post',
     description: 'A comprehensive blog post sharing practical wellness tips for daily life.',
     content_type: 'blog',
+    format_id: 'blog-how-to',
+    categories: ['educational-content', 'brand-awareness'],
+    industries: ['health-wellness', 'fitness'],
+    is_premium: false,
     template_content: `You are writing a blog post about wellness tips related to {{specific_topic}}. 
 The post should be targeted at {{target_audience}} with a {{tone}} tone.
 
@@ -115,8 +131,13 @@ Use UK spelling and terminology throughout the article.`,
   {   
     id: 'health-blog-nutrition-guide',
     name: 'Nutrition Guide Blog Post',
+    title: 'Nutrition Guide Blog Post',
     description: 'In-depth blog post about nutrition topics with evidence-based information.',
     content_type: 'blog',
+    format_id: 'blog-how-to',
+    categories: ['educational-content', 'customer-acquisition'],
+    industries: ['health-wellness', 'nutrition'],
+    is_premium: true,
     template_content: `You are writing an evidence-based nutrition blog post about {{nutrition_topic}} for {{target_audience}}.
 
 Blog Title: "{{title}}"
@@ -185,6 +206,50 @@ Write the article to be approximately 1,200-1,500 words, with clear headings, su
           { value: 'meal timing and frequency', label: 'Meal Timing & Frequency' },
           { value: 'hydration needs', label: 'Hydration Needs' }
         ]
+      },
+      {
+        name: 'target_audience',
+        label: 'Target Audience',
+        description: 'The primary audience for this content',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'busy professionals', label: 'Busy Professionals' },
+          { value: 'parents', label: 'Parents' },
+          { value: 'seniors', label: 'Seniors' },
+          { value: 'young adults', label: 'Young Adults' },
+          { value: 'fitness beginners', label: 'Fitness Beginners' },
+          { value: 'health-conscious individuals', label: 'Health-Conscious Individuals' }
+        ]
+      },
+      {
+        name: 'tone',
+        label: 'Content Tone',
+        description: 'The tone/voice to use in the content',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'informative and authoritative', label: 'Informative & Authoritative' },
+          { value: 'conversational and friendly', label: 'Conversational & Friendly' },
+          { value: 'motivational and inspiring', label: 'Motivational & Inspiring' },
+          { value: 'empathetic and supportive', label: 'Empathetic & Supportive' }
+        ]
+      },
+      {
+        name: 'common_misconception',
+        label: 'Common Misconception',
+        description: 'A common misconception about this nutrition topic to address',
+        type: 'string',
+        required: true,
+        default_value: 'All fats are unhealthy and should be avoided'
+      },
+      {
+        name: 'implementation_tips',
+        label: 'Implementation Tips',
+        description: 'Practical tips for implementing these nutrition practices',
+        type: 'text',
+        required: true,
+        default_value: '- Start with small, sustainable changes\n- Focus on adding nutritious foods rather than restricting\n- Prepare meals in advance when possible\n- Listen to your body\'s hunger and fullness cues\n- Stay hydrated throughout the day'
       }
     ],
     category: 'health',
@@ -194,6 +259,7 @@ Write the article to be approximately 1,200-1,500 words, with clear headings, su
     updated_at: '2025-03-23T11:00:00Z',
     is_default: false,
     is_featured: true,
+    sample_output: 'The Complete Guide to Balanced Nutrition for Busy Professionals\n\nIn today\'s fast-paced world, understanding balanced macronutrients isn\'t just helpful—it\'s essential for maintaining energy, focus, and long-term health. Yet, with constantly evolving nutrition research and contradictory headlines, many busy professionals find themselves confused about how to actually implement balanced nutrition into their daily routines...',
     author: 'Marketing Team'
   }
 ];

@@ -24,7 +24,7 @@ import {
   FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { healthWellnessTemplates } from '../../data/healthWellnessTemplates';
+import healthWellnessTemplates from '../../healthWellnessTemplates';
 
 // Mock template categories
 const templateCategories = [
