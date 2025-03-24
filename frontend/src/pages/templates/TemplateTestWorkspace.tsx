@@ -32,6 +32,8 @@ import {
   ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
+import { useTemplates } from '../../hooks/useContentGeneration';
+import contentGenerationApi from '../../services/contentGenerationService';
 
 interface TestCase {
   id: string;
@@ -78,49 +80,115 @@ const TemplateTestWorkspace: React.FC = () => {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [currentTestCase, setCurrentTestCase] = useState<TestCase | null>(null);
   const [newTestCaseName, setNewTestCaseName] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
+  
+  // Get templates from API
+  const { templatesQuery } = useTemplates();
   
   // Load data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setApiError(null);
+      
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Fetch templates from API
+        let templatesData = [];
+        
+        if (templatesQuery.isSuccess && templatesQuery.data) {
+          templatesData = templatesQuery.data;
+          setTemplates(templatesData);
+        } else if (templatesQuery.isError) {
+          console.error('API error loading templates, falling back to local data');
+          templatesData = healthWellnessTemplates;
+          setTemplates(healthWellnessTemplates);
+          setApiError('Could not load templates from API, using local templates instead.');
+        } else {
+          // If the query is still loading, use local templates as fallback
+          templatesData = healthWellnessTemplates;
+          setTemplates(healthWellnessTemplates);
+        }
         
         // Create some initial test cases
-        if (healthWellnessTemplates.length > 0) {
-          setSelectedTemplateId(healthWellnessTemplates[0].id);
+        if (templatesData.length > 0) {
+          setSelectedTemplateId(templatesData[0].id);
           
-          const template = healthWellnessTemplates[0];
+          const template = templatesData[0];
           const initialVars: Record<string, any> = {};
           
           template.variables.forEach(v => {
             initialVars[v.name] = v.default_value || '';
           });
           
-          const mockTestCases: TestCase[] = [
-            {
-              id: '1',
+          const testCaseId = `test-${Date.now()}`;
+          
+          try {
+            // Try to load saved test cases from localStorage
+            const savedTestCases = localStorage.getItem('templateTestCases');
+            if (savedTestCases) {
+              const parsedTestCases = JSON.parse(savedTestCases) as TestCase[];
+              setTestCases(parsedTestCases);
+              
+              // Find a test case for the selected template
+              const templateTestCase = parsedTestCases.find(tc => tc.templateId === template.id);
+              if (templateTestCase) {
+                setCurrentTestCase(templateTestCase);
+              } else {
+                // No test case for this template, create a new one
+                const newTestCase: TestCase = {
+                  id: testCaseId,
+                  name: 'Default Test Case',
+                  templateId: template.id,
+                  variables: initialVars,
+                  result: template.sample_output,
+                  createDate: new Date().toISOString()
+                };
+                
+                setTestCases([...parsedTestCases, newTestCase]);
+                setCurrentTestCase(newTestCase);
+              }
+            } else {
+              // No saved test cases, create a new one
+              const newTestCase: TestCase = {
+                id: testCaseId,
+                name: 'Default Test Case',
+                templateId: template.id,
+                variables: initialVars,
+                result: template.sample_output,
+                createDate: new Date().toISOString()
+              };
+              
+              setTestCases([newTestCase]);
+              setCurrentTestCase(newTestCase);
+            }
+          } catch (error) {
+            console.error('Error loading saved test cases:', error);
+            
+            // Fallback to creating a new test case
+            const newTestCase: TestCase = {
+              id: testCaseId,
               name: 'Default Test Case',
               templateId: template.id,
               variables: initialVars,
               result: template.sample_output,
               createDate: new Date().toISOString()
-            }
-          ];
-          
-          setTestCases(mockTestCases);
-          setCurrentTestCase(mockTestCases[0]);
+            };
+            
+            setTestCases([newTestCase]);
+            setCurrentTestCase(newTestCase);
+          }
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        setApiError('An error occurred while loading data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     
     loadData();
-  }, []);
+  }, [templatesQuery.data, templatesQuery.isSuccess, templatesQuery.isError]);
   
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -139,7 +207,8 @@ const TemplateTestWorkspace: React.FC = () => {
       setCurrentTestCase(filteredTestCases[0]);
     } else {
       // Create a new test case for this template
-      const template = healthWellnessTemplates.find(t => t.id === templateId);
+      // First try to find the template in the API-loaded templates
+      const template = templates.find(t => t.id === templateId);
       
       if (template) {
         const initialVars: Record<string, any> = {};
@@ -156,8 +225,17 @@ const TemplateTestWorkspace: React.FC = () => {
           createDate: new Date().toISOString()
         };
         
-        setTestCases([...testCases, newTestCase]);
+        // Add new test case
+        const updatedTestCases = [...testCases, newTestCase];
+        setTestCases(updatedTestCases);
         setCurrentTestCase(newTestCase);
+        
+        // Save to local storage
+        try {
+          localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+        } catch (error) {
+          console.error('Error saving test cases to localStorage:', error);
+        }
       }
     }
   };
@@ -184,7 +262,7 @@ const TemplateTestWorkspace: React.FC = () => {
   const handleCreateTestCase = () => {
     if (!selectedTemplateId || !newTestCaseName.trim()) return;
     
-    const template = healthWellnessTemplates.find(t => t.id === selectedTemplateId);
+    const template = templates.find(t => t.id === selectedTemplateId);
     
     if (template) {
       const initialVars: Record<string, any> = {};
@@ -201,9 +279,17 @@ const TemplateTestWorkspace: React.FC = () => {
         createDate: new Date().toISOString()
       };
       
-      setTestCases([...testCases, newTestCase]);
+      const updatedTestCases = [...testCases, newTestCase];
+      setTestCases(updatedTestCases);
       setCurrentTestCase(newTestCase);
       setNewTestCaseName('');
+      
+      // Save to local storage
+      try {
+        localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+      } catch (error) {
+        console.error('Error saving test cases to localStorage:', error);
+      }
     }
   };
   
@@ -214,6 +300,13 @@ const TemplateTestWorkspace: React.FC = () => {
     
     if (currentTestCase?.id === testCaseId) {
       setCurrentTestCase(updatedTestCases.length > 0 ? updatedTestCases[0] : null);
+    }
+    
+    // Save to local storage
+    try {
+      localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+    } catch (error) {
+      console.error('Error saving test cases to localStorage:', error);
     }
   };
   
@@ -229,34 +322,73 @@ const TemplateTestWorkspace: React.FC = () => {
     });
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Find the template
-      const template = healthWellnessTemplates.find(t => t.id === currentTestCase.templateId);
+      // Use the actual API to render the template
+      const template = templates.find(t => t.id === currentTestCase.templateId);
       
       if (template) {
-        // Replace variables in the template content
-        let result = template.template_content;
-        
-        Object.entries(currentTestCase.variables).forEach(([key, value]) => {
-          const regex = new RegExp(`{{${key}}}`, 'g');
-          result = result.replace(regex, String(value));
-        });
-        
-        // Update the test case with the result
-        const updatedTestCase = {
-          ...currentTestCase,
-          result,
-          isRunning: false
-        };
-        
-        setCurrentTestCase(updatedTestCase);
-        
-        // Update the test cases array
-        setTestCases(prev => 
-          prev.map(tc => tc.id === currentTestCase.id ? updatedTestCase : tc)
-        );
+        try {
+          // Call the real template render API
+          const response = await contentGenerationApi.renderTemplate(
+            currentTestCase.templateId, 
+            currentTestCase.variables
+          );
+          
+          // Update the test case with the result
+          const updatedTestCase = {
+            ...currentTestCase,
+            result: response.rendered,
+            isRunning: false
+          };
+          
+          setCurrentTestCase(updatedTestCase);
+          
+          // Update the test cases array
+          const updatedTestCases = testCases.map(tc => 
+            tc.id === currentTestCase.id ? updatedTestCase : tc
+          );
+          
+          setTestCases(updatedTestCases);
+          
+          // Save to local storage
+          try {
+            localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+          } catch (error) {
+            console.error('Error saving test cases to localStorage:', error);
+          }
+        } catch (apiError: any) {
+          console.error('API error rendering template:', apiError);
+          
+          // Fallback to local rendering if API fails
+          let result = template.template_content;
+          
+          Object.entries(currentTestCase.variables).forEach(([key, value]) => {
+            const regex = new RegExp(`{{${key}}}`, 'g');
+            result = result.replace(regex, String(value));
+          });
+          
+          // Update the test case with the result
+          const updatedTestCase = {
+            ...currentTestCase,
+            result,
+            isRunning: false
+          };
+          
+          setCurrentTestCase(updatedTestCase);
+          
+          // Update the test cases array
+          const updatedTestCases = testCases.map(tc => 
+            tc.id === currentTestCase.id ? updatedTestCase : tc
+          );
+          
+          setTestCases(updatedTestCases);
+          
+          // Save to local storage
+          try {
+            localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+          } catch (error) {
+            console.error('Error saving test cases to localStorage:', error);
+          }
+        }
       }
     } catch (error: any) {
       // Handle error
@@ -273,16 +405,24 @@ const TemplateTestWorkspace: React.FC = () => {
     if (!currentTestCase) return;
     
     // Update the test cases array
-    setTestCases(prev => 
-      prev.map(tc => tc.id === currentTestCase.id ? currentTestCase : tc)
+    const updatedTestCases = testCases.map(tc => 
+      tc.id === currentTestCase.id ? currentTestCase : tc
     );
     
-    // Show save success message (would be done with a toast in a real app)
-    console.log('Test case saved:', currentTestCase);
+    setTestCases(updatedTestCases);
+    
+    // Save to local storage
+    try {
+      localStorage.setItem('templateTestCases', JSON.stringify(updatedTestCases));
+      // Show success message (would be done with a toast in a real app)
+      console.log('Test case saved:', currentTestCase);
+    } catch (error) {
+      console.error('Error saving test cases to localStorage:', error);
+    }
   };
   
   // Get the current template
-  const currentTemplate = healthWellnessTemplates.find(t => t.id === selectedTemplateId);
+  const currentTemplate = templates.find(t => t.id === selectedTemplateId);
   
   // Filter test cases for the selected template
   const filteredTestCases = testCases.filter(tc => tc.templateId === selectedTemplateId);
@@ -309,6 +449,13 @@ const TemplateTestWorkspace: React.FC = () => {
         </Box>
       ) : (
         <>
+          {/* Error alert */}
+          {apiError && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {apiError}
+            </Alert>
+          )}
+          
           {/* Template Selection */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
@@ -320,7 +467,7 @@ const TemplateTestWorkspace: React.FC = () => {
                   onChange={handleTemplateChange}
                   label="Select Template"
                 >
-                  {healthWellnessTemplates.map(template => (
+                  {templates.map(template => (
                     <MenuItem key={template.id} value={template.id}>
                       {template.name}
                     </MenuItem>

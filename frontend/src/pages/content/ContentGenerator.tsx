@@ -49,6 +49,21 @@ import contentGenerationApi, {
   ABTestRequest
 } from '../../services/contentGenerationService';
 
+// Content quality data interface
+interface ContentQualityData {
+  overallScore: number;
+  metrics: {
+    readability: number;
+    grammar: number;
+    seo: number;
+    engagement: number;
+    brandConsistency: number;
+  };
+  strengths: string[];
+  improvements: string[];
+  suggestions: string[];
+}
+
 // Example mock data for A/B test
 const mockABTest: ABTest = {
   id: 'test-1',
