@@ -216,20 +216,30 @@ function App() {
           <Route path="brands" element={<Brands />} />
           <Route path="brands/new" element={<BrandNew />} />
           <Route path="brands/:id" element={<BrandDetail />} />
+          {/* Content section with all subpages */}
           <Route path="content" element={<Content />} />
+          <Route path="content/library" element={<ContentLibrary />} />
           <Route path="content/calendar" element={<ContentCalendar />} />
+          <Route path="content/templates" element={<Templates />} />
+          <Route path="content/templates/diagnostics" element={<TemplateDiagnostics />} />
+          <Route path="content/templates/test-workspace" element={<TemplateTestWorkspace />} />
+          <Route path="content/templates/admin" element={<AdminTemplatesUtility />} />
+          <Route path="content/templates/:id" element={<TemplateDetail />} />
+          <Route path="content/templates/:id/test" element={<TemplateDetail testMode={true} />} />
+          <Route path="content/templates/:id/use" element={<TemplateDetail useMode={true} />} />
           <Route path="content/:id" element={<ContentDetail />} />
+          
+          {/* Legacy routes - redirect to new structure */}
+          <Route path="templates" element={<Navigate to="/content/templates" replace />} />
+          <Route path="templates/admin" element={<Navigate to="/content/templates/admin" replace />} />
+          <Route path="templates/diagnostics" element={<Navigate to="/content/templates/diagnostics" replace />} />
+          <Route path="templates/test-workspace" element={<Navigate to="/content/templates/test-workspace" replace />} />
+          <Route path="templates/:id" element={<Navigate to="/content/templates/:id" replace />} />
+          
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="campaigns/:id" element={<CampaignDetail />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="templates" element={<Templates />} />
-          <Route path="templates/admin" element={<AdminTemplatesUtility />} />
-          <Route path="templates/diagnostics" element={<TemplateDiagnostics />} />
-          <Route path="templates/test-workspace" element={<TemplateTestWorkspace />} />
-          <Route path="templates/:id" element={<TemplateDetail />} />
-          <Route path="templates/:id/test" element={<TemplateDetail testMode={true} />} />
-          <Route path="templates/:id/use" element={<TemplateDetail useMode={true} />} />
         </Route>
         
         {/* 404 route */}

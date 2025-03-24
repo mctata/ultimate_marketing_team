@@ -47,12 +47,13 @@ const menuItems = [
     icon: <ArticleIcon />, 
     path: '/content',
     subItems: [
-      { text: 'Content', path: '/content' },
+      { text: 'Content Overview', path: '/content' },
+      { text: 'Content Library', path: '/content/library' },
       { text: 'Content Calendar', path: '/content/calendar' },
-      { text: 'Templates Library', path: '/templates' },
-      { text: 'Template Diagnostics', path: '/templates/diagnostics' },
-      { text: 'Template Test Workspace', path: '/templates/test-workspace' },
-      { text: 'Template Admin (Admin Only)', path: '/templates/admin' }
+      { text: 'Templates Library', path: '/content/templates' },
+      { text: 'Template Diagnostics', path: '/content/templates/diagnostics' },
+      { text: 'Template Test Workspace', path: '/content/templates/test-workspace' },
+      { text: 'Template Admin (Admin Only)', path: '/content/templates/admin' }
     ]
   },
   { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },

@@ -121,7 +121,11 @@ const Content = () => {
   };
   
   const navigateToTemplateLibrary = () => {
-    navigate('/templates');
+    navigate('/content/templates');
+  };
+  
+  const navigateToContentLibrary = () => {
+    navigate('/content/library');
   };
   
   const navigateToContentCalendar = () => {
@@ -335,7 +339,7 @@ const Content = () => {
         <Button 
           variant="outlined" 
           endIcon={<ArrowForwardIcon />}
-          onClick={() => navigate('/content/library')}
+          onClick={navigateToContentLibrary}
         >
           View Full Library
         </Button>

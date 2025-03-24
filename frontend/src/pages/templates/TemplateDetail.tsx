@@ -11,14 +11,14 @@ const TemplateDetail: React.FC<TemplateDetailProps> = ({ testMode, useMode }) =>
   const { id } = useParams<{ id: string }>();
   
   if (testMode) {
-    return <Navigate to={`/templates/${id}/test`} replace />;
+    return <Navigate to={`/content/templates/${id}/test`} replace />;
   }
   
   if (useMode) {
-    return <Navigate to={`/templates/${id}/use`} replace />;
+    return <Navigate to={`/content/templates/${id}/use`} replace />;
   }
   
-  return <Navigate to={`/templates/${id}`} replace />;
+  return <Navigate to={`/content/templates/${id}`} replace />;
 };
 
 export default TemplateDetail;
