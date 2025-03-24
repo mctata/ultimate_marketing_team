@@ -46,6 +46,8 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
+import { useTemplates } from '../../hooks/useContentGeneration';
+import contentGenerationApi from '../../services/contentGenerationService';
 
 interface TemplateAdminViewModel {
   id: string;
@@ -101,44 +103,62 @@ const AdminTemplatesUtility: React.FC = () => {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
+  
+  // Get templates from API
+  const { templatesQuery, updateTemplate } = useTemplates();
   
   // Load data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setApiError(null);
+      
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        let apiTemplates = [];
+
+        if (templatesQuery.isSuccess && templatesQuery.data) {
+          // Use the API data if available
+          apiTemplates = templatesQuery.data;
+        } else if (templatesQuery.isError) {
+          console.error('API error loading templates, falling back to local data');
+          apiTemplates = healthWellnessTemplates;
+          setApiError('Could not load templates from API, using local templates instead.');
+        } else {
+          // If query is still loading, use local templates as fallback
+          apiTemplates = healthWellnessTemplates;
+        }
         
         // Transform templates data for admin view
-        const adminTemplates: TemplateAdminViewModel[] = healthWellnessTemplates.map(template => ({
+        const adminTemplates: TemplateAdminViewModel[] = apiTemplates.map((template: any) => ({
           id: template.id,
-          name: template.name,
-          title: template.title,
+          name: template.name || template.title,
+          title: template.name || template.title,
           description: template.description,
-          content_type: template.content_type,
-          category: template.category,
-          format_id: template.format_id,
-          variable_count: template.variables.length,
-          is_premium: template.is_premium,
-          is_featured: template.is_featured,
-          is_active: true,
-          created_at: template.created_at,
-          updated_at: template.updated_at,
+          content_type: template.content_type || 'blog_post',
+          category: template.category || (template.categories ? template.categories[0]?.name : 'General'),
+          format_id: template.format_id || 'default',
+          variable_count: template.variables ? template.variables.length : 0,
+          is_premium: template.is_premium !== undefined ? template.is_premium : false,
+          is_featured: template.is_featured !== undefined ? template.is_featured : false,
+          is_active: template.status ? template.status === 'active' : true,
+          created_at: template.created_at || new Date().toISOString(),
+          updated_at: template.updated_at || new Date().toISOString(),
           author: template.author || 'System',
-          tags: template.tags
+          tags: template.tags || []
         }));
         
         setTemplates(adminTemplates);
       } catch (error) {
         console.error('Error loading data:', error);
+        setApiError('An error occurred while loading data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     
     loadData();
-  }, []);
+  }, [templatesQuery.data, templatesQuery.isSuccess, templatesQuery.isError]);
   
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -173,63 +193,172 @@ const AdminTemplatesUtility: React.FC = () => {
   };
   
   // Handle duplicate template
-  const handleDuplicateTemplate = () => {
+  const handleDuplicateTemplate = async () => {
     if (!selectedTemplateId || !newTemplateName.trim()) return;
     
     const originalTemplate = templates.find(t => t.id === selectedTemplateId);
     
     if (originalTemplate) {
-      const newTemplateId = `${originalTemplate.id}-copy-${Date.now()}`;
-      
-      const newTemplate: TemplateAdminViewModel = {
-        ...originalTemplate,
-        id: newTemplateId,
-        name: newTemplateName.trim(),
-        title: newTemplateName.trim(),
-        is_featured: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setTemplates([...templates, newTemplate]);
-      handleCloseDuplicateDialog();
-      
-      // Show success message (would use toast in a real app)
-      console.log('Template duplicated:', newTemplate);
+      // First, get the full template details from API
+      try {
+        // Create a local version for optimistic UI update
+        const newTemplateId = `${originalTemplate.id}-copy-${Date.now()}`;
+        
+        const newTemplate: TemplateAdminViewModel = {
+          ...originalTemplate,
+          id: newTemplateId,
+          name: newTemplateName.trim(),
+          title: newTemplateName.trim(),
+          is_featured: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        // Optimistically update UI
+        setTemplates([...templates, newTemplate]);
+        handleCloseDuplicateDialog();
+        
+        // Now do the actual API call to create the duplicate template
+        const templateDetail = await contentGenerationApi.getTemplateById(selectedTemplateId);
+        
+        if (templateDetail) {
+          // Create a new template via API
+          const duplicateTemplate = {
+            ...templateDetail,
+            id: undefined, // Let the API generate an ID
+            name: newTemplateName.trim(),
+            title: newTemplateName.trim(),
+            is_featured: false,
+            is_premium: templateDetail.is_premium
+          };
+          
+          await contentGenerationApi.createTemplate(duplicateTemplate);
+          
+          // Refresh templates list to get the new template with the correct ID
+          templatesQuery.refetch();
+        }
+        
+        // Show success message (would use toast in a real app)
+        console.log('Template duplicated:', newTemplate);
+      } catch (error) {
+        console.error('Error duplicating template:', error);
+        
+        // If API call fails, remove the optimistically added template
+        setTemplates(prev => prev.filter(t => t.id !== `${originalTemplate.id}-copy-${Date.now()}`));
+        
+        // Show error message (would use toast in a real app)
+        setApiError('Failed to duplicate template. Please try again.');
+      }
     }
   };
   
   // Handle toggle featured status
   const handleToggleFeatured = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    const newFeaturedValue = !template.is_featured;
+    
+    // Update in local state
     setTemplates(prev => 
-      prev.map(template => 
-        template.id === templateId 
-          ? { ...template, is_featured: !template.is_featured } 
-          : template
+      prev.map(t => 
+        t.id === templateId 
+          ? { ...t, is_featured: newFeaturedValue } 
+          : t
       )
     );
+    
+    // Update in API
+    try {
+      updateTemplate({
+        templateId,
+        template: { is_featured: newFeaturedValue }
+      });
+    } catch (error) {
+      console.error('Error updating template featured status:', error);
+      
+      // Revert the change in local state if API call fails
+      setTemplates(prev => 
+        prev.map(t => 
+          t.id === templateId 
+            ? { ...t, is_featured: template.is_featured } 
+            : t
+        )
+      );
+    }
   };
   
   // Handle toggle active status
   const handleToggleActive = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    const newActiveValue = !template.is_active;
+    const newStatus = newActiveValue ? 'active' : 'inactive';
+    
+    // Update in local state
     setTemplates(prev => 
-      prev.map(template => 
-        template.id === templateId 
-          ? { ...template, is_active: !template.is_active } 
-          : template
+      prev.map(t => 
+        t.id === templateId 
+          ? { ...t, is_active: newActiveValue } 
+          : t
       )
     );
+    
+    // Update in API
+    try {
+      updateTemplate({
+        templateId,
+        template: { status: newStatus }
+      });
+    } catch (error) {
+      console.error('Error updating template active status:', error);
+      
+      // Revert the change in local state if API call fails
+      setTemplates(prev => 
+        prev.map(t => 
+          t.id === templateId 
+            ? { ...t, is_active: template.is_active } 
+            : t
+        )
+      );
+    }
   };
   
   // Handle toggle premium status
   const handleTogglePremium = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    const newPremiumValue = !template.is_premium;
+    
+    // Update in local state
     setTemplates(prev => 
-      prev.map(template => 
-        template.id === templateId 
-          ? { ...template, is_premium: !template.is_premium } 
-          : template
+      prev.map(t => 
+        t.id === templateId 
+          ? { ...t, is_premium: newPremiumValue } 
+          : t
       )
     );
+    
+    // Update in API
+    try {
+      updateTemplate({
+        templateId,
+        template: { is_premium: newPremiumValue }
+      });
+    } catch (error) {
+      console.error('Error updating template premium status:', error);
+      
+      // Revert the change in local state if API call fails
+      setTemplates(prev => 
+        prev.map(t => 
+          t.id === templateId 
+            ? { ...t, is_premium: template.is_premium } 
+            : t
+        )
+      );
+    }
   };
   
   // Filter templates based on search and content type filter
@@ -293,6 +422,13 @@ const AdminTemplatesUtility: React.FC = () => {
         </Box>
       ) : (
         <>
+          {/* Error alert */}
+          {apiError && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {apiError}
+            </Alert>
+          )}
+          
           {/* Search and Filters */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={8}>
