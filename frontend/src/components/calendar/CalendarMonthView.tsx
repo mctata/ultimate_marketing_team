@@ -75,6 +75,7 @@ interface CalendarMonthViewProps {
     platform: string[];
   };
   onFilterChange?: (type: string, values: string[]) => void;
+  onDateRangeChange?: (startDate: Date, endDate: Date) => void;
 }
 
 // Define insights interface
@@ -98,7 +99,8 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   insights = [],
   loading = false,
   filters,
-  onFilterChange
+  onFilterChange,
+  onDateRangeChange
 }) => {
   const theme = useTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -138,6 +140,17 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     'published': theme.palette.success.main,
     'failed': theme.palette.error.main
   };
+  
+  // Update date range when month changes
+  useEffect(() => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    
+    // Notify parent component of date range change
+    if (onDateRangeChange) {
+      onDateRangeChange(start, end);
+    }
+  }, [currentDate, onDateRangeChange]);
   
   // Calendar navigation
   const prevMonth = () => setCurrentDate(addMonths(currentDate, -1));

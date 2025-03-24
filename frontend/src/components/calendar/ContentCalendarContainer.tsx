@@ -14,7 +14,8 @@ import {
   useTheme,
   Paper,
   Tooltip,
-  Divider
+  Divider,
+  Chip
 } from '@mui/material';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -23,45 +24,21 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import InfoIcon from '@mui/icons-material/Info';
+import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 
 import CalendarMonthView from './CalendarMonthView';
 import CalendarWeekView from './CalendarWeekView';
 import CalendarListView from './CalendarListView';
 import ScheduleDialog from './ScheduleDialog';
 import { ScheduleFormData } from './ScheduleDialog';
-
-// Define type for best time recommendations
-interface BestTimeRecommendation {
-  platform: string;
-  day_of_week: number;
-  hour_of_day: number;
-  average_engagement: number;
-  confidence: number;
-}
-
-// Define type for calendar insights
-interface CalendarInsight {
-  insight_type: string;
-  description: string;
-  severity: string;
-  start_date?: string;
-  end_date?: string;
-  affected_content_ids?: number[];
-  recommendation: string;
-}
-
-// Define content item interface
-interface CalendarItem {
-  id: number;
-  title: string;
-  scheduled_date: string;
-  status: string;
-  content_type?: string;
-  platform?: string;
-  published_date?: string;
-  project_id: number;
-  content_draft_id?: number;
-}
+import contentCalendarService from '../../services/contentCalendarService';
+import { 
+  CalendarItem, 
+  BestTimeRecommendation, 
+  SchedulingInsight as CalendarInsight, 
+  ScheduleItemRequest 
+} from '../../services/contentCalendarService';
 
 // Define content draft interface
 interface ContentDraft {
@@ -72,112 +49,6 @@ interface ContentDraft {
   status: string;
 }
 
-// Sample content drafts (would be fetched from API in production)
-const sampleContentDrafts: ContentDraft[] = [
-  { id: 1, title: 'Q1 Marketing Strategy', content: 'Lorem ipsum...', version: 1, status: 'approved' },
-  { id: 2, title: 'Product Launch Announcement', content: 'Lorem ipsum...', version: 2, status: 'approved' },
-  { id: 3, title: 'Weekly Customer Success Story', content: 'Lorem ipsum...', version: 1, status: 'draft' },
-  { id: 4, title: 'Monthly Newsletter', content: 'Lorem ipsum...', version: 3, status: 'approved' },
-  { id: 5, title: 'New Feature Tutorial', content: 'Lorem ipsum...', version: 1, status: 'draft' },
-];
-
-// Sample best time recommendations
-const sampleBestTimeRecommendations: BestTimeRecommendation[] = [
-  { platform: 'instagram', day_of_week: 2, hour_of_day: 12, average_engagement: 542, confidence: 0.85 },
-  { platform: 'facebook', day_of_week: 4, hour_of_day: 15, average_engagement: 320, confidence: 0.75 },
-  { platform: 'twitter', day_of_week: 1, hour_of_day: 9, average_engagement: 210, confidence: 0.65 },
-  { platform: 'linkedin', day_of_week: 3, hour_of_day: 10, average_engagement: 180, confidence: 0.8 },
-  { platform: 'email', day_of_week: 2, hour_of_day: 8, average_engagement: 420, confidence: 0.9 },
-];
-
-// Sample insights
-const sampleInsights: CalendarInsight[] = [
-  {
-    insight_type: 'gap',
-    description: 'Gap of 5 days without scheduled content',
-    severity: 'info',
-    start_date: '2025-03-20T00:00:00Z',
-    end_date: '2025-03-25T00:00:00Z',
-    recommendation: 'Consider adding content during this period to maintain audience engagement'
-  },
-  {
-    insight_type: 'conflict',
-    description: 'Content scheduled too close together (30 minutes apart)',
-    severity: 'warning',
-    start_date: '2025-03-15T14:00:00Z',
-    end_date: '2025-03-15T14:30:00Z',
-    affected_content_ids: [3, 5],
-    recommendation: 'Consider spacing out content by at least 2 hours for better engagement'
-  },
-  {
-    insight_type: 'balance',
-    description: 'Over-reliance on one content type (80% blog posts)',
-    severity: 'warning',
-    recommendation: 'Try to balance content types more evenly (aim for <60% of any single type)'
-  },
-  {
-    insight_type: 'frequency',
-    description: 'Posting frequency decreased by 40% compared to last month',
-    severity: 'critical',
-    recommendation: 'Maintain consistent posting schedule to keep audience engaged'
-  }
-];
-
-// Sample calendar items (would be fetched from API in production)
-const sampleCalendarItems: CalendarItem[] = [
-  {
-    id: 1,
-    title: 'Q1 Marketing Strategy',
-    scheduled_date: '2025-03-10T09:00:00Z',
-    status: 'published',
-    content_type: 'blog',
-    platform: 'website',
-    published_date: '2025-03-10T09:00:00Z',
-    project_id: 1,
-    content_draft_id: 1
-  },
-  {
-    id: 2,
-    title: 'Product Launch Announcement',
-    scheduled_date: '2025-03-15T14:00:00Z',
-    status: 'scheduled',
-    content_type: 'social',
-    platform: 'facebook',
-    project_id: 1,
-    content_draft_id: 2
-  },
-  {
-    id: 3,
-    title: 'Weekly Customer Success Story',
-    scheduled_date: '2025-03-15T14:30:00Z',
-    status: 'scheduled',
-    content_type: 'social',
-    platform: 'instagram',
-    project_id: 1,
-    content_draft_id: 3
-  },
-  {
-    id: 4,
-    title: 'Monthly Newsletter',
-    scheduled_date: '2025-03-20T08:00:00Z',
-    status: 'draft',
-    content_type: 'email',
-    platform: 'email',
-    project_id: 1,
-    content_draft_id: 4
-  },
-  {
-    id: 5,
-    title: 'New Feature Tutorial',
-    scheduled_date: '2025-03-30T10:00:00Z',
-    status: 'scheduled',
-    content_type: 'video',
-    platform: 'youtube',
-    project_id: 1,
-    content_draft_id: 5
-  }
-];
-
 // Define props for ContentCalendarContainer
 interface ContentCalendarContainerProps {
   projectId: number;
@@ -187,10 +58,10 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   const theme = useTheme();
   
   // State for calendar data
-  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>(sampleCalendarItems);
-  const [contentDrafts, setContentDrafts] = useState<ContentDraft[]>(sampleContentDrafts);
-  const [bestTimeRecommendations, setBestTimeRecommendations] = useState<BestTimeRecommendation[]>(sampleBestTimeRecommendations);
-  const [insights, setInsights] = useState<CalendarInsight[]>(sampleInsights);
+  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
+  const [contentDrafts, setContentDrafts] = useState<ContentDraft[]>([]);
+  const [bestTimeRecommendations, setBestTimeRecommendations] = useState<BestTimeRecommendation[]>([]);
+  const [insights, setInsights] = useState<CalendarInsight[]>([]);
   
   // UI state
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
@@ -199,6 +70,12 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Date range state for fetching data
+  const [currentDateRange, setCurrentDateRange] = useState({
+    startDate: startOfMonth(new Date()),
+    endDate: endOfMonth(new Date())
+  });
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -211,25 +88,75 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   const platformOptions = ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok', 'email', 'website'];
   const contentTypeOptions = ['blog', 'social', 'email', 'video', 'ad', 'infographic'];
   
-  // Fetch calendar data (simulated)
-  const fetchCalendarData = useCallback(() => {
+  // Fetch content drafts - needed for scheduling
+  const fetchContentDrafts = useCallback(async () => {
+    try {
+      // This is a placeholder. In a real implementation, you would fetch 
+      // content drafts from an API endpoint that we would need to create
+      // For now, we'll use sample data
+      setContentDrafts([
+        { id: 1, title: 'Q1 Marketing Strategy', content: 'Lorem ipsum...', version: 1, status: 'approved' },
+        { id: 2, title: 'Product Launch Announcement', content: 'Lorem ipsum...', version: 2, status: 'approved' },
+        { id: 3, title: 'Weekly Customer Success Story', content: 'Lorem ipsum...', version: 1, status: 'draft' },
+        { id: 4, title: 'Monthly Newsletter', content: 'Lorem ipsum...', version: 3, status: 'approved' },
+        { id: 5, title: 'New Feature Tutorial', content: 'Lorem ipsum...', version: 1, status: 'draft' },
+      ]);
+    } catch (err) {
+      console.error('Error fetching content drafts:', err);
+      setError('Failed to load content drafts. Please try again.');
+    }
+  }, []);
+  
+  // Fetch calendar data from API
+  const fetchCalendarData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
-    // Simulate API call
-    setTimeout(() => {
-      setCalendarItems(sampleCalendarItems);
-      setContentDrafts(sampleContentDrafts);
-      setBestTimeRecommendations(sampleBestTimeRecommendations);
-      setInsights(sampleInsights);
+    try {
+      // Format dates for API
+      const startDateStr = format(currentDateRange.startDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+      const endDateStr = format(currentDateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+      
+      // Fetch calendar entries
+      const calendarData = await contentCalendarService.getCalendarEntries(
+        projectId,
+        startDateStr,
+        endDateStr
+      );
+      setCalendarItems(calendarData);
+      
+      // Fetch best time recommendations
+      const timeRecommendations = await contentCalendarService.getBestTimeRecommendations(projectId);
+      setBestTimeRecommendations(timeRecommendations);
+      
+      // Fetch scheduling insights
+      const schedulingInsights = await contentCalendarService.getSchedulingInsights(
+        projectId,
+        startDateStr,
+        endDateStr
+      );
+      setInsights(schedulingInsights);
+      
+      // Fetch content drafts
+      await fetchContentDrafts();
+      
       setLoading(false);
-    }, 1000);
-  }, []);
+    } catch (err) {
+      console.error('Error fetching calendar data:', err);
+      setError('Failed to load calendar data. Please try again.');
+      setLoading(false);
+    }
+  }, [projectId, currentDateRange, fetchContentDrafts]);
   
   // Initial data load
   useEffect(() => {
     fetchCalendarData();
   }, [fetchCalendarData]);
+  
+  // Handle date range change (e.g., when switching months)
+  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
+    setCurrentDateRange({ startDate, endDate });
+  };
   
   // Handle view mode change
   const handleViewModeChange = (
@@ -260,90 +187,94 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   };
   
   // Handle delete item
-  const handleDeleteItem = (itemId: number) => {
+  const handleDeleteItem = async (itemId: number) => {
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await contentCalendarService.deleteCalendarEntry(itemId);
       setCalendarItems(prev => prev.filter(item => item.id !== itemId));
-      setLoading(false);
       setSuccessMessage('Content successfully removed from calendar.');
-    }, 500);
+    } catch (err) {
+      console.error('Error deleting calendar item:', err);
+      setError('Failed to delete calendar item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Handle publish item
-  const handlePublishItem = (itemId: number) => {
+  const handlePublishItem = async (itemId: number) => {
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const updatedItem = await contentCalendarService.publishContent(itemId);
       setCalendarItems(prev => 
-        prev.map(item => 
-          item.id === itemId 
-            ? { ...item, status: 'published', published_date: new Date().toISOString() } 
-            : item
-        )
+        prev.map(item => item.id === itemId ? updatedItem : item)
       );
-      setLoading(false);
       setSuccessMessage('Content successfully published!');
-    }, 800);
+    } catch (err) {
+      console.error('Error publishing content:', err);
+      setError('Failed to publish content. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Handle scheduling submission
-  const handleScheduleSubmit = (formData: ScheduleFormData) => {
+  const handleScheduleSubmit = async (formData: ScheduleFormData) => {
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
       if (selectedItem) {
         // Edit existing
-        setCalendarItems(prev => 
-          prev.map(item => 
-            item.id === selectedItem.id 
-              ? { 
-                  ...item, 
-                  content_draft_id: formData.content_draft_id,
-                  scheduled_date: formData.scheduled_date.toISOString(),
-                  platform: formData.platform,
-                  content_type: formData.content_type,
-                  title: contentDrafts.find(d => d.id === formData.content_draft_id)?.title || item.title
-                } 
-              : item
-          )
-        );
-        setSuccessMessage('Calendar item updated successfully.');
-      } else {
-        // Create new
-        const newItem: CalendarItem = {
-          id: Math.max(...calendarItems.map(i => i.id)) + 1,
-          title: contentDrafts.find(d => d.id === formData.content_draft_id)?.title || 'Untitled',
+        const updateData: Partial<ScheduleItemRequest> = {
+          content_draft_id: formData.content_draft_id,
           scheduled_date: formData.scheduled_date.toISOString(),
-          status: 'scheduled',
-          content_type: formData.content_type,
-          platform: formData.platform,
-          project_id: formData.project_id,
-          content_draft_id: formData.content_draft_id
+          status: 'scheduled'
         };
         
-        setCalendarItems(prev => [...prev, newItem]);
+        const updatedItem = await contentCalendarService.updateCalendarEntry(selectedItem.id, updateData);
+        
+        setCalendarItems(prev => 
+          prev.map(item => item.id === selectedItem.id ? updatedItem : item)
+        );
+        
+        setSuccessMessage('Calendar item updated successfully.');
+      } else {
+        // Create new item
+        const newItemData: ScheduleItemRequest = {
+          project_id: formData.project_id,
+          content_draft_id: formData.content_draft_id,
+          scheduled_date: formData.scheduled_date.toISOString(),
+          status: 'scheduled',
+          platform: formData.platform,
+          content_type: formData.content_type
+        };
+        
+        // Create the main item
+        const createdItem = await contentCalendarService.createCalendarEntry(newItemData);
+        setCalendarItems(prev => [...prev, createdItem]);
         
         // Handle cross-platform publishing
         if (formData.cross_platform && formData.additional_platforms && formData.additional_platforms.length > 0) {
-          const additionalItems = formData.additional_platforms.map((platform, index) => {
+          const bulkItems = formData.additional_platforms.map((platform, index) => {
             const delayMinutes = (index + 1) * (formData.cross_platform_delay || 30);
             const scheduledDate = new Date(formData.scheduled_date);
             scheduledDate.setMinutes(scheduledDate.getMinutes() + delayMinutes);
             
             return {
-              id: Math.max(...calendarItems.map(i => i.id)) + 2 + index,
-              title: contentDrafts.find(d => d.id === formData.content_draft_id)?.title || 'Untitled',
+              project_id: formData.project_id,
+              content_draft_id: formData.content_draft_id,
               scheduled_date: scheduledDate.toISOString(),
               status: 'scheduled',
-              content_type: formData.content_type,
               platform,
-              project_id: formData.project_id,
-              content_draft_id: formData.content_draft_id
+              content_type: formData.content_type
             };
+          });
+          
+          // Bulk create additional platform items
+          const additionalItems = await contentCalendarService.bulkCreateCalendarEntries({
+            items: bulkItems
           });
           
           setCalendarItems(prev => [...prev, ...additionalItems]);
@@ -351,12 +282,11 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
         
         // Handle recurring content
         if (formData.is_recurring && formData.recurrence_pattern && formData.recurrence_end_date) {
-          const recurringItems: CalendarItem[] = [];
+          const recurringItems: ScheduleItemRequest[] = [];
           const baseDate = new Date(formData.scheduled_date);
           const endDate = new Date(formData.recurrence_end_date);
           
           let currentDate = new Date(baseDate);
-          let itemId = Math.max(...calendarItems.map(i => i.id)) + 10; // Start ID after possible cross-platform items
           
           while (currentDate < endDate) {
             // Skip the first occurrence as we already created it
@@ -377,14 +307,12 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             if (currentDate >= endDate) break;
             
             recurringItems.push({
-              id: itemId++,
-              title: contentDrafts.find(d => d.id === formData.content_draft_id)?.title || 'Untitled',
+              project_id: formData.project_id,
+              content_draft_id: formData.content_draft_id,
               scheduled_date: new Date(currentDate).toISOString(),
               status: 'scheduled',
-              content_type: formData.content_type,
               platform: formData.platform,
-              project_id: formData.project_id,
-              content_draft_id: formData.content_draft_id
+              content_type: formData.content_type
             });
             
             // Advance to next occurrence
@@ -399,15 +327,25 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             }
           }
           
-          setCalendarItems(prev => [...prev, ...recurringItems]);
+          // Bulk create recurring items
+          if (recurringItems.length > 0) {
+            const createdRecurringItems = await contentCalendarService.bulkCreateCalendarEntries({
+              items: recurringItems
+            });
+            
+            setCalendarItems(prev => [...prev, ...createdRecurringItems]);
+          }
         }
         
         setSuccessMessage('Content scheduled successfully!');
       }
-      
+    } catch (err) {
+      console.error('Error scheduling content:', err);
+      setError('Failed to schedule content. Please try again.');
+    } finally {
       setLoading(false);
       setScheduleDialogOpen(false);
-    }, 1000);
+    }
   };
   
   // Handle item click
@@ -425,17 +363,29 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
   };
   
   // Duplicate an item (for list view)
-  const handleDuplicateItem = (item: CalendarItem) => {
-    const newItem: CalendarItem = {
-      ...item,
-      id: Math.max(...calendarItems.map(i => i.id)) + 1,
-      status: 'draft',
-      published_date: undefined,
-      title: `Copy of ${item.title}`
-    };
+  const handleDuplicateItem = async (item: CalendarItem) => {
+    setLoading(true);
     
-    setCalendarItems(prev => [...prev, newItem]);
-    setSuccessMessage('Content duplicated successfully.');
+    try {
+      // Create a new item based on the existing one
+      const newItemData: ScheduleItemRequest = {
+        project_id: item.project_id,
+        content_draft_id: item.content_draft_id || null,
+        scheduled_date: item.scheduled_date,
+        status: 'draft',
+        platform: item.platform,
+        content_type: item.content_type
+      };
+      
+      const duplicatedItem = await contentCalendarService.createCalendarEntry(newItemData);
+      setCalendarItems(prev => [...prev, duplicatedItem]);
+      setSuccessMessage('Content duplicated successfully.');
+    } catch (err) {
+      console.error('Error duplicating item:', err);
+      setError('Failed to duplicate content. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Handle snackbar close
@@ -455,7 +405,8 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
       loading,
       insights,
       filters,
-      onFilterChange: handleFilterChange
+      onFilterChange: handleFilterChange,
+      onDateRangeChange: handleDateRangeChange
     };
     
     switch (viewMode) {
@@ -520,6 +471,7 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             onClick={fetchCalendarData}
             disabled={loading}
             color="primary"
+            aria-label="Refresh calendar data"
           >
             <RefreshIcon />
           </IconButton>
@@ -551,7 +503,9 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({ pro
             </Box>
             
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {insightCounts.total === 0 ? (
+              {loading ? (
+                <CircularProgress size={20} thickness={2} />
+              ) : insightCounts.total === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   No insights available for current view
                 </Typography>

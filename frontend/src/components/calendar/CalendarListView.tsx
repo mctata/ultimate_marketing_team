@@ -72,6 +72,7 @@ interface CalendarListViewProps {
     platform: string[];
   };
   onFilterChange?: (type: string, values: string[]) => void;
+  onDateRangeChange?: (startDate: Date, endDate: Date) => void;
 }
 
 const CalendarListView: React.FC<CalendarListViewProps> = ({
@@ -83,7 +84,8 @@ const CalendarListView: React.FC<CalendarListViewProps> = ({
   onDuplicateItem,
   loading = false,
   filters,
-  onFilterChange
+  onFilterChange,
+  onDateRangeChange
 }) => {
   const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,6 +95,21 @@ const CalendarListView: React.FC<CalendarListViewProps> = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  
+  // Notify parent component of date range when component mounts
+  // For list view, we'll use a 30-day range by default
+  useEffect(() => {
+    if (onDateRangeChange) {
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 15); // 15 days in the past
+      
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() + 15); // 15 days in the future
+      
+      onDateRangeChange(startDate, endDate);
+    }
+  }, [onDateRangeChange]);
   
   // Content type colors
   const contentTypeColors: Record<string, string> = {

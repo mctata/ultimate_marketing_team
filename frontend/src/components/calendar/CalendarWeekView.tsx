@@ -75,6 +75,7 @@ interface CalendarWeekViewProps {
     platform: string[];
   };
   onFilterChange?: (type: string, values: string[]) => void;
+  onDateRangeChange?: (startDate: Date, endDate: Date) => void;
 }
 
 // Define insights interface
@@ -98,7 +99,8 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   insights = [],
   loading = false,
   filters,
-  onFilterChange
+  onFilterChange,
+  onDateRangeChange
 }) => {
   const theme = useTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -139,15 +141,23 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     'failed': theme.palette.error.main
   };
   
-  // Calendar navigation
-  const prevWeek = () => setCurrentDate(addWeeks(currentDate, -1));
-  const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
-  const today = () => setCurrentDate(new Date());
-  
   // Week date range display
   const weekStart = startOfWeek(currentDate);
   const weekEnd = endOfWeek(currentDate);
   const weekDateRange = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+  
+  // Update date range when week changes
+  useEffect(() => {
+    // Notify parent component of date range change
+    if (onDateRangeChange) {
+      onDateRangeChange(weekStart, weekEnd);
+    }
+  }, [weekStart, weekEnd, onDateRangeChange]);
+  
+  // Calendar navigation
+  const prevWeek = () => setCurrentDate(addWeeks(currentDate, -1));
+  const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+  const today = () => setCurrentDate(new Date());
 
   // Calendar days calculation
   const weekDays = useMemo(() => {
