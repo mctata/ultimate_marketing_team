@@ -58,6 +58,33 @@ export interface Ad {
   performance: Record<string, number>;
 }
 
+export interface ABTestVariant {
+  id: string;
+  name: string;
+  description: string;
+  status: 'active' | 'paused' | 'completed';
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  ctr: number;
+  conversionRate: number;
+  confidence: number;
+}
+
+export interface ABTest {
+  id: string;
+  campaign_id: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string | null;
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  objective: 'clicks' | 'conversions' | 'engagement';
+  variants: ABTestVariant[];
+  trafficAllocation: number;
+  winnerVariantId: string | null;
+}
+
 // Campaign APIs
 export const getCampaigns = (params?: { brand_id?: string; status?: string }) => 
   api.get<Campaign[]>('/campaigns', { params });
@@ -109,3 +136,25 @@ export const updateAd = (campaignId: string, adSetId: string, adId: string, ad: 
 
 export const deleteAd = (campaignId: string, adSetId: string, adId: string) => 
   api.delete(`/campaigns/${campaignId}/adsets/${adSetId}/ads/${adId}`);
+
+// A/B Testing APIs
+export const getABTests = (campaignId: string) => 
+  api.get<ABTest[]>(`/campaigns/${campaignId}/ab-tests`);
+
+export const getABTestById = (campaignId: string, testId: string) => 
+  api.get<ABTest>(`/campaigns/${campaignId}/ab-tests/${testId}`);
+
+export const createABTest = (campaignId: string, test: Omit<ABTest, 'id' | 'campaign_id'>) => 
+  api.post<ABTest>(`/campaigns/${campaignId}/ab-tests`, test);
+
+export const updateABTest = (campaignId: string, testId: string, test: Partial<ABTest>) => 
+  api.put<ABTest>(`/campaigns/${campaignId}/ab-tests/${testId}`, test);
+
+export const deleteABTest = (campaignId: string, testId: string) => 
+  api.delete(`/campaigns/${campaignId}/ab-tests/${testId}`);
+
+export const declareABTestWinner = (campaignId: string, testId: string, variantId: string) => 
+  api.post<ABTest>(`/campaigns/${campaignId}/ab-tests/${testId}/winner`, { variantId });
+
+export const applyABTestWinner = (campaignId: string, testId: string, options?: { applyToAllCampaigns?: boolean }) => 
+  api.post<ABTest>(`/campaigns/${campaignId}/ab-tests/${testId}/apply`, options);
