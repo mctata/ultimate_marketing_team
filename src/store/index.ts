@@ -4,6 +4,7 @@ import contentReducer from './slices/contentSlice';
 import templateReducer from './slices/templateSlice';
 import analyticsReducer from './slices/analyticsSlice';
 import predictiveAnalyticsReducer from './slices/predictiveAnalyticsSlice';
+import campaignRulesReducer from './slices/campaignRulesSlice';
 
 const rootReducer = combineReducers({
   campaigns: campaignReducer,
@@ -11,6 +12,7 @@ const rootReducer = combineReducers({
   templates: templateReducer,
   analytics: analyticsReducer,
   predictiveAnalytics: predictiveAnalyticsReducer,
+  campaignRules: campaignRulesReducer,
 });
 
 export const store = configureStore({
