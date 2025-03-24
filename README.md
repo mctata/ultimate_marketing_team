@@ -233,9 +233,11 @@ If you encounter issues:
 4. **Frontend build errors**: Resolve TypeScript errors and ensure all dependencies are installed:
    ```bash
    cd frontend
-   npm install
+   npm install --legacy-peer-deps
    npm run build
    ```
+   
+   Note: All frontend code is now properly organized in the `frontend/` directory. If you encounter import path issues, check that your imports are referencing the correct path in the frontend structure.
 
 5. **Agent services failing**: Check logs to identify specific issues:
    ```bash
@@ -302,6 +304,31 @@ You can verify authentication using the test script:
 
 ```bash
 python scripts/create_test_user.py
+```
+
+## Project Structure
+
+The project is organized with a clear separation between backend and frontend code:
+
+```
+ultimate_marketing_team/
+├── frontend/              # React frontend application
+│   ├── src/               # Frontend source code
+│   │   ├── components/    # Reusable React components
+│   │   ├── pages/         # Page components and routes
+│   │   ├── services/      # API client services
+│   │   ├── store/         # Redux store and slices
+│   │   └── data/          # Static data and templates
+│   ├── public/            # Static assets
+│   └── package.json       # Frontend dependencies
+├── src/                   # Backend Python code
+│   ├── agents/            # AI agent implementations
+│   ├── api/               # FastAPI routes and endpoints
+│   ├── core/              # Core infrastructure services
+│   └── models/            # Database models
+├── migrations/            # Alembic database migrations
+├── tests/                 # Test suites for both backend and frontend
+└── docker/                # Docker configuration files
 ```
 
 ## Architecture
