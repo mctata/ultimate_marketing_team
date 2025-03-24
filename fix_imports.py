@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 This script verifies and fixes import paths in the project to ensure proper structure.
 It checks for any imports from the root src/ directory in frontend code and fixes them.
@@ -7,18 +7,27 @@ It checks for any imports from the root src/ directory in frontend code and fixe
 import os
 import re
 import sys
-from pathlib import Path
+import glob
+
+def find_files_with_ext(directory, ext):
+    """Find all files with the given extension in the directory tree."""
+    matches = []
+    for root, _, filenames in os.walk(directory):
+        for filename in filenames:
+            if filename.endswith('.' + ext):
+                matches.append(os.path.join(root, filename))
+    return matches
 
 def find_frontend_files():
     """Find all TypeScript and JavaScript files in the frontend directory."""
-    frontend_dir = Path("frontend/src")
-    if not frontend_dir.exists():
+    frontend_dir = os.path.join("frontend", "src")
+    if not os.path.exists(frontend_dir):
         print("Error: {} does not exist.".format(frontend_dir))
         sys.exit(1)
         
     files = []
-    for ext in ["*.ts", "*.tsx", "*.js", "*.jsx"]:
-        files.extend(frontend_dir.glob("**/{}".format(ext)))
+    for ext in ["ts", "tsx", "js", "jsx"]:
+        files.extend(find_files_with_ext(frontend_dir, ext))
     return files
 
 def check_and_fix_imports(file_path, dry_run=True):
