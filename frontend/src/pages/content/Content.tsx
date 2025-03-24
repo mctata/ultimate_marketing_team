@@ -32,7 +32,9 @@ import {
   Tune as TuneIcon,
   Visibility as VisibilityIcon,
   Share as ShareIcon,
-  Archive as ArchiveIcon
+  Archive as ArchiveIcon,
+  Description as TemplateIcon,
+  Event as CalendarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
