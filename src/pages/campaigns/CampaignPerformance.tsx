@@ -361,22 +361,50 @@ const CampaignPerformance = () => {
               </ResponsiveContainer>
             </Box>
           </Paper>
+          
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Campaign Efficiency Metrics
+            </Typography>
+            <Box sx={{ height: 400 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={performanceData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="formattedDate" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="ctr" name="CTR (%)" stroke="#8884d8" />
+                  <Line type="monotone" dataKey="roas" name="ROAS (x)" stroke="#82ca9d" />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
         </Box>
       )}
       
       {/* Forecasting Tab */}
       {selectedTab === 1 && (
-        <CampaignPerformanceForecasting />
+        <Box>
+          <CampaignPerformanceForecasting />
+        </Box>
       )}
       
-      {/* Budget Optimisation Tab */}
+      {/* Budget Optimization Tab */}
       {selectedTab === 2 && (
-        <CampaignBudgetOptimization />
+        <Box>
+          <CampaignBudgetOptimization />
+        </Box>
       )}
       
       {/* Alerts Tab */}
       {selectedTab === 3 && (
-        <CampaignPerformanceAlerts />
+        <Box>
+          <CampaignPerformanceAlerts />
+        </Box>
       )}
     </Container>
   );
