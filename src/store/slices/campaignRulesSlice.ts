@@ -10,6 +10,7 @@ import {
 interface CampaignRulesState {
   rules: {
     data: CampaignRule[];
+    scheduledRules: CampaignRule[];
     loading: boolean;
     error: string | null;
     selectedRule: CampaignRule | null;
@@ -29,11 +30,17 @@ interface CampaignRulesState {
     loading: boolean;
     error: string | null;
   };
+  performanceThresholds: {
+    data: Record<string, Record<string, number>>;
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 const initialState: CampaignRulesState = {
   rules: {
     data: [],
+    scheduledRules: [],
     loading: false,
     error: null,
     selectedRule: null,
@@ -53,17 +60,36 @@ const initialState: CampaignRulesState = {
     loading: false,
     error: null,
   },
+  performanceThresholds: {
+    data: {},
+    loading: false,
+    error: null,
+  },
 };
 
 // Async Thunks for Campaign Rules
 export const fetchCampaignRules = createAsyncThunk(
   'campaignRules/fetchCampaignRules',
-  async (campaignId: string | undefined, { rejectWithValue }) => {
+  async (params: string | { campaign_id?: string; status?: string; from_date?: string; to_date?: string } = {}, { rejectWithValue }) => {
     try {
-      const response = await campaignRulesService.getCampaignRules(campaignId);
+      // Handle string (campaignId) or object (full params)
+      const queryParams = typeof params === 'string' ? { campaign_id: params } : params;
+      const response = await campaignRulesService.getCampaignRules(queryParams.campaign_id);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch campaign rules');
+    }
+  }
+);
+
+export const fetchScheduledRules = createAsyncThunk(
+  'campaignRules/fetchScheduledRules',
+  async (params: { status?: string; from_date?: string; to_date?: string } = {}, { rejectWithValue }) => {
+    try {
+      const response = await campaignRulesService.getScheduledRules(params);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch scheduled rules');
     }
   }
 );
@@ -116,6 +142,30 @@ export const deleteCampaignRule = createAsyncThunk(
   }
 );
 
+export const pauseScheduledRule = createAsyncThunk(
+  'campaignRules/pauseScheduledRule',
+  async (ruleId: string, { rejectWithValue }) => {
+    try {
+      const response = await campaignRulesService.pauseScheduledRule(ruleId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to pause scheduled rule');
+    }
+  }
+);
+
+export const resumeScheduledRule = createAsyncThunk(
+  'campaignRules/resumeScheduledRule',
+  async (ruleId: string, { rejectWithValue }) => {
+    try {
+      const response = await campaignRulesService.resumeScheduledRule(ruleId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to resume scheduled rule');
+    }
+  }
+);
+
 export const fetchRuleExecutionHistory = createAsyncThunk(
   'campaignRules/fetchRuleExecutionHistory',
   async (ruleId: string, { rejectWithValue }) => {
@@ -152,8 +202,8 @@ export const executeRuleManually = createAsyncThunk(
   }
 );
 
-export const fetchNotificationConfig = createAsyncThunk(
-  'campaignRules/fetchNotificationConfig',
+export const getNotificationConfig = createAsyncThunk(
+  'campaignRules/getNotificationConfig',
   async (ruleId: string, { rejectWithValue }) => {
     try {
       const response = await campaignRulesService.getNotificationConfig(ruleId);
@@ -172,6 +222,30 @@ export const updateNotificationConfig = createAsyncThunk(
       return { ruleId, data: response.data };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update notification config');
+    }
+  }
+);
+
+export const getCampaignPerformanceThresholds = createAsyncThunk(
+  'campaignRules/getCampaignPerformanceThresholds',
+  async (campaignId: string, { rejectWithValue }) => {
+    try {
+      const response = await campaignRulesService.getCampaignPerformanceThresholds(campaignId);
+      return { campaignId, data: response.data };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch performance thresholds');
+    }
+  }
+);
+
+export const updateCampaignPerformanceThresholds = createAsyncThunk(
+  'campaignRules/updateCampaignPerformanceThresholds',
+  async ({ campaignId, thresholds }: { campaignId: string; thresholds: Record<string, number> }, { rejectWithValue }) => {
+    try {
+      const response = await campaignRulesService.updateCampaignPerformanceThresholds(campaignId, thresholds);
+      return { campaignId, data: response.data };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update performance thresholds');
     }
   }
 );
@@ -201,6 +275,9 @@ const campaignRulesSlice = createSlice({
     clearTestResults(state) {
       state.testResults.data = null;
     },
+    clearNotificationConfig(state) {
+      // This doesn't remove the data, just signals we're not currently viewing it
+    },
   },
   extraReducers: (builder) => {
     // Campaign Rules reducers
@@ -214,6 +291,18 @@ const campaignRulesSlice = createSlice({
         state.rules.data = action.payload;
       })
       .addCase(fetchCampaignRules.rejected, (state, action) => {
+        state.rules.loading = false;
+        state.rules.error = action.payload as string;
+      })
+      .addCase(fetchScheduledRules.pending, (state) => {
+        state.rules.loading = true;
+        state.rules.error = null;
+      })
+      .addCase(fetchScheduledRules.fulfilled, (state, action) => {
+        state.rules.loading = false;
+        state.rules.scheduledRules = action.payload;
+      })
+      .addCase(fetchScheduledRules.rejected, (state, action) => {
         state.rules.loading = false;
         state.rules.error = action.payload as string;
       })
@@ -231,20 +320,54 @@ const campaignRulesSlice = createSlice({
       })
       .addCase(createCampaignRule.fulfilled, (state, action) => {
         state.rules.data.push(action.payload);
+        if (action.payload.schedule_type === 'one_time' || action.payload.schedule_type === 'recurring') {
+          state.rules.scheduledRules.push(action.payload);
+        }
       })
       .addCase(updateCampaignRule.fulfilled, (state, action) => {
         const index = state.rules.data.findIndex(rule => rule.id === action.payload.id);
         if (index !== -1) {
           state.rules.data[index] = action.payload;
         }
+        
+        const scheduledIndex = state.rules.scheduledRules.findIndex(rule => rule.id === action.payload.id);
+        if (scheduledIndex !== -1) {
+          state.rules.scheduledRules[scheduledIndex] = action.payload;
+        } else if (action.payload.schedule_type === 'one_time' || action.payload.schedule_type === 'recurring') {
+          state.rules.scheduledRules.push(action.payload);
+        }
+        
         if (state.rules.selectedRule?.id === action.payload.id) {
           state.rules.selectedRule = action.payload;
         }
       })
       .addCase(deleteCampaignRule.fulfilled, (state, action) => {
         state.rules.data = state.rules.data.filter(rule => rule.id !== action.payload);
+        state.rules.scheduledRules = state.rules.scheduledRules.filter(rule => rule.id !== action.payload);
         if (state.rules.selectedRule?.id === action.payload) {
           state.rules.selectedRule = null;
+        }
+      })
+      .addCase(pauseScheduledRule.fulfilled, (state, action) => {
+        const index = state.rules.data.findIndex(rule => rule.id === action.payload.id);
+        if (index !== -1) {
+          state.rules.data[index] = action.payload;
+        }
+        
+        const scheduledIndex = state.rules.scheduledRules.findIndex(rule => rule.id === action.payload.id);
+        if (scheduledIndex !== -1) {
+          state.rules.scheduledRules[scheduledIndex] = action.payload;
+        }
+      })
+      .addCase(resumeScheduledRule.fulfilled, (state, action) => {
+        const index = state.rules.data.findIndex(rule => rule.id === action.payload.id);
+        if (index !== -1) {
+          state.rules.data[index] = action.payload;
+        }
+        
+        const scheduledIndex = state.rules.scheduledRules.findIndex(rule => rule.id === action.payload.id);
+        if (scheduledIndex !== -1) {
+          state.rules.scheduledRules[scheduledIndex] = action.payload;
         }
       })
       
@@ -278,20 +401,37 @@ const campaignRulesSlice = createSlice({
       })
       
       // Notification Config reducers
-      .addCase(fetchNotificationConfig.pending, (state) => {
+      .addCase(getNotificationConfig.pending, (state) => {
         state.notifications.loading = true;
         state.notifications.error = null;
       })
-      .addCase(fetchNotificationConfig.fulfilled, (state, action) => {
+      .addCase(getNotificationConfig.fulfilled, (state, action) => {
         state.notifications.loading = false;
         state.notifications.data[action.payload.ruleId] = action.payload.data;
       })
-      .addCase(fetchNotificationConfig.rejected, (state, action) => {
+      .addCase(getNotificationConfig.rejected, (state, action) => {
         state.notifications.loading = false;
         state.notifications.error = action.payload as string;
       })
       .addCase(updateNotificationConfig.fulfilled, (state, action) => {
         state.notifications.data[action.payload.ruleId] = action.payload.data;
+      })
+      
+      // Performance Thresholds reducers
+      .addCase(getCampaignPerformanceThresholds.pending, (state) => {
+        state.performanceThresholds.loading = true;
+        state.performanceThresholds.error = null;
+      })
+      .addCase(getCampaignPerformanceThresholds.fulfilled, (state, action) => {
+        state.performanceThresholds.loading = false;
+        state.performanceThresholds.data[action.payload.campaignId] = action.payload.data;
+      })
+      .addCase(getCampaignPerformanceThresholds.rejected, (state, action) => {
+        state.performanceThresholds.loading = false;
+        state.performanceThresholds.error = action.payload as string;
+      })
+      .addCase(updateCampaignPerformanceThresholds.fulfilled, (state, action) => {
+        state.performanceThresholds.data[action.payload.campaignId] = action.payload.data;
       })
       
       // Test Rule Condition reducers
@@ -312,20 +452,39 @@ const campaignRulesSlice = createSlice({
 
 // Selectors
 export const selectCampaignRules = (state: RootState) => state.campaignRules.rules.data;
+export const selectScheduledRules = (state: RootState) => state.campaignRules.rules.scheduledRules;
 export const selectCampaignRulesLoading = (state: RootState) => state.campaignRules.rules.loading;
 export const selectCampaignRulesError = (state: RootState) => state.campaignRules.rules.error;
 export const selectSelectedRule = (state: RootState) => state.campaignRules.rules.selectedRule;
 
 export const selectRuleExecutionHistory = (state: RootState) => state.campaignRules.executionHistory.data;
 export const selectRuleExecutionHistoryLoading = (state: RootState) => state.campaignRules.executionHistory.loading;
+export const selectRuleExecutionHistoryError = (state: RootState) => state.campaignRules.executionHistory.error;
 
-export const selectNotificationConfig = (state: RootState, ruleId: string) => 
-  state.campaignRules.notifications.data[ruleId];
-export const selectNotificationsLoading = (state: RootState) => state.campaignRules.notifications.loading;
+export const selectNotificationConfig = (state: RootState) => {
+  // Get the first rule ID that has notification data
+  const ruleIds = Object.keys(state.campaignRules.notifications.data);
+  if (ruleIds.length > 0) {
+    return state.campaignRules.notifications.data[ruleIds[0]];
+  }
+  return null;
+};
+export const selectNotificationConfigLoading = (state: RootState) => state.campaignRules.notifications.loading;
+export const selectNotificationConfigError = (state: RootState) => state.campaignRules.notifications.error;
+
+export const selectPerformanceThresholds = (state: RootState, campaignId: string) => 
+  state.campaignRules.performanceThresholds.data[campaignId];
+export const selectPerformanceThresholdsLoading = (state: RootState) => 
+  state.campaignRules.performanceThresholds.loading;
 
 export const selectTestResults = (state: RootState) => state.campaignRules.testResults.data;
 export const selectTestResultsLoading = (state: RootState) => state.campaignRules.testResults.loading;
 
-export const { clearSelectedRule, clearExecutionHistory, clearTestResults } = campaignRulesSlice.actions;
+export const { 
+  clearSelectedRule, 
+  clearExecutionHistory, 
+  clearTestResults,
+  clearNotificationConfig
+} = campaignRulesSlice.actions;
 
 export default campaignRulesSlice.reducer;

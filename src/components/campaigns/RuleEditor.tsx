@@ -19,14 +19,18 @@ import {
   Alert,
   CircularProgress,
   IconButton,
-  Tooltip
+  Tooltip,
+  Collapse,
+  AlertTitle
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   PlayArrow as PlayArrowIcon,
   Delete as DeleteIcon,
   Info as InfoIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Alarm as AlarmIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -70,10 +74,14 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
     schedule_days: [],
     schedule_time: '09:00',
     status: 'active',
+    auto_resume: false,
+    auto_resume_after: 24,
+    performance_threshold: null
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showTestResults, setShowTestResults] = useState(false);
+  const [showAutoResumeOptions, setShowAutoResumeOptions] = useState(false);
   
   // Initialize form with rule data if editing
   useEffect(() => {
@@ -93,7 +101,13 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
         schedule_days: rule.schedule_days || [],
         schedule_time: rule.schedule_time || '09:00',
         status: rule.status || 'active',
+        auto_resume: rule.auto_resume || false,
+        auto_resume_after: rule.auto_resume_after || 24,
+        performance_threshold: rule.performance_threshold || null
       });
+      
+      // Show auto-resume options if this is a pause rule
+      setShowAutoResumeOptions(rule.action_type === 'pause_campaign');
     }
     
     // Clear test results when component mounts
@@ -108,6 +122,21 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
         [name]: value,
       });
       
+      // Show auto-resume options if this is a pause campaign action
+      if (name === 'action_type' && value === 'pause_campaign') {
+        setShowAutoResumeOptions(true);
+      } else if (name === 'action_type' && value !== 'pause_campaign') {
+        setShowAutoResumeOptions(false);
+        // Reset auto-resume fields
+        setFormData(prev => ({
+          ...prev,
+          auto_resume: false,
+          auto_resume_after: 24,
+          performance_threshold: null,
+          [name]: value
+        }));
+      }
+      
       // Clear error for this field
       setErrors({
         ...errors,
@@ -117,10 +146,19 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
   };
   
   const handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      status: e.target.checked ? 'active' : 'inactive',
-    });
+    const { name, checked } = e.target;
+    
+    if (name === 'auto_resume') {
+      setFormData({
+        ...formData,
+        auto_resume: checked,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        status: checked ? 'active' : 'inactive',
+      });
+    }
   };
   
   const handleDaysChange = (e: React.ChangeEvent<{ value: unknown }>) => {
@@ -177,6 +215,15 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
     
     if (formData.schedule_type === 'recurring' && formData.schedule_days.length === 0) {
       newErrors.schedule_days = 'At least one day must be selected';
+    }
+    
+    if (formData.auto_resume && formData.auto_resume_after <= 0) {
+      newErrors.auto_resume_after = 'Auto-resume hours must be greater than 0';
+    }
+    
+    if (formData.performance_threshold !== null && 
+        (formData.performance_threshold < 0 || formData.performance_threshold > 100)) {
+      newErrors.performance_threshold = 'Performance threshold must be between 0 and 100';
     }
     
     setErrors(newErrors);
@@ -526,6 +573,69 @@ const RuleEditor = ({ campaignId, rule, onSave, onCancel }: RuleEditorProps) => 
             <Alert severity="info">
               Notifications will be sent to the configured notification channels.
             </Alert>
+          </Grid>
+        )}
+        
+        {/* Auto-resume options for pause campaign action */}
+        {showAutoResumeOptions && (
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AlarmIcon sx={{ mr: 1 }} color="primary" />
+                  Auto-Resume Settings
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      name="auto_resume"
+                      checked={formData.auto_resume} 
+                      onChange={handleSwitchChange}
+                      color="primary"
+                    />
+                  }
+                  label={formData.auto_resume ? 'Auto-Resume Enabled' : 'Auto-Resume Disabled'}
+                />
+              </Box>
+              
+              <Collapse in={formData.auto_resume}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      name="auto_resume_after"
+                      label="Auto-Resume After (hours)"
+                      type="number"
+                      value={formData.auto_resume_after}
+                      onChange={handleChange}
+                      error={!!errors.auto_resume_after}
+                      helperText={errors.auto_resume_after || "Campaign will automatically resume after this many hours"}
+                      InputProps={{
+                        endAdornment: <AlarmIcon color="action" />,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      name="performance_threshold"
+                      label="Performance Threshold (%)"
+                      type="number"
+                      value={formData.performance_threshold}
+                      onChange={handleChange}
+                      error={!!errors.performance_threshold}
+                      helperText={errors.performance_threshold || "Optional: Only auto-resume if metrics improve by this percentage (leave empty to ignore)"}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      When enabled, paused campaigns will automatically resume after the specified time period. 
+                      If a performance threshold is set, the campaign will only resume if metrics have improved by at least that percentage.
+                    </Alert>
+                  </Grid>
+                </Grid>
+              </Collapse>
+            </Paper>
           </Grid>
         )}
         
