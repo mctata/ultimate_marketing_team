@@ -29,11 +29,12 @@ const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail')
 import Analytics from './pages/analytics/Analytics';
 const AnalyticsPage = () => <Analytics />;
 const Settings = lazyPage(() => import('./pages/settings/Settings'));
-const Templates = lazyPage(() => import('../../src/pages/templates/Templates'));
-const TemplateDetail = lazyPage(() => import('../../src/pages/templates/TemplateDetail'));
-const AdminTemplatesUtility = lazyPage(() => import('../../src/pages/templates/AdminTemplatesUtility'));
-const TemplateDiagnostics = lazyPage(() => import('../../src/pages/templates/TemplateDiagnostics'));
-const TemplateTestWorkspace = lazyPage(() => import('../../src/pages/templates/TemplateTestWorkspace'));
+// Use the template components from the src directory - these should be moved to frontend later
+const Templates = lazyPage(() => import('./pages/templates/Templates'));
+const TemplateDetail = lazyPage(() => import('./pages/templates/TemplateDetail'));
+const AdminTemplatesUtility = lazyPage(() => import('./pages/templates/AdminTemplatesUtility'));
+const TemplateDiagnostics = lazyPage(() => import('./pages/templates/TemplateDiagnostics'));
+const TemplateTestWorkspace = lazyPage(() => import('./pages/templates/TemplateTestWorkspace'));
 const NotFound = lazyPage(() => import('./pages/NotFound'));
 
 // Protected route component

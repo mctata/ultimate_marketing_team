@@ -118,6 +118,14 @@ const Content = () => {
     navigate('/content/generator');
   };
   
+  const navigateToTemplateLibrary = () => {
+    navigate('/templates');
+  };
+  
+  const navigateToContentCalendar = () => {
+    navigate('/content/calendar');
+  };
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'published':
@@ -187,10 +195,10 @@ const Content = () => {
         </Box>
       </Box>
       
-      {/* AI Content Tools Section MOVED ABOVE content items */}
+      {/* Main content sections */}
       <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
-          AI Content Tools
+          Content Management
         </Typography>
         
         <Grid container spacing={3}>
@@ -247,18 +255,19 @@ const Content = () => {
                   boxShadow: 3
                 }
               }}
+              onClick={navigateToTemplateLibrary}
             >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <TuneIcon color="primary" fontSize="large" />
+                  <TemplateIcon color="primary" fontSize="large" />
                 </Box>
                 
                 <Typography variant="h6" gutterBottom>
-                  Content Optimizer
+                  Templates Library
                 </Typography>
                 
                 <Typography variant="body2" color="text.secondary">
-                  Analyze and improve your existing content. Get recommendations for SEO, readability, and engagement enhancements.
+                  Browse and manage your content templates. Find templates for different content types, industries, and use cases.
                 </Typography>
               </CardContent>
               
@@ -266,8 +275,9 @@ const Content = () => {
                 <Button 
                   size="small" 
                   endIcon={<ArrowForwardIcon />}
+                  onClick={navigateToTemplateLibrary}
                 >
-                  Open Tool
+                  View Templates
                 </Button>
               </CardActions>
             </Card>
@@ -285,18 +295,19 @@ const Content = () => {
                   boxShadow: 3
                 }
               }}
+              onClick={navigateToContentCalendar}
             >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <CompareArrowsIcon color="primary" fontSize="large" />
+                  <CalendarIcon color="primary" fontSize="large" />
                 </Box>
                 
                 <Typography variant="h6" gutterBottom>
-                  A/B Testing Center
+                  Content Calendar
                 </Typography>
                 
                 <Typography variant="body2" color="text.secondary">
-                  Create and manage A/B tests for your content. Compare different versions and measure performance metrics.
+                  Plan and schedule your content across channels. Visualize your content strategy and manage publication dates.
                 </Typography>
               </CardContent>
               
@@ -304,8 +315,9 @@ const Content = () => {
                 <Button 
                   size="small" 
                   endIcon={<ArrowForwardIcon />}
+                  onClick={navigateToContentCalendar}
                 >
-                  Open Tool
+                  Open Calendar
                 </Button>
               </CardActions>
             </Card>
@@ -321,7 +333,7 @@ const Content = () => {
         <Button 
           variant="outlined" 
           endIcon={<ArrowForwardIcon />}
-          onClick={() => {}}
+          onClick={() => navigate('/content/library')}
         >
           View Full Library
         </Button>
