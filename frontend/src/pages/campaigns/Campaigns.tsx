@@ -25,6 +25,7 @@ import {
   Add as AddIcon,
   FilterList as FilterListIcon,
   Campaign as CampaignIcon,
+  Science as ScienceIcon,
 } from '@mui/icons-material';
 import useCampaigns from '../../hooks/useCampaigns';
 import { CampaignFilters } from '../../services/campaignService';
@@ -261,6 +262,17 @@ const Campaigns = () => {
                           }}
                         >
                           Edit
+                        </Button>
+                        <Button 
+                          size="small"
+                          startIcon={<ScienceIcon />}
+                          color="info"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/campaigns/${campaign.id}/ab-testing`);
+                          }}
+                        >
+                          A/B Test
                         </Button>
                       </CardActions>
                     </Card>
