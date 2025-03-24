@@ -63,9 +63,10 @@ import NotificationSettings from './NotificationSettings';
 
 interface CampaignRulesListProps {
   campaignId: string;
+  onSelectForNotifications?: (ruleId: string) => void;
 }
 
-const CampaignRulesList = ({ campaignId }: CampaignRulesListProps) => {
+const CampaignRulesList = ({ campaignId, onSelectForNotifications }: CampaignRulesListProps) => {
   const dispatch = useDispatch<AppDispatch>();
   
   const rules = useSelector(selectCampaignRules);
@@ -147,6 +148,16 @@ const CampaignRulesList = ({ campaignId }: CampaignRulesListProps) => {
     setExpandedRule(expandedRule === ruleId ? null : ruleId);
   };
   
+  const handleNotificationsClick = (rule: CampaignRule) => {
+    if (onSelectForNotifications) {
+      onSelectForNotifications(rule.id);
+    } else {
+      setExpandedRule(rule.id);
+      setActiveTab('notifications');
+    }
+    handleCloseMenu();
+  };
+  
   const getChipColorByStatus = (status: string) => {
     switch (status) {
       case 'active':
@@ -222,18 +233,37 @@ const CampaignRulesList = ({ campaignId }: CampaignRulesListProps) => {
   };
   
   const getActionDescription = (rule: CampaignRule) => {
+    let description = '';
+    
     switch (rule.action_type) {
       case 'pause_campaign':
-        return 'Pause campaign';
+        description = 'Pause campaign';
+        break;
       case 'resume_campaign':
-        return 'Resume campaign';
+        description = 'Resume campaign';
+        break;
       case 'adjust_budget':
-        return `Adjust budget by ${rule.action_value}%`;
+        description = `Adjust budget by ${rule.action_value}%`;
+        break;
       case 'notify':
-        return 'Send notification only';
+        description = 'Send notification only';
+        break;
       default:
-        return 'Custom action';
+        description = 'Custom action';
     }
+    
+    // Add auto-resume information if applicable
+    if (rule.action_type === 'pause_campaign' && rule.auto_resume) {
+      description += ` (auto-resume after ${rule.auto_resume_after}h`;
+      
+      if (rule.performance_threshold) {
+        description += ` if metrics improve by ${rule.performance_threshold}%`;
+      }
+      
+      description += ')';
+    }
+    
+    return description;
   };
   
   return (
@@ -354,20 +384,31 @@ const CampaignRulesList = ({ campaignId }: CampaignRulesListProps) => {
                   >
                     Run Now
                   </Button>
-                  <Button
-                    size="small"
-                    onClick={() => toggleExpandRule(rule.id)}
-                    endIcon={
-                      <ExpandMoreIcon
-                        sx={{
-                          transform: expandedRule === rule.id ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s',
-                        }}
-                      />
-                    }
-                  >
-                    {expandedRule === rule.id ? 'Hide Details' : 'Show Details'}
-                  </Button>
+                  {!onSelectForNotifications && (
+                    <Button
+                      size="small"
+                      onClick={() => toggleExpandRule(rule.id)}
+                      endIcon={
+                        <ExpandMoreIcon
+                          sx={{
+                            transform: expandedRule === rule.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s',
+                          }}
+                        />
+                      }
+                    >
+                      {expandedRule === rule.id ? 'Hide Details' : 'Show Details'}
+                    </Button>
+                  )}
+                  {onSelectForNotifications && (
+                    <Button
+                      size="small"
+                      onClick={() => handleNotificationsClick(rule)}
+                      startIcon={<NotificationsIcon />}
+                    >
+                      Notifications
+                    </Button>
+                  )}
                 </CardActions>
                 
                 <Collapse in={expandedRule === rule.id} timeout="auto" unmountOnExit>
@@ -455,6 +496,12 @@ const CampaignRulesList = ({ campaignId }: CampaignRulesListProps) => {
             <PlayArrowIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Run Now</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleNotificationsClick(menuRule!)}>
+          <ListItemIcon>
+            <NotificationsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Notification Settings</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => setDeleteConfirmOpen(true)}>
           <ListItemIcon>
