@@ -1,7 +1,7 @@
 // frontend/src/components/layout/Layout.tsx
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery, Toolbar } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery, Toolbar, useTheme } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import Header from './Header';
@@ -15,8 +15,9 @@ const drawerWidth = 280;
 const Layout = () => {
   const [open, setOpen] = useState(true);
   const { darkMode } = useSelector((state: RootState) => state.ui);
+  const muiTheme = useTheme();
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const isMobile = useMediaQuery('(max-width:960px)');
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const location = useLocation();
   
   // Set the drawer to closed on mobile
@@ -59,10 +60,9 @@ const Layout = () => {
             component="main"
             sx={{
               flexGrow: 1,
-              padding: (theme) => theme.spacing(3),
-              width: { sm: `calc(100% - ${open ? drawerWidth : 0}px)` },
-              marginLeft: { sm: open ? `${drawerWidth}px` : 0 },
-              marginTop: '64px', // Header height
+              p: { xs: 2, sm: 3 },
+              width: { xs: '100%', md: `calc(100% - ${open ? drawerWidth : 0}px)` },
+              ml: { xs: 0, md: open ? `${drawerWidth}px` : 0 },
               transition: (theme) =>
                 theme.transitions.create(['margin', 'width'], {
                   easing: theme.transitions.easing.sharp,
@@ -71,7 +71,10 @@ const Layout = () => {
             }}
           >
             <Toolbar /> {/* This creates space for the fixed AppBar */}
-            <Box sx={{ minHeight: 'calc(100vh - 212px)' }}> {/* 64px header + 64px toolbar spacer + 24px padding + 60px footer */}
+            <Box sx={{ 
+              minHeight: 'calc(100vh - 200px)',
+              pb: 4,
+            }}> 
               <Outlet />
             </Box>
             

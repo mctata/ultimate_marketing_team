@@ -17,6 +17,7 @@ import {
   styled,
   Theme,
   useMediaQuery,
+  useTheme,
   Chip,
 } from '@mui/material';
 import {
@@ -90,7 +91,8 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const theme = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const user = useSelector((state: RootState) => state.auth.user);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const { currentBrand } = useBrand();
@@ -114,7 +116,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
     navigateToBrandRoute(path);
     
     // Close drawer on mobile after navigation
-    if (theme) {
+    if (isMobile) {
       onClose();
     }
   };
@@ -149,7 +151,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
           </Typography>
         </Box>
         <IconButton onClick={onClose}>
-          {theme ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+          {muiTheme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </IconButton>
       </Toolbar>
       
@@ -340,9 +342,6 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             boxSizing: 'border-box', 
             width: width,
             boxShadow: 3,
-            marginTop: '64px', // Align with AppBar height
-            height: 'calc(100% - 64px)',
-            position: 'fixed'
           },
         }}
       >
@@ -360,9 +359,6 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             width: open ? width : 0,
             borderRight: '1px solid rgba(0, 0, 0, 0.12)',
             boxShadow: 'none',
-            marginTop: '64px', // Align with AppBar height
-            height: 'calc(100% - 64px)',
-            position: 'fixed',
             transition: (theme) =>
               theme.transitions.create('width', {
                 easing: theme.transitions.easing.sharp,
