@@ -1,7 +1,7 @@
 // frontend/src/components/layout/Layout.tsx
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery, Toolbar } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import Header from './Header';
