@@ -35,7 +35,11 @@ import {
   Pause as PauseIcon,
   TrendingUp as TrendingUpIcon,
   AttachMoney as AttachMoneyIcon,
-  Splitscreen as SplitscreenIcon
+  Splitscreen as SplitscreenIcon,
+  AssessmentOutlined as AssessmentIcon,
+  NotificationsActive as AlertsIcon,
+  BarChart as BenchmarkIcon,
+  Description as ReportsIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fetchCampaigns, deleteCampaign, setFilters, selectCampaigns, selectCampaignsLoading, selectCampaignsError, selectCampaignFilters } from '../../store/slices/campaignSlice';
@@ -193,6 +197,18 @@ const CampaignList = () => {
     navigate(`/campaigns/${id}/ab-testing`);
   };
   
+  const handleViewBenchmark = (id: string) => {
+    navigate(`/campaigns/${id}/benchmark`);
+  };
+  
+  const handleViewAlerts = (id: string) => {
+    navigate(`/campaigns/${id}/alerts`);
+  };
+  
+  const handleViewReports = () => {
+    navigate(`/campaigns/reports`);
+  };
+  
   const handleToggleCampaignStatus = (campaign: Campaign) => {
     const newStatus = campaign.status === 'active' ? 'paused' : 'active';
     // In a real app, this would dispatch an action to update the campaign status
@@ -228,14 +244,24 @@ const CampaignList = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">Campaign Management</Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<AddIcon />}
-          onClick={handleCreateNew}
-        >
-          Create New Campaign
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button 
+            variant="outlined" 
+            color="secondary" 
+            startIcon={<ReportsIcon />}
+            onClick={handleViewReports}
+          >
+            Custom Reports
+          </Button>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />}
+            onClick={handleCreateNew}
+          >
+            Create New Campaign
+          </Button>
+        </Box>
       </Box>
       
       {/* Campaign Overview */}
@@ -462,25 +488,49 @@ const CampaignList = () => {
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <ButtonGroup variant="outlined" size="small" sx={{ ml: 1 }}>
-                          <Tooltip title="View Metrics">
-                            <Button 
-                              color="info" 
-                              onClick={() => handleViewMetrics(campaign.id)}
-                            >
-                              Metrics
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="A/B Testing">
-                            <Button 
-                              color="secondary"
-                              onClick={() => handleViewABTesting(campaign.id)}
-                              startIcon={<SplitscreenIcon />}
-                            >
-                              A/B Test
-                            </Button>
-                          </Tooltip>
-                        </ButtonGroup>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end' }}>
+                          <ButtonGroup variant="outlined" size="small">
+                            <Tooltip title="View Metrics">
+                              <Button 
+                                color="info" 
+                                onClick={() => handleViewMetrics(campaign.id)}
+                                startIcon={<AssessmentIcon />}
+                              >
+                                Metrics
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="A/B Testing">
+                              <Button 
+                                color="secondary"
+                                onClick={() => handleViewABTesting(campaign.id)}
+                                startIcon={<SplitscreenIcon />}
+                              >
+                                A/B Test
+                              </Button>
+                            </Tooltip>
+                          </ButtonGroup>
+                          
+                          <ButtonGroup variant="outlined" size="small">
+                            <Tooltip title="Competitor Benchmark">
+                              <Button 
+                                color="primary" 
+                                onClick={() => handleViewBenchmark(campaign.id)}
+                                startIcon={<BenchmarkIcon />}
+                              >
+                                Benchmark
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="Performance Alerts">
+                              <Button 
+                                color="warning"
+                                onClick={() => handleViewAlerts(campaign.id)}
+                                startIcon={<AlertsIcon />}
+                              >
+                                Alerts
+                              </Button>
+                            </Tooltip>
+                          </ButtonGroup>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
