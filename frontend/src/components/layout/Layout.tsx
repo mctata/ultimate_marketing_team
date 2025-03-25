@@ -60,11 +60,10 @@ const Layout = () => {
             component="main"
             sx={{
               flexGrow: 1,
-              p: 0, // Remove default padding
-              width: { xs: '100%', md: `calc(100% - ${open ? drawerWidth : 0}px)` },
-              ml: { xs: 0, md: open ? `${drawerWidth}px` : 0 },
+              p: 0,
+              width: '100%',
               transition: (theme) =>
-                theme.transitions.create(['margin', 'width'], {
+                theme.transitions.create(['margin'], {
                   easing: theme.transitions.easing.sharp,
                   duration: theme.transitions.duration.leavingScreen,
                 }),
@@ -73,7 +72,9 @@ const Layout = () => {
             <Toolbar /> {/* This creates space for the fixed AppBar */}
             <Box sx={{ 
               minHeight: 'calc(100vh - 200px)',
-              p: { xs: 2, sm: 3 }, // Add padding here instead of parent
+              p: { xs: 2, sm: 3 },
+              ml: { md: open ? 0 : 0 }, // No left margin
+              width: '100%' // Full width
             }}> 
               <Outlet />
             </Box>

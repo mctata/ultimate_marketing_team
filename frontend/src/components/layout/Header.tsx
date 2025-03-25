@@ -102,13 +102,13 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
             Ultimate Marketing Team
           </Typography>
           
-          {/* Add BrandSelector */}
+          {/* Brand selector only appears as dropdown */}
           <Box sx={{ 
-            display: { xs: 'none', md: 'flex' }, 
+            display: 'flex', 
             alignItems: 'center', 
             flexGrow: 1 
           }}>
-            <BrandSelector variant="full" />
+            {/* Empty flexbox to push other elements right */}
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
