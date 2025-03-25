@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -158,22 +158,24 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
   };
 
   // Get reach estimate based on current targeting
-  const getReachEstimate = async (audience: AudienceTarget) => {
-    try {
-      setLoading(true);
-      const estimate = await audienceService.getReachEstimate(audience);
-      setReachEstimate(estimate);
-    } catch (error) {
-      console.error('Error getting reach estimate:', error);
-      // Set default values to prevent UI from showing loading indefinitely
-      setReachEstimate({
-        reach: 750000,
-        dailyResults: 5000
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const getReachEstimate = useMemo(() => {
+    return async (audience: AudienceTarget) => {
+      try {
+        setLoading(true);
+        const estimate = await audienceService.getReachEstimate(audience);
+        setReachEstimate(estimate);
+      } catch (error) {
+        console.error('Error getting reach estimate:', error);
+        // Set default values to prevent UI from showing loading indefinitely
+        setReachEstimate({
+          reach: 750000,
+          dailyResults: 5000
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+  }, []); // Empty dependency array ensures the function reference is stable
 
   // Save ad set
   const handleSave = async () => {
@@ -271,7 +273,7 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
                   <CircularProgress size={24} sx={{ mr: 2 }} />
                 ) : (
                   <Typography variant="h4" fontWeight="bold" color="primary">
-                    {reachEstimate ? reachEstimate.reach.toLocaleString() : "0"}
+                    {useMemo(() => reachEstimate ? reachEstimate.reach.toLocaleString() : "0", [reachEstimate?.reach])}
                   </Typography>
                 )}
                 <Tooltip title="Potential reach based on your targeting criteria">
@@ -292,7 +294,7 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
                   <CircularProgress size={20} sx={{ ml: 2 }} color="secondary" />
                 ) : (
                   <Typography variant="h6" fontWeight="bold" color="secondary" sx={{ ml: 1 }}>
-                    {reachEstimate ? reachEstimate.dailyResults.toLocaleString() : "0"}
+                    {useMemo(() => reachEstimate ? reachEstimate.dailyResults.toLocaleString() : "0", [reachEstimate?.dailyResults])}
                   </Typography>
                 )}
               </Box>

@@ -64,7 +64,7 @@ export const audienceService = {
       // Shorter delay in development for better UX
       await delay(300);
       
-      // Calculate reach based on audience criteria
+      // Calculate reach based on audience criteria with deterministic values
       let baseReach = 1000000;
       
       // Age range affects reach
@@ -88,12 +88,28 @@ export const audienceService = {
         baseReach = baseReach * (0.8 - (audience.interests.length * 0.05));
       }
       
-      // Daily results are typically 0.5-2% of total reach
-      const conversionRate = 0.01 + (Math.random() * 0.015);
+      // Generate deterministic values based on audience properties
+      // Use a hash of audience properties instead of random numbers
+      const audienceHash = audience.demographic?.gender?.charCodeAt(0) || 0 +
+        (audience.demographic?.ageRange?.min || 25) +
+        (audience.demographic?.ageRange?.max || 65) +
+        (audience.demographic?.locations?.length || 1) * 10 +
+        (audience.interests?.length || 0) * 5 +
+        (audience.behaviors?.length || 0) * 7;
+      
+      // Deterministic "random" value between 0-1 based on hash
+      const deterministicRandom = (audienceHash % 1000) / 1000;
+      
+      // Fixed conversion rate based on deterministic value (0.5-2%)
+      const conversionRate = 0.01 + (deterministicRandom * 0.015);
+      
+      // Round to nearest thousand for stability
+      const reachValue = Math.round((baseReach + (deterministicRandom * 300000)) / 1000) * 1000;
+      const dailyResultsValue = Math.round((baseReach * conversionRate) / 100) * 100;
       
       return {
-        reach: Math.floor(baseReach + (Math.random() * 500000)),
-        dailyResults: Math.floor(baseReach * conversionRate),
+        reach: reachValue,
+        dailyResults: dailyResultsValue,
       };
     } catch (error) {
       console.error('Error in getReachEstimate:', error);
