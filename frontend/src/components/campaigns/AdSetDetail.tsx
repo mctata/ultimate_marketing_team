@@ -319,57 +319,56 @@ const AdSetDetailContent: React.FC<AdSetDetailProps> = ({
               </Box>
             </Grid>
           </Grid>
-            
-            {audienceData && (
-              <Box sx={{ mt: 2 }}>
-                <Divider sx={{ mb: 2 }} />
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Active Targeting Criteria:
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          
+          {audienceData && (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Active Targeting Criteria:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Chip
+                  label={`Age: ${audienceData.demographic.ageRange.min}-${audienceData.demographic.ageRange.max}`}
+                  size="small"
+                />
+                
+                <Chip
+                  label={`Gender: ${audienceData.demographic.gender === 'all' ? 'All' : audienceData.demographic.gender}`}
+                  size="small"
+                />
+                
+                {audienceData.demographic.locations.length > 0 && (
                   <Chip
-                    label={`Age: ${audienceData.demographic.ageRange.min}-${audienceData.demographic.ageRange.max}`}
+                    label={`${audienceData.demographic.locations.length} Locations`}
                     size="small"
                   />
-                  
+                )}
+                
+                {audienceData.behaviors.length > 0 && (
                   <Chip
-                    label={`Gender: ${audienceData.demographic.gender === 'all' ? 'All' : audienceData.demographic.gender}`}
+                    label={`${audienceData.behaviors.length} Behaviors`}
                     size="small"
                   />
-                  
-                  {audienceData.demographic.locations.length > 0 && (
-                    <Chip
-                      label={`${audienceData.demographic.locations.length} Locations`}
-                      size="small"
-                    />
-                  )}
-                  
-                  {audienceData.behaviors.length > 0 && (
-                    <Chip
-                      label={`${audienceData.behaviors.length} Behaviors`}
-                      size="small"
-                    />
-                  )}
-                  
-                  {audienceData.interests.length > 0 && (
-                    <Chip
-                      label={`${audienceData.interests.length} Interests`}
-                      size="small"
-                    />
-                  )}
-                  
-                  {audienceData.lifeEvents.length > 0 && (
-                    <Chip
-                      label={`${audienceData.lifeEvents.length} Life Events`}
-                      size="small"
-                    />
-                  )}
-                </Box>
+                )}
+                
+                {audienceData.interests.length > 0 && (
+                  <Chip
+                    label={`${audienceData.interests.length} Interests`}
+                    size="small"
+                  />
+                )}
+                
+                {audienceData.lifeEvents.length > 0 && (
+                  <Chip
+                    label={`${audienceData.lifeEvents.length} Life Events`}
+                    size="small"
+                  />
+                )}
               </Box>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Audience Targeting Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

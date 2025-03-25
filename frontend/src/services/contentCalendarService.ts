@@ -187,98 +187,96 @@ const contentCalendarService = {
     }
   },
   
-  // Get best time recommendations - using cached mock data for performance
+  // Static mock data stored at the module level to improve performance
+  _staticBestTimeRecommendations: [
+    {
+      platform: 'instagram',
+      day_of_week: 2,
+      hour_of_day: 12,
+      average_engagement: 0.072,
+      confidence: 0.82
+    },
+    {
+      platform: 'facebook',
+      day_of_week: 4,
+      hour_of_day: 15,
+      average_engagement: 0.064,
+      confidence: 0.78
+    },
+    {
+      platform: 'twitter',
+      day_of_week: 1,
+      hour_of_day: 9,
+      average_engagement: 0.098,
+      confidence: 0.85
+    },
+    {
+      platform: 'linkedin',
+      day_of_week: 3,
+      hour_of_day: 11,
+      average_engagement: 0.083,
+      confidence: 0.79
+    },
+    {
+      platform: 'tiktok',
+      day_of_week: 5,
+      hour_of_day: 18,
+      average_engagement: 0.105,
+      confidence: 0.89
+    }
+  ] as BestTimeRecommendation[],
+
+  // Get best time recommendations - using cached static data for maximum performance
   getBestTimeRecommendations: async (projectId: string | number): Promise<BestTimeRecommendation[]> => {
-    // Define static mock data to avoid recalculating on every call
-    const staticMockData: BestTimeRecommendation[] = [
-      {
-        platform: 'instagram',
-        day_of_week: 2,
-        hour_of_day: 12,
-        average_engagement: 0.072,
-        confidence: 0.82
-      },
-      {
-        platform: 'facebook',
-        day_of_week: 4,
-        hour_of_day: 15,
-        average_engagement: 0.064,
-        confidence: 0.78
-      },
-      {
-        platform: 'twitter',
-        day_of_week: 1,
-        hour_of_day: 9,
-        average_engagement: 0.098,
-        confidence: 0.85
-      },
-      {
-        platform: 'linkedin',
-        day_of_week: 3,
-        hour_of_day: 11,
-        average_engagement: 0.083,
-        confidence: 0.79
-      },
-      {
-        platform: 'tiktok',
-        day_of_week: 5,
-        hour_of_day: 18,
-        average_engagement: 0.105,
-        confidence: 0.89
-      }
-    ];
+    // Return cached data immediately without any async operations
+    return contentCalendarService._staticBestTimeRecommendations;
     
+    /* 
+    // Uncomment this when the API endpoint is ready
     try {
-      // Use static data instead of generating it each time
-      return staticMockData;
-      
-      /* 
-      // Uncomment this when the API endpoint is ready
       const response = await axios.get<BestTimeRecommendation[]>(
         `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
       );
       return response.data || [];
-      */
     } catch (error) {
       console.error('Unexpected error in getBestTimeRecommendations:', error);
-      // Return empty array on error to prevent UI crashes
-      return [];
+      return contentCalendarService._staticBestTimeRecommendations;
     }
+    */
   },
   
-  // Implementation for contentSlice.ts with proper URL parameter handling
-  // Get calendar insights - using static mock data for performance
-  getCalendarInsights: async (projectId: string): Promise<{data: any[]}> => {
-    // Static mock data - defined outside function to avoid recreation on each call
-    const mockInsightsData = [
-      {
-        id: "insight-1",
-        type: "warning",
-        message: "Content distribution is not optimal. Consider spreading out your Instagram posts.",
-        affectedItems: ["1", "2"],
-        severity: "warning",
-        action: "Reschedule posts for better engagement"
-      },
-      {
-        id: "insight-2",
-        type: "suggestion",
-        message: "Your email content is performing well. Consider creating more email campaigns.",
-        severity: "info",
-        action: "Increase email frequency"
-      },
-      {
-        id: "insight-3",
-        type: "critical",
-        message: "Multiple posts scheduled at the same time on March 15.",
-        severity: "critical",
-        date: "2025-03-15",
-        affectedItems: ["5", "8"],
-        action: "Reschedule one of the conflicting posts"
-      }
-    ];
+  // Static calendar insights data at the module level
+  _staticCalendarInsights: [
+    {
+      id: "insight-1",
+      type: "warning",
+      message: "Content distribution is not optimal. Consider spreading out your Instagram posts.",
+      affectedItems: ["1", "2"],
+      severity: "warning",
+      action: "Reschedule posts for better engagement"
+    },
+    {
+      id: "insight-2",
+      type: "suggestion",
+      message: "Your email content is performing well. Consider creating more email campaigns.",
+      severity: "info",
+      action: "Increase email frequency"
+    },
+    {
+      id: "insight-3",
+      type: "critical",
+      message: "Multiple posts scheduled at the same time on March 15.",
+      severity: "critical",
+      date: "2025-03-15",
+      affectedItems: ["5", "8"],
+      action: "Reschedule one of the conflicting posts"
+    }
+  ],
       
-    // Return mock data immediately without async operations for development
-    return { data: mockInsightsData };
+  // Get calendar insights - using static data for max performance
+  getCalendarInsights: async (projectId: string): Promise<{data: any[]}> => {
+    // Return static data directly for maximum performance
+    return { data: contentCalendarService._staticCalendarInsights };
     
     /* Uncomment this when the backend API is ready
     try {
@@ -296,8 +294,7 @@ const contentCalendarService = {
       return { data: response.data || [] };
     } catch (error) {
       console.error('Error in getCalendarInsights:', error);
-      // Return mock data on error to prevent UI crashes
-      return { data: mockInsightsData };
+      return { data: contentCalendarService._staticCalendarInsights };
     }
     */
   },
