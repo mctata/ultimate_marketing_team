@@ -1,58 +1,26 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Snackbar, Alert, CircularProgress, Paper } from '@mui/material';
 import { ErrorBoundary } from 'react-error-boundary';
 import GlobalErrorFallback from '../../components/common/GlobalErrorFallback';
 import contentCalendarService from '../../services/contentCalendarService';
 
-// Super lightweight calendar component - bare minimum implementation
-const SimpleContentCalendar = () => {
-  const [loading, setLoading] = useState(false);
-  const [calendarData, setCalendarData] = useState<any[]>([]);
-  const [insights, setInsights] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+// Simple placeholder calendar component until staging environment is ready
+const ContentCalendarPage = () => {
+  const [showHelpTip, setShowHelpTip] = useState(true);
   
-  // Load basic data
-  const loadCalendarData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Get static data directly from service without API calls
-      const insightsData = await contentCalendarService.getCalendarInsights('1');
-      setInsights(insightsData.data);
-      
-      // Minimal calendar data
-      setCalendarData([
-        { id: 1, title: "Instagram Post", scheduled_date: "2025-03-25T10:00:00Z", platform: "instagram" },
-        { id: 2, title: "Facebook Promotion", scheduled_date: "2025-03-26T14:30:00Z", platform: "facebook" },
-        { id: 3, title: "Monthly Newsletter", scheduled_date: "2025-03-27T09:00:00Z", platform: "email" }
-      ]);
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Failed to load calendar data');
-    } finally {
-      setLoading(false);
+  const handleCloseHelpTip = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
     }
-  }, []);
+    setShowHelpTip(false);
+  };
   
-  // Load data on mount
-  useEffect(() => {
-    loadCalendarData();
-  }, [loadCalendarData]);
-  
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-  
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
+  // Get direct access to the static mock data
+  const calendarEntries = [
+    { id: 1, title: "Instagram Post", scheduled_date: "2025-03-25T10:00:00Z", platform: "instagram" },
+    { id: 2, title: "Facebook Promotion", scheduled_date: "2025-03-26T14:30:00Z", platform: "facebook" },
+    { id: 3, title: "Monthly Newsletter", scheduled_date: "2025-03-27T09:00:00Z", platform: "email" }
+  ];
   
   return (
     <Box>
@@ -65,37 +33,23 @@ const SimpleContentCalendar = () => {
         <Typography variant="h6" gutterBottom>
           Calendar Insights
         </Typography>
-        {insights.map(insight => {
-          // Map custom severity values to valid Alert severities
-          const severityMap: {[key: string]: "error" | "warning" | "info" | "success"} = {
-            "critical": "error",
-            "warning": "warning",
-            "info": "info",
-            "suggestion": "info",
-            "success": "success"
-          };
-          
-          // Use the mapped severity or default to "info"
-          const alertSeverity = severityMap[insight.severity] || "info";
-          
-          return (
-            <Alert 
-              key={insight.id} 
-              severity={alertSeverity}
-              sx={{ mb: 1 }}
-            >
-              {insight.message}
-            </Alert>
-          );
-        })}
+        {contentCalendarService._staticCalendarInsights.map(insight => (
+          <Alert 
+            key={insight.id} 
+            severity={insight.severity as "error" | "warning" | "info" | "success"}
+            sx={{ mb: 1 }}
+          >
+            {insight.message}
+          </Alert>
+        ))}
       </Paper>
       
-      {/* Simple calendar entries */}
-      <Paper sx={{ p: 3 }}>
+      {/* Calendar entries */}
+      <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
           Upcoming Content
         </Typography>
-        {calendarData.map(item => (
+        {calendarEntries.map(item => (
           <Box 
             key={item.id} 
             sx={{ 
@@ -122,6 +76,34 @@ const SimpleContentCalendar = () => {
           </Box>
         ))}
       </Paper>
+      
+      {/* Note about staging */}
+      <Paper sx={{ p: 3, mb: 3, bgcolor: '#f5f5f5' }}>
+        <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+          Calendar Status
+        </Typography>
+        <Typography variant="body2">
+          This is a simplified calendar view while the staging environment is being set up.
+          The full calendar with all features will be available once connected to the backend.
+        </Typography>
+      </Paper>
+      
+      {/* Help Tip Snackbar */}
+      <Snackbar
+        open={showHelpTip}
+        autoHideDuration={8000}
+        onClose={handleCloseHelpTip}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseHelpTip} 
+          severity="info" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          This is a simplified calendar view until staging is set up
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
@@ -129,7 +111,7 @@ const SimpleContentCalendar = () => {
 // Wrap with error boundary
 const ContentCalendar = () => (
   <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
-    <SimpleContentCalendar />
+    <ContentCalendarPage />
   </ErrorBoundary>
 );
 
