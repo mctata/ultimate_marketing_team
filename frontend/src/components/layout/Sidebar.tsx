@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Sidebar.tsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -16,6 +17,7 @@ import {
   styled,
   Theme,
   useMediaQuery,
+  Chip,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -37,6 +39,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useBrand } from '../../context/BrandContext';
 
 interface SidebarProps {
   open: boolean;
@@ -90,13 +93,14 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   const theme = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
   const user = useSelector((state: RootState) => state.auth.user);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const { currentBrand } = useBrand();
   
   // Check if current location is under a parent path
   useEffect(() => {
     menuItems.forEach(item => {
       if (item.subItems && item.subItems.some(sub => {
         const path = sub.path.replace(':id', ''); // Handle dynamic routes like :id
-        return location.pathname.startsWith(path);
+        return location.pathname.includes(path);
       })) {
         setExpandedItem(item.text);
       }
@@ -104,7 +108,13 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
   }, [location.pathname]);
   
   const handleNavigation = (path: string) => {
-    navigate(path);
+    // If we have a current brand and we're not going to brands or settings, prepend the brand path
+    if (currentBrand && !path.startsWith('/brands') && !path.startsWith('/settings')) {
+      navigate(`/brand/${currentBrand.id}${path}`);
+    } else {
+      navigate(path);
+    }
+    
     if (theme) {
       onClose();
     }
@@ -146,6 +156,37 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
       
       <Divider />
       
+      {/* Brand indicator */}
+      {currentBrand && (
+        <Box sx={{ mt: 2, px: 2, mb: 2 }}>
+          <Chip
+            avatar={currentBrand.logo ? 
+              <Avatar src={currentBrand.logo} alt={currentBrand.name} /> : 
+              <BusinessIcon />
+            }
+            label={currentBrand.name}
+            variant="outlined"
+            color="primary"
+            sx={{ 
+              borderRadius: '16px',
+              height: 'auto',
+              py: 0.5,
+              width: '100%',
+              justifyContent: 'flex-start',
+              '& .MuiChip-label': {
+                display: 'block',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontWeight: 500,
+                fontSize: '0.9rem',
+              }
+            }}
+            onClick={() => navigate(`/brands/${currentBrand.id}`)}
+          />
+        </Box>
+      )}
+      
       <Box sx={{ mt: 2, px: 2, mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Avatar
@@ -172,7 +213,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
               <ListItemButton
                 onClick={item.subItems ? (e) => toggleExpand(item.text, e) : () => handleNavigation(item.path)}
-                selected={location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path))}
+                selected={location.pathname.includes(item.path) && item.path !== '/dashboard'}
                 sx={{
                   minHeight: 48,
                   justifyContent: open ? 'initial' : 'center',
@@ -195,7 +236,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
                     justifyContent: 'center',
-                    color: location.pathname === item.path ? 'primary.contrastText' : 'inherit',
+                    color: location.pathname.includes(item.path) ? 'primary.contrastText' : 'inherit',
                   }}
                 >
                   {item.icon}
@@ -225,7 +266,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                     <ListItem key={subItem.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
                       <ListItemButton
                         onClick={() => handleNavigation(subItem.path)}
-                        selected={location.pathname.includes(subItem.path.replace(':id', ''))}
+                        selected={location.pathname.includes(subItem.path)}
                         sx={{
                           minHeight: 36,
                           justifyContent: 'initial',
