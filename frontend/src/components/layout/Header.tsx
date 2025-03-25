@@ -112,17 +112,10 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-            {/* For mobile, show compact brand selector */}
-            {isMobile && (
-              <BrandSelector variant="compact" />
-            )}
-            
-            {/* Add New Brand button next to theme toggle */}
-            {!isMobile && (
-              <Box sx={{ mr: 1 }}>
-                <BrandSelector variant="addOnly" />
-              </Box>
-            )}
+            {/* Brand selector dropdown near theme toggle */}
+            <Box sx={{ mr: 1 }}>
+              <BrandSelector variant="dropdown" />
+            </Box>
             
             <Tooltip title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={handleThemeToggle} color="inherit">
