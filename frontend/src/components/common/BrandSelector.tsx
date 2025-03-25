@@ -1,0 +1,231 @@
+// frontend/src/components/common/BrandSelector.tsx
+import React, { useEffect, useState } from 'react';
+import { 
+  Box, 
+  IconButton, 
+  Menu, 
+  MenuItem, 
+  Avatar, 
+  Typography, 
+  Tooltip,
+  Button,
+  ListItemIcon,
+  ListItemText,
+  Divider
+} from '@mui/material';
+import { 
+  Business as BusinessIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { RootState } from '../../store';
+import { selectBrand } from '../../store/slices/brandsSlice';
+
+interface BrandSelectorProps {
+  variant?: 'full' | 'compact';
+}
+
+const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  
+  const { brands, selectedBrand } = useSelector((state: RootState) => state.brands);
+  
+  // Select the first brand by default if none is selected
+  useEffect(() => {
+    if (brands.length > 0 && !selectedBrand) {
+      dispatch(selectBrand(brands[0].id));
+    }
+  }, [brands, selectedBrand, dispatch]);
+  
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+  
+  const handleBrandSelect = (brandId: string) => {
+    dispatch(selectBrand(brandId));
+    handleClose();
+  };
+  
+  const handleCreateNewBrand = () => {
+    navigate('/brands/new');
+    handleClose();
+  };
+  
+  // Return early if no brands are available yet
+  if (brands.length === 0) {
+    return (
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={handleCreateNewBrand}
+        sx={{ borderRadius: '20px', borderColor: 'primary.main', color: 'primary.main' }}
+      >
+        Add Brand
+      </Button>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <Tooltip title={selectedBrand?.name || "Select Brand"}>
+        <IconButton
+          onClick={handleClick}
+          size="small"
+          aria-controls={open ? 'brand-menu' : undefined}
+          aria-haspopup="true"
+          aria-expanded={open ? 'true' : undefined}
+          sx={{ 
+            ml: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: '50%',
+            p: 1
+          }}
+        >
+          {selectedBrand?.logo ? (
+            <Avatar
+              src={selectedBrand.logo}
+              alt={selectedBrand.name}
+              sx={{ width: 24, height: 24 }}
+            />
+          ) : (
+            <BusinessIcon fontSize="small" />
+          )}
+        </IconButton>
+      </Tooltip>
+    );
+  }
+  
+  return (
+    <Box>
+      <Button
+        id="brand-selector-button"
+        aria-controls={open ? 'brand-selector-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={open ? 'true' : undefined}
+        onClick={handleClick}
+        endIcon={<ArrowDownIcon />}
+        sx={{
+          backgroundColor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: '8px',
+          py: 0.75,
+          px: 2,
+          '&:hover': {
+            backgroundColor: 'action.hover',
+          },
+          minWidth: 160,
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {selectedBrand?.logo ? (
+            <Avatar
+              src={selectedBrand.logo}
+              alt={selectedBrand.name}
+              sx={{ width: 24, height: 24, mr: 1 }}
+            />
+          ) : (
+            <BusinessIcon fontSize="small" sx={{ mr: 1 }} />
+          )}
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{
+              maxWidth: 120,
+              fontWeight: 500,
+            }}
+          >
+            {selectedBrand?.name || "Select Brand"}
+          </Typography>
+        </Box>
+      </Button>
+      <Menu
+        id="brand-selector-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        MenuListProps={{
+          'aria-labelledby': 'brand-selector-button',
+        }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            minWidth: 200,
+            maxHeight: 400,
+            overflow: 'auto',
+            mt: 1,
+          },
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+          Your Brands
+        </Typography>
+        
+        {brands.map((brand) => (
+          <MenuItem
+            key={brand.id}
+            onClick={() => handleBrandSelect(brand.id)}
+            selected={selectedBrand?.id === brand.id}
+            sx={{
+              borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
+              borderColor: 'primary.main',
+              pl: selectedBrand?.id === brand.id ? 1.7 : 2,
+            }}
+          >
+            <ListItemIcon>
+              {brand.logo ? (
+                <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
+              ) : (
+                <BusinessIcon fontSize="small" />
+              )}
+            </ListItemIcon>
+            <ListItemText 
+              primary={brand.name} 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: selectedBrand?.id === brand.id ? 600 : 400
+              }}
+            />
+          </MenuItem>
+        ))}
+        
+        <Divider sx={{ my: 1 }} />
+        
+        <MenuItem
+          onClick={handleCreateNewBrand}
+          sx={{ color: 'primary.main' }}
+        >
+          <ListItemIcon>
+            <AddIcon fontSize="small" color="primary" />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Add New Brand" 
+            primaryTypographyProps={{ variant: 'body2' }}
+          />
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
+};
+
+export default BrandSelector;
