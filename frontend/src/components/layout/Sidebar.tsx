@@ -119,6 +119,9 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
     if (isMobile) {
       onClose();
     }
+    
+    // Log navigation for debugging
+    console.log(`Navigating to: ${path}`);
   };
   
   const toggleExpand = (itemText: string, e: React.MouseEvent) => {

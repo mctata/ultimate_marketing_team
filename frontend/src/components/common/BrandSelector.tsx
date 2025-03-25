@@ -61,7 +61,30 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     handleClose();
   }, [navigate, handleClose]);
   
-  // Return early if no brands are available yet
+  // For dropdown variant with no brands, show a simplified dropdown
+  if (brands.length === 0 && variant === 'dropdown') {
+    return (
+      <Box>
+        <Tooltip title="Add Brand">
+          <IconButton
+            onClick={handleCreateNewBrand}
+            size="small"
+            aria-label="Add brand"
+            sx={{ 
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: '50%',
+              p: 1
+            }}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    );
+  }
+  
+  // For other variants with no brands, show the add brand button
   if (brands.length === 0) {
     return (
       <Button
