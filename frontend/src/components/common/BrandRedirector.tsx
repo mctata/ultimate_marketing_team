@@ -126,18 +126,36 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
         }, 3000);
         
         // Navigate to the brand-specific path with query params
-        navigate(`${brandPath}${location.search}`, { replace: true })
-          .then(() => {
+        // navigate() may not return a promise in all environments, so handle that case
+        try {
+          const result = navigate(`${brandPath}${location.search}`, { replace: true });
+          
+          // If navigate returns a promise, handle it
+          if (result && typeof result.then === 'function') {
+            result
+              .then(() => {
+                if (redirectTimeout.current) {
+                  clearTimeout(redirectTimeout.current);
+                }
+                setRedirecting(false);
+                console.log('Navigation successful to', brandPath);
+              })
+              .catch(error => {
+                console.error("Navigation error:", error);
+                setRedirecting(false);
+              });
+          } else {
+            // If no promise is returned, assume navigation was synchronous
+            console.log('Synchronous navigation to', brandPath);
             if (redirectTimeout.current) {
               clearTimeout(redirectTimeout.current);
             }
             setRedirecting(false);
-            console.log('Navigation successful to', brandPath);
-          })
-          .catch(error => {
-            console.error("Navigation error:", error);
-            setRedirecting(false);
-          });
+          }
+        } catch (error) {
+          console.error("Navigation exception:", error);
+          setRedirecting(false);
+        }
       }
     }
   }, [isLoading, brands, selectedBrand, location, navigate, redirecting]);
