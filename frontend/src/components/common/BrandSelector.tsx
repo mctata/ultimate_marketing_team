@@ -61,6 +61,56 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     handleClose();
   }, [navigate, handleClose]);
   
+  // Memoize menu items to prevent unnecessary re-renders
+  const brandMenuItems = useMemo(() => (
+    brands.map((brand) => (
+      <MenuItem
+        key={brand.id}
+        onClick={() => handleBrandSelect(brand.id)}
+        selected={selectedBrand?.id === brand.id}
+        sx={{
+          borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
+          borderColor: 'primary.main',
+          pl: selectedBrand?.id === brand.id ? 1.7 : 2,
+          backgroundColor: selectedBrand?.id === brand.id ? 
+            'rgba(0, 102, 204, 0.08)' : 'transparent',
+          fontWeight: selectedBrand?.id === brand.id ? 600 : 400,
+        }}
+      >
+        <ListItemIcon>
+          {brand.logo ? (
+            <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
+          ) : (
+            <BusinessIcon fontSize="small" />
+          )}
+        </ListItemIcon>
+        <ListItemText 
+          primary={brand.name} 
+          primaryTypographyProps={{ 
+            variant: 'body2',
+            fontWeight: selectedBrand?.id === brand.id ? 600 : 400
+          }}
+        />
+      </MenuItem>
+    ))
+  ), [brands, selectedBrand?.id, handleBrandSelect]);
+  
+  // Add brand menu item (memoized to prevent unnecessary re-renders)
+  const addBrandMenuItem = useMemo(() => (
+    <MenuItem
+      onClick={handleCreateNewBrand}
+      sx={{ color: 'primary.main' }}
+    >
+      <ListItemIcon>
+        <AddIcon fontSize="small" color="primary" />
+      </ListItemIcon>
+      <ListItemText 
+        primary="Add New Brand" 
+        primaryTypographyProps={{ variant: 'body2' }}
+      />
+    </MenuItem>
+  ), [handleCreateNewBrand]);
+  
   // For dropdown variant with no brands, show an add brand button that goes directly to brands/new
   if (brands.length === 0 && variant === 'dropdown') {
     return (
@@ -166,53 +216,11 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
             },
           }}
         >
-          {useMemo(() => (
-            brands.map((brand) => (
-              <MenuItem
-                key={brand.id}
-                onClick={() => handleBrandSelect(brand.id)}
-                selected={selectedBrand?.id === brand.id}
-                sx={{
-                  borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
-                  borderColor: 'primary.main',
-                  pl: selectedBrand?.id === brand.id ? 1.7 : 2,
-                  backgroundColor: selectedBrand?.id === brand.id ? 
-                    'rgba(0, 102, 204, 0.08)' : 'transparent',
-                  fontWeight: selectedBrand?.id === brand.id ? 600 : 400,
-                }}
-              >
-                <ListItemIcon>
-                  {brand.logo ? (
-                    <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
-                  ) : (
-                    <BusinessIcon fontSize="small" />
-                  )}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={brand.name} 
-                  primaryTypographyProps={{ 
-                    variant: 'body2',
-                    fontWeight: selectedBrand?.id === brand.id ? 600 : 400
-                  }}
-                />
-              </MenuItem>
-            ))
-          ), [brands, selectedBrand?.id, handleBrandSelect])}
+{brandMenuItems}
           
           <Divider sx={{ my: 1 }} />
           
-          <MenuItem
-            onClick={handleCreateNewBrand}
-            sx={{ color: 'primary.main' }}
-          >
-            <ListItemIcon>
-              <AddIcon fontSize="small" color="primary" />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Add New Brand" 
-              primaryTypographyProps={{ variant: 'body2' }}
-            />
-          </MenuItem>
+          {addBrandMenuItem}
         </Menu>
       </Box>
     );
@@ -336,58 +344,12 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
         </Typography>
         
         {/* Memoized brand menu items */}
-        {useMemo(() => (
-          brands.map((brand) => (
-            <MenuItem
-              key={brand.id}
-              onClick={() => handleBrandSelect(brand.id)}
-              selected={selectedBrand?.id === brand.id}
-              role="option"
-              aria-selected={selectedBrand?.id === brand.id}
-              sx={{
-                borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
-                borderColor: 'primary.main',
-                pl: selectedBrand?.id === brand.id ? 1.7 : 2,
-                backgroundColor: selectedBrand?.id === brand.id ? 
-                  'rgba(0, 102, 204, 0.08)' : 'transparent', // Visual indication beyond color
-                fontWeight: selectedBrand?.id === brand.id ? 600 : 400, // Font weight change for accessibility
-              }}
-            >
-              <ListItemIcon>
-                {brand.logo ? (
-                  <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
-                ) : (
-                  <BusinessIcon fontSize="small" />
-                )}
-              </ListItemIcon>
-              <ListItemText 
-                primary={brand.name} 
-                primaryTypographyProps={{ 
-                  variant: 'body2',
-                  fontWeight: selectedBrand?.id === brand.id ? 600 : 400
-                }}
-              />
-            </MenuItem>
-          ))
-        ), [brands, selectedBrand?.id, handleBrandSelect])}
+        {brandMenuItems}
         
         <Divider sx={{ my: 1 }} />
         
         {/* Memoized "Add New Brand" menu item */}
-        {useMemo(() => (
-          <MenuItem
-            onClick={handleCreateNewBrand}
-            sx={{ color: 'primary.main' }}
-          >
-            <ListItemIcon>
-              <AddIcon fontSize="small" color="primary" />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Add New Brand" 
-              primaryTypographyProps={{ variant: 'body2' }}
-            />
-          </MenuItem>
-        ), [handleCreateNewBrand])}
+        {addBrandMenuItem}
       </Menu>
     </Box>
   );
