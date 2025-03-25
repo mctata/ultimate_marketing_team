@@ -1,5 +1,5 @@
 // frontend/src/components/common/BrandSelector.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Box, 
   IconButton, 
@@ -42,23 +42,24 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     }
   }, [brands, selectedBrand, dispatch]);
   
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
   
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
   
-  const handleBrandSelect = (brandId: string) => {
+  const handleBrandSelect = useCallback((brandId: string) => {
     dispatch(selectBrand(brandId));
     handleClose();
-  };
+  }, [dispatch, handleClose]);
   
-  const handleCreateNewBrand = () => {
+  const handleCreateNewBrand = useCallback(() => {
     navigate('/brands/new');
     handleClose();
-  };
+  }, [navigate, handleClose]);
   
   // Return early if no brands are available yet
   if (brands.length === 0) {
@@ -82,8 +83,10 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
           onClick={handleClick}
           size="small"
           aria-controls={open ? 'brand-menu' : undefined}
-          aria-haspopup="true"
+          aria-haspopup="menu"
           aria-expanded={open ? 'true' : undefined}
+          aria-label="Select brand"
+          aria-describedby="Currently selected brand"
           sx={{ 
             ml: 1,
             border: '1px solid',
@@ -99,7 +102,7 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
               sx={{ width: 24, height: 24 }}
             />
           ) : (
-            <BusinessIcon fontSize="small" />
+            <BusinessIcon fontSize="small" aria-hidden="true" />
           )}
         </IconButton>
       </Tooltip>
@@ -111,10 +114,13 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
       <Button
         id="brand-selector-button"
         aria-controls={open ? 'brand-selector-menu' : undefined}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={open ? 'true' : undefined}
+        aria-label="Select brand"
+        aria-describedby="brand-selector-description"
         onClick={handleClick}
-        endIcon={<ArrowDownIcon />}
+        endIcon={<ArrowDownIcon aria-hidden="true" />}
+        role="combobox"
         sx={{
           backgroundColor: 'background.paper',
           border: '1px solid',
@@ -129,6 +135,10 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
           justifyContent: 'space-between',
         }}
       >
+        {/* Hidden text for screen readers */}
+        <span id="brand-selector-description" style={{ display: 'none' }}>
+          Select a brand to view brand-specific content
+        </span>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           {selectedBrand?.logo ? (
             <Avatar
@@ -158,6 +168,8 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
         onClose={handleClose}
         MenuListProps={{
           'aria-labelledby': 'brand-selector-button',
+          role: 'listbox',
+          'aria-label': 'Available brands',
         }}
         anchorOrigin={{
           vertical: 'bottom',
@@ -181,48 +193,59 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
           Your Brands
         </Typography>
         
-        {brands.map((brand) => (
-          <MenuItem
-            key={brand.id}
-            onClick={() => handleBrandSelect(brand.id)}
-            selected={selectedBrand?.id === brand.id}
-            sx={{
-              borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
-              borderColor: 'primary.main',
-              pl: selectedBrand?.id === brand.id ? 1.7 : 2,
-            }}
-          >
-            <ListItemIcon>
-              {brand.logo ? (
-                <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
-              ) : (
-                <BusinessIcon fontSize="small" />
-              )}
-            </ListItemIcon>
-            <ListItemText 
-              primary={brand.name} 
-              primaryTypographyProps={{ 
-                variant: 'body2',
-                fontWeight: selectedBrand?.id === brand.id ? 600 : 400
+        {/* Memoized brand menu items */}
+        {useMemo(() => (
+          brands.map((brand) => (
+            <MenuItem
+              key={brand.id}
+              onClick={() => handleBrandSelect(brand.id)}
+              selected={selectedBrand?.id === brand.id}
+              role="option"
+              aria-selected={selectedBrand?.id === brand.id}
+              sx={{
+                borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
+                borderColor: 'primary.main',
+                pl: selectedBrand?.id === brand.id ? 1.7 : 2,
+                backgroundColor: selectedBrand?.id === brand.id ? 
+                  'rgba(0, 102, 204, 0.08)' : 'transparent', // Visual indication beyond color
+                fontWeight: selectedBrand?.id === brand.id ? 600 : 400, // Font weight change for accessibility
               }}
-            />
-          </MenuItem>
-        ))}
+            >
+              <ListItemIcon>
+                {brand.logo ? (
+                  <Avatar src={brand.logo} alt={brand.name} sx={{ width: 24, height: 24 }} />
+                ) : (
+                  <BusinessIcon fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText 
+                primary={brand.name} 
+                primaryTypographyProps={{ 
+                  variant: 'body2',
+                  fontWeight: selectedBrand?.id === brand.id ? 600 : 400
+                }}
+              />
+            </MenuItem>
+          ))
+        ), [brands, selectedBrand?.id, handleBrandSelect])}
         
         <Divider sx={{ my: 1 }} />
         
-        <MenuItem
-          onClick={handleCreateNewBrand}
-          sx={{ color: 'primary.main' }}
-        >
-          <ListItemIcon>
-            <AddIcon fontSize="small" color="primary" />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Add New Brand" 
-            primaryTypographyProps={{ variant: 'body2' }}
-          />
-        </MenuItem>
+        {/* Memoized "Add New Brand" menu item */}
+        {useMemo(() => (
+          <MenuItem
+            onClick={handleCreateNewBrand}
+            sx={{ color: 'primary.main' }}
+          >
+            <ListItemIcon>
+              <AddIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Add New Brand" 
+              primaryTypographyProps={{ variant: 'body2' }}
+            />
+          </MenuItem>
+        ), [handleCreateNewBrand])}
       </Menu>
     </Box>
   );
