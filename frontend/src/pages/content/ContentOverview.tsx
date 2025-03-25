@@ -18,6 +18,7 @@ import {
   TextField,
   InputAdornment
 } from '@mui/material';
+import CreateMenu from '../../components/common/CreateMenu';
 import { 
   Add as AddIcon, 
   ArrowForward as ArrowForwardIcon,
@@ -191,13 +192,7 @@ const ContentOverview = () => {
             <FilterListIcon />
           </IconButton>
           
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleCreateContent}
-          >
-            Create Content
-          </Button>
+          <CreateMenu />
         </Box>
       </Box>
       

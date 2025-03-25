@@ -18,6 +18,7 @@ import {
   Divider,
   CircularProgress
 } from '@mui/material';
+import CreateMenu from '../../components/common/CreateMenu';
 import { 
   Search as SearchIcon, 
   FilterList as FilterListIcon,
@@ -262,12 +263,7 @@ const ContentLibrary: React.FC = () => {
             Filter
           </Button>
           
-          <Button 
-            variant="contained" 
-            onClick={() => navigate('/content/create')}
-          >
-            Create Content
-          </Button>
+          <CreateMenu />
         </Box>
       </Box>
       

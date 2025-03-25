@@ -16,6 +16,7 @@ import {
   Divider,
   CircularProgress,
 } from '@mui/material';
+import CreateMenu from '../../components/common/CreateMenu';
 import {
   Search as SearchIcon,
   Add as AddIcon,
@@ -74,42 +75,35 @@ const Brands = () => {
             Brands
           </Typography>
           
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/brands/new')}
-          >
-            Add New Brand
-          </Button>
-        </Box>
-        
-        {/* Search and filter */}
-        <Box sx={{ mb: 4, display: 'flex', gap: 2 }}>
-          <TextField
-            fullWidth
-            placeholder="Search brands..."
-            variant="outlined"
-            size="small"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          
-          <IconButton 
-            sx={{ 
-              border: 1, 
-              borderColor: 'divider',
-              borderRadius: 1,
-            }}
-          >
-            <FilterListIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              placeholder="Search brands..."
+              variant="outlined"
+              size="small"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              sx={{ width: 250 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            <IconButton 
+              sx={{ 
+                border: 1, 
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <FilterListIcon fontSize="small" />
+            </IconButton>
+            
+            <CreateMenu />
+          </Box>
         </Box>
         
         {isLoading ? (
@@ -127,13 +121,7 @@ const Brands = () => {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                   Try adjusting your search or filter criteria
                 </Typography>
-                <Button 
-                  variant="contained" 
-                  startIcon={<AddIcon />}
-                  onClick={() => navigate('/brands/new')}
-                >
-                  Add New Brand
-                </Button>
+                <CreateMenu />
               </Box>
             ) : (
               <Grid container spacing={3}>

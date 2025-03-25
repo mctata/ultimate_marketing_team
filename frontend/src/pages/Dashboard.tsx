@@ -14,6 +14,7 @@ import {
   LinearProgress,
   useTheme,
 } from '@mui/material';
+import CreateMenu from '../components/common/CreateMenu';
 import {
   TrendingUp as TrendingUpIcon,
   MoreVert as MoreVertIcon,
@@ -106,19 +107,7 @@ const Dashboard = () => {
         </Typography>
         
         <Box>
-          <Button 
-            variant="contained"
-            onClick={() => navigate('/brands/new')}
-            sx={{ mr: 1 }}
-          >
-            Add New Brand
-          </Button>
-          <Button 
-            variant="outlined"
-            onClick={() => navigate('/content/new')}
-          >
-            Create Content
-          </Button>
+          <CreateMenu />
         </Box>
       </Box>
       
@@ -499,15 +488,6 @@ const Dashboard = () => {
                   </Box>
                 ))}
                 
-                <Box sx={{ p: 2 }}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => navigate('/brands/new')}
-                  >
-                    Add New Brand
-                  </Button>
-                </Box>
               </Paper>
             </Grid>
             
@@ -587,14 +567,8 @@ const Dashboard = () => {
                   ))}
                 </Grid>
                 
-                <Box sx={{ p: 2 }}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => navigate('/content/new')}
-                  >
-                    Create New Content
-                  </Button>
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                  <CreateMenu variant="compact" />
                 </Box>
               </Paper>
             </Grid>
