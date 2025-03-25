@@ -32,7 +32,7 @@ api.interceptors.response.use(
 
 // Common API methods
 export const apiMethods = {
-  get: <T>(url: string, config = {}) => api.get<T>(url, config).then(response => response.data),
+  get: <T>(url: string, params = {}) => api.get<T>(url, { params }).then(response => response.data),
   post: <T>(url: string, data = {}, config = {}) => api.post<T>(url, data, config).then(response => response.data),
   put: <T>(url: string, data = {}, config = {}) => api.put<T>(url, data, config).then(response => response.data),
   patch: <T>(url: string, data = {}, config = {}) => api.patch<T>(url, data, config).then(response => response.data),
