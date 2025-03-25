@@ -54,6 +54,8 @@ const Campaigns = () => {
   const { getCampaignsList } = useCampaigns();
   const { data: campaigns, isLoading, error } = getCampaignsList(filters);
   
+  console.log('Campaigns data:', campaigns, 'isLoading:', isLoading, 'error:', error);
+  
   // Filter campaigns based on search term
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];

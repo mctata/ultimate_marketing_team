@@ -10,6 +10,8 @@ import Templates from '../templates/Templates';
 import TemplateDetail from '../templates/TemplateDetail';
 
 const Content = () => {
+  console.log('Content component rendered');
+  
   return (
     <Box sx={{ p: 3 }}>
       <Routes>
