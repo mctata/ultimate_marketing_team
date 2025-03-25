@@ -51,6 +51,7 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
       // Skip redirects for these paths
       const excludedPaths = ['/brands', '/brands/new', '/brands/'];
       if (excludedPaths.some(path => currentPath.startsWith(path))) {
+        console.log('Skipping redirect for excluded path:', currentPath);
         return;
       }
       
@@ -64,14 +65,20 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
         
         // Determine which brand to use
         const targetBrand: Brand = selectedBrand || brands[0];
+        console.log('Using brand for redirect:', targetBrand);
         
-        // For Content and Campaigns, ensure direct path
-        if (routePart === 'content' || routePart === 'campaigns') {
-          console.log('Redirecting to brand-specific route:', `/brand/${targetBrand.id}/${routePart}`);
+        // Create brandPath based on the route
+        let brandPath = '';
+        
+        // Special handling for main section paths
+        if (routePart === 'content' || routePart === 'campaigns' || routePart === 'analytics') {
+          console.log(`Special handling for ${routePart} path`);
+          // Ensure we're going directly to the base content/campaign path with the brand
+          brandPath = `/brand/${targetBrand.id}/${routePart}`;
+        } else {
+          // For other paths, preserve the full path structure
+          brandPath = `/brand/${targetBrand.id}/${routePart}`;
         }
-        
-        // Construct the new brand-specific path
-        const brandPath = `/brand/${targetBrand.id}/${routePart}`;
         
         // Check if we've already tried this path to prevent loops
         if (attemptedPaths.current.has(brandPath)) {
@@ -87,6 +94,7 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
         
         // Set a timeout to prevent UI from getting stuck if navigation fails
         redirectTimeout.current = setTimeout(() => {
+          console.log('Redirect timeout exceeded, cancelling redirect.');
           setRedirecting(false);
         }, 3000);
         
