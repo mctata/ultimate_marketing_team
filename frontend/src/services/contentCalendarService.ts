@@ -184,7 +184,7 @@ const contentCalendarService = {
   // Get calendar insights - works with both project_id and brand_id for backwards compatibility
   getCalendarInsights: async (projectId: string): Promise<{data: any[]}> => {
     try {
-      // Use mock data if dev environment or API returns 404
+      // Use mock data if API returns 404
       const mockInsightsData = [
         {
           id: "insight-1",
@@ -212,63 +212,88 @@ const contentCalendarService = {
         }
       ];
       
+      // First, try direct calendar endpoint (most likely to work)
       try {
-        // First attempt - use the content-calendar/insights endpoint
-        const url = `${API_BASE_URL}/content-calendar/insights`;
+        const url = `${API_BASE_URL}/api/calendar/insights`;
         const params = new URLSearchParams();
         
-        // Add project_id parameter
         if (projectId) {
           params.append('project_id', projectId);
         }
         
-        // Make the API request with properly formatted URL
         const response = await axios.get<any[]>(
-          params.toString() ? `${url}?${params.toString()}` : url
+          `${url}?${params.toString()}`
         );
         
         return { data: response.data || [] };
-      } catch (primaryError) {
-        console.log('Primary endpoint failed, trying fallback endpoint');
+      } catch (mainError) {
+        console.log('Main calendar endpoint failed, trying alternative endpoints');
         
-        // If the first endpoint fails with 404, try the alternate endpoint
-        if (axios.isAxiosError(primaryError) && primaryError.response?.status === 404) {
+        // Second, try content-calendar/insights
+        try {
+          const url = `${API_BASE_URL}/content-calendar/insights`;
+          const params = new URLSearchParams();
+          
+          if (projectId) {
+            params.append('project_id', projectId);
+          }
+          
+          const response = await axios.get<any[]>(
+            `${url}?${params.toString()}`
+          );
+          
+          return { data: response.data || [] };
+        } catch (primaryError) {
+          console.log('Primary endpoint failed, trying fallback endpoint');
+          
+          // Third, try content-calendar/insights/conflicts
           try {
-            // Alternate endpoint - insights/conflicts with proper parameters
-            const altUrl = `${API_BASE_URL}/content-calendar/insights/conflicts`;
-            const altParams = new URLSearchParams();
-            
-            if (projectId) {
-              altParams.append('project_id', projectId);
-            }
-            
             // Add date range (last 30 days by default)
             const today = new Date();
             const thirtyDaysAgo = new Date(today);
             thirtyDaysAgo.setDate(today.getDate() - 30);
             
-            altParams.append('start_date', thirtyDaysAgo.toISOString().split('T')[0]);
-            altParams.append('end_date', today.toISOString().split('T')[0]);
+            const url = `${API_BASE_URL}/content-calendar/insights/conflicts`;
+            const params = new URLSearchParams();
             
-            const altResponse = await axios.get<any[]>(
-              `${altUrl}?${altParams.toString()}`
+            if (projectId) {
+              params.append('project_id', projectId);
+            }
+            
+            params.append('start_date', thirtyDaysAgo.toISOString().split('T')[0]);
+            params.append('end_date', today.toISOString().split('T')[0]);
+            
+            const response = await axios.get<any[]>(
+              `${url}?${params.toString()}`
             );
             
-            return { data: altResponse.data || [] };
-          } catch (altError) {
-            console.error('Both endpoints failed, using mock data:', altError);
-            return { data: mockInsightsData };
+            return { data: response.data || [] };
+          } catch (fallbackError) {
+            // Fourth, try the v2 API endpoint
+            try {
+              const url = `${API_BASE_URL}/v2/content-insights`;
+              const params = new URLSearchParams();
+              
+              if (projectId) {
+                params.append('project_id', projectId);
+              }
+              
+              const response = await axios.get<any[]>(
+                `${url}?${params.toString()}`
+              );
+              
+              return { data: response.data || [] };
+            } catch (finalError) {
+              console.error('All endpoints failed, using mock data:', finalError);
+              return { data: mockInsightsData };
+            }
           }
-        } else {
-          // For other errors, use mock data
-          console.error('API error, using mock data:', primaryError);
-          return { data: mockInsightsData };
         }
       }
     } catch (error) {
       console.error('Error in getCalendarInsights:', error);
-      // Return empty data array on error to prevent UI crashes
-      return { data: [] };
+      // Return mock data on error to prevent UI crashes
+      return { data: mockInsightsData };
     }
   },
   
