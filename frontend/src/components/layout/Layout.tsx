@@ -7,7 +7,7 @@ import { RootState } from '../../store';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { lightTheme, darkTheme } from '../../theme';
+import theme, { darkTheme } from '../../theme';
 import { BrandProvider } from '../../context/BrandContext';
 
 const drawerWidth = 280;
@@ -40,10 +40,10 @@ const Layout = () => {
   };
   
   // Use the theme based on the user preference or system preference
-  const theme = createTheme(darkMode ? darkTheme : lightTheme);
+  const currentTheme = darkMode ? darkTheme : theme;
   
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={currentTheme}>
       <BrandProvider>
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
           <CssBaseline />
