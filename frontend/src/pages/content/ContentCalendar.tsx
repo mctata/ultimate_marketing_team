@@ -1,9 +1,24 @@
-import { useState } from 'react';
-import { Box, Typography, Button, Paper, Snackbar, Alert } from '@mui/material';
-import ContentCalendarContainer from '../../components/calendar/ContentCalendarContainer';
-import SmartSchedulingRecommendations from '../../components/calendar/SmartSchedulingRecommendations';
+import { useState, lazy, Suspense } from 'react';
+import { Box, Typography, Button, Paper, Snackbar, Alert, CircularProgress } from '@mui/material';
+import { ErrorBoundary } from 'react-error-boundary';
+import GlobalErrorFallback from '../../components/common/GlobalErrorFallback';
 
-const ContentCalendar = () => {
+// Use lazy loading to improve initial load performance
+const ContentCalendarContainer = lazy(() => 
+  import('../../components/calendar/ContentCalendarContainer')
+);
+const SmartSchedulingRecommendations = lazy(() => 
+  import('../../components/calendar/SmartSchedulingRecommendations')
+);
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+    <CircularProgress />
+  </Box>
+);
+
+const ContentCalendarContent = () => {
   const [projectId, setProjectId] = useState(1); // Default project ID
   const [showHelpTip, setShowHelpTip] = useState(true);
   const [recommendedDate, setRecommendedDate] = useState<Date | null>(null);
@@ -26,18 +41,22 @@ const ContentCalendar = () => {
 
   return (
     <Box>
-      {/* Smart Scheduling Recommendations Component */}
-      <SmartSchedulingRecommendations 
-        projectId={projectId} 
-        onApplyRecommendation={handleApplyRecommendation}
-      />
+      {/* Smart Scheduling Recommendations Component with Suspense */}
+      <Suspense fallback={<LoadingFallback />}>
+        <SmartSchedulingRecommendations 
+          projectId={projectId} 
+          onApplyRecommendation={handleApplyRecommendation}
+        />
+      </Suspense>
       
-      {/* Content Calendar Container */}
-      <ContentCalendarContainer 
-        projectId={projectId} 
-        recommendedDate={recommendedDate}
-        recommendedPlatform={recommendedPlatform}
-      />
+      {/* Content Calendar Container with Suspense */}
+      <Suspense fallback={<LoadingFallback />}>
+        <ContentCalendarContainer 
+          projectId={projectId} 
+          recommendedDate={recommendedDate}
+          recommendedPlatform={recommendedPlatform}
+        />
+      </Suspense>
       
       {/* Help Tip Snackbar */}
       <Snackbar
@@ -59,6 +78,15 @@ const ContentCalendar = () => {
         </Alert>
       </Snackbar>
     </Box>
+  );
+};
+
+// Wrap the component with ErrorBoundary
+const ContentCalendar = () => {
+  return (
+    <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
+      <ContentCalendarContent />
+    </ErrorBoundary>
   );
 };
 

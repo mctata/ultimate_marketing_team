@@ -178,10 +178,8 @@ const AdSetDetailContent: React.FC<AdSetDetailProps> = ({
 
   // Get reach estimate based on current targeting
   const getReachEstimate = async (audience: AudienceTarget) => {
-    // Store current loading state to reset if needed
-    const wasLoading = loading;
-    
     try {
+      // Set loading state at the beginning
       setLoading(true);
       const estimate = await audienceService.getReachEstimate(audience);
       setReachEstimate(estimate);
@@ -193,10 +191,8 @@ const AdSetDetailContent: React.FC<AdSetDetailProps> = ({
         dailyResults: 5000
       });
     } finally {
-      // Only update loading state if we were the ones who set it
-      if (wasLoading !== loading) {
-        setLoading(false);
-      }
+      // Always reset loading state in finally block
+      setLoading(false);
     }
   };
 

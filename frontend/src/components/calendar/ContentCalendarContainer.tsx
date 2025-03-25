@@ -180,21 +180,24 @@ const ContentCalendarContainer: React.FC<ContentCalendarContainerProps> = ({
     const endDateStr = format(currentDateRange.endDate, "yyyy-MM-dd'T'HH:mm:ss'Z'");
     
     try {
-      // Fetch calendar entries
-      await dispatch(fetchCalendarItems({
-        startDate: startDateStr,
-        endDate: endDateStr,
-        force
-      }));
-      
-      // Fetch best time recommendations
-      await dispatch(fetchBestTimeRecommendations(projectId.toString()));
-      
-      // Fetch scheduling insights
-      await dispatch(fetchCalendarInsights(projectId.toString()));
-      
-      // Fetch content drafts
-      await fetchContentDrafts();
+      // Use Promise.all to fetch data in parallel instead of sequentially
+      await Promise.all([
+        // Fetch calendar entries
+        dispatch(fetchCalendarItems({
+          startDate: startDateStr,
+          endDate: endDateStr,
+          force
+        })),
+        
+        // Fetch best time recommendations
+        dispatch(fetchBestTimeRecommendations(projectId.toString())),
+        
+        // Fetch scheduling insights
+        dispatch(fetchCalendarInsights(projectId.toString())),
+        
+        // Fetch content drafts
+        fetchContentDrafts()
+      ]);
     } catch (err) {
       console.error('Error fetching calendar data:', err);
       setError('Failed to load calendar data. Please try again.');
