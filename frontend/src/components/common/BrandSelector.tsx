@@ -24,7 +24,7 @@ import { RootState } from '../../store';
 import { selectBrand } from '../../store/slices/brandsSlice';
 
 interface BrandSelectorProps {
-  variant?: 'full' | 'compact';
+  variant?: 'full' | 'compact' | 'addOnly';
 }
 
 const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
@@ -63,6 +63,21 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
   
   // Return early if no brands are available yet
   if (brands.length === 0) {
+    return (
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={handleCreateNewBrand}
+        sx={{ borderRadius: '20px', borderColor: 'primary.main', color: 'primary.main' }}
+      >
+        Add Brand
+      </Button>
+    );
+  }
+
+  // For "Add Only" variant - just show the add button regardless of brand count
+  if (variant === 'addOnly') {
     return (
       <Button
         variant="outlined"

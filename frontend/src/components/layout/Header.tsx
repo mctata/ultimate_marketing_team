@@ -117,6 +117,13 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
               <BrandSelector variant="compact" />
             )}
             
+            {/* Add New Brand button next to theme toggle */}
+            {!isMobile && (
+              <Box sx={{ mr: 1 }}>
+                <BrandSelector variant="addOnly" />
+              </Box>
+            )}
+            
             <Tooltip title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={handleThemeToggle} color="inherit">
                 {darkMode ? <LightMode /> : <DarkMode />}

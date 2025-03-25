@@ -60,7 +60,7 @@ const Layout = () => {
             component="main"
             sx={{
               flexGrow: 1,
-              p: { xs: 2, sm: 3 },
+              p: 0, // Remove default padding
               width: { xs: '100%', md: `calc(100% - ${open ? drawerWidth : 0}px)` },
               ml: { xs: 0, md: open ? `${drawerWidth}px` : 0 },
               transition: (theme) =>
@@ -73,7 +73,7 @@ const Layout = () => {
             <Toolbar /> {/* This creates space for the fixed AppBar */}
             <Box sx={{ 
               minHeight: 'calc(100vh - 200px)',
-              pb: 4,
+              p: { xs: 2, sm: 3 }, // Add padding here instead of parent
             }}> 
               <Outlet />
             </Box>
