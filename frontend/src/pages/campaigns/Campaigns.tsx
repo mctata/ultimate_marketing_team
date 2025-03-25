@@ -134,19 +134,7 @@ const Campaigns = () => {
     return <Typography color="error">Error loading campaigns: {(error as Error).message}</Typography>;
   }
   
-  // If no brand is selected, show a helpful message
-  if (!selectedBrand) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Please select a brand using the dropdown in the header to view campaigns.
-        </Alert>
-        <Typography variant="body1">
-          Campaign management requires a brand context. Use the brand selector in the top right of the header.
-        </Typography>
-      </Box>
-    );
-  }
+  // Always continue with campaigns display
   
   return (
     <ErrorBoundary FallbackComponent={GlobalErrorFallback}>

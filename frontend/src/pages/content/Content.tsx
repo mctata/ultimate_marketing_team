@@ -5,7 +5,7 @@ import ContentLibrary from './ContentLibrary';
 import ContentCalendar from './ContentCalendar';
 import ContentDetail from './ContentDetail';
 import ContentGenerator from './ContentGenerator';
-import { Box, Typography, Alert } from '@mui/material';
+import { Box } from '@mui/material';
 import Templates from '../templates/Templates';
 import TemplateDetail from '../templates/TemplateDetail';
 import { useSelector } from 'react-redux';
@@ -22,20 +22,6 @@ const Content = () => {
     console.log('- Params:', params);
     console.log('- Selected Brand:', selectedBrand);
   }, [location, params, selectedBrand]);
-  
-  // If no brand is selected, show a helpful message
-  if (!selectedBrand) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Please select a brand using the dropdown in the header to view content.
-        </Alert>
-        <Typography variant="body1">
-          Content management requires a brand context. Use the brand selector in the top right of the header.
-        </Typography>
-      </Box>
-    );
-  }
   
   return (
     <Box sx={{ p: 3 }}>

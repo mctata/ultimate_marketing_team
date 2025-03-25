@@ -61,15 +61,15 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     handleClose();
   }, [navigate, handleClose]);
   
-  // For dropdown variant with no brands, show a dropdown with just the Add Brand option
+  // For dropdown variant with no brands, show an add brand button that goes directly to brands/new
   if (brands.length === 0 && variant === 'dropdown') {
     return (
       <Box>
         <Tooltip title="Add Brand">
           <IconButton
-            onClick={handleClick}
+            onClick={handleCreateNewBrand}
             size="small"
-            aria-label="Brand Menu"
+            aria-label="Add Brand"
             sx={{ 
               border: '1px solid',
               borderColor: 'divider',
@@ -80,50 +80,6 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
             <AddIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        
-        <Menu
-          id="brand-menu-empty-dropdown"
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleClose}
-          MenuListProps={{
-            'aria-labelledby': 'brand-dropdown-button',
-            role: 'listbox',
-            'aria-label': 'Create your first brand',
-          }}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          PaperProps={{
-            elevation: 3,
-            sx: {
-              minWidth: 200,
-              mt: 1,
-            },
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-            Get Started
-          </Typography>
-          
-          <MenuItem
-            onClick={handleCreateNewBrand}
-            sx={{ color: 'primary.main' }}
-          >
-            <ListItemIcon>
-              <AddIcon fontSize="small" color="primary" />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Create Your First Brand" 
-              primaryTypographyProps={{ variant: 'body2' }}
-            />
-          </MenuItem>
-        </Menu>
       </Box>
     );
   }
@@ -143,36 +99,46 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     );
   }
 
-  // For "dropdown" variant - show a simple button that opens the dropdown
+  // For "dropdown" variant - use a proper dropdown with brand name visible
   if (variant === 'dropdown') {
     return (
       <Box>
-        <Tooltip title="Brand Selection">
-          <IconButton
-            onClick={handleClick}
-            size="small"
-            aria-controls={open ? 'brand-menu-dropdown' : undefined}
-            aria-haspopup="menu"
-            aria-expanded={open ? 'true' : undefined}
-            aria-label="Select brand"
-            sx={{ 
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '50%',
-              p: 1
-            }}
-          >
+        <Button
+          id="brand-dropdown-button"
+          aria-controls={open ? 'brand-menu-dropdown' : undefined}
+          aria-haspopup="true"
+          aria-expanded={open ? 'true' : undefined}
+          onClick={handleClick}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: '20px',
+            backgroundColor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            px: 2,
+            py: 0.5,
+            '&:hover': {
+              backgroundColor: 'action.hover',
+            },
+          }}
+          endIcon={<ArrowDownIcon />}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {selectedBrand?.logo ? (
               <Avatar
                 src={selectedBrand.logo}
                 alt={selectedBrand.name}
-                sx={{ width: 24, height: 24 }}
+                sx={{ width: 24, height: 24, mr: 1 }}
               />
             ) : (
-              <BusinessIcon fontSize="small" aria-hidden="true" />
+              <BusinessIcon fontSize="small" sx={{ mr: 1 }} />
             )}
-          </IconButton>
-        </Tooltip>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {selectedBrand?.name || "Select Brand"}
+            </Typography>
+          </Box>
+        </Button>
         
         <Menu
           id="brand-menu-dropdown"
@@ -181,8 +147,6 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
           onClose={handleClose}
           MenuListProps={{
             'aria-labelledby': 'brand-dropdown-button',
-            role: 'listbox',
-            'aria-label': 'Available brands',
           }}
           anchorOrigin={{
             vertical: 'bottom',
@@ -202,18 +166,12 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
             },
           }}
         >
-          <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-            Your Brands
-          </Typography>
-          
           {useMemo(() => (
             brands.map((brand) => (
               <MenuItem
                 key={brand.id}
                 onClick={() => handleBrandSelect(brand.id)}
                 selected={selectedBrand?.id === brand.id}
-                role="option"
-                aria-selected={selectedBrand?.id === brand.id}
                 sx={{
                   borderLeft: selectedBrand?.id === brand.id ? 3 : 0,
                   borderColor: 'primary.main',
@@ -243,20 +201,18 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
           
           <Divider sx={{ my: 1 }} />
           
-          {useMemo(() => (
-            <MenuItem
-              onClick={handleCreateNewBrand}
-              sx={{ color: 'primary.main' }}
-            >
-              <ListItemIcon>
-                <AddIcon fontSize="small" color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Add New Brand" 
-                primaryTypographyProps={{ variant: 'body2' }}
-              />
-            </MenuItem>
-          ), [handleCreateNewBrand])}
+          <MenuItem
+            onClick={handleCreateNewBrand}
+            sx={{ color: 'primary.main' }}
+          >
+            <ListItemIcon>
+              <AddIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Add New Brand" 
+              primaryTypographyProps={{ variant: 'body2' }}
+            />
+          </MenuItem>
         </Menu>
       </Box>
     );

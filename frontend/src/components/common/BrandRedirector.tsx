@@ -1,9 +1,8 @@
 // frontend/src/components/common/BrandRedirector.tsx
 import React, { useEffect, useState, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
-import LoadingScreen from './LoadingScreen';
 import { Brand } from '../../services/brandService';
 
 interface BrandRedirectorProps {
@@ -115,29 +114,9 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
     }
   }, [isLoading, brands, selectedBrand, location, navigate, redirecting]);
   
-  // If still loading or redirecting, show loading screen
-  if (isLoading || redirecting) {
-    return <LoadingScreen message="Loading brand context..." />;
-  }
-  
-  // If we have no brands, or we've exceeded redirect attempts, show the children anyway
-  if (brands.length === 0 || redirectAttempts.current >= maxRedirectAttempts) {
-    return <>{children}</>;
-  }
-  
-  // If we're already on a brand path, show the children
-  if (location.pathname.includes('/brand/')) {
-    return <>{children}</>;
-  }
-  
-  // For specific paths that shouldn't be redirected
-  const excludedPaths = ['/brands', '/brands/new', '/brands/'];
-  if (excludedPaths.some(path => location.pathname.startsWith(path))) {
-    return <>{children}</>;
-  }
-  
-  // Show loading while we're figuring out where to go
-  return <LoadingScreen message="Setting up brand context..." />;
+  // Always render children - we'll do the redirecting in the background
+  // This ensures pages are visible immediately without blocking on redirects
+  return <>{children}</>;
 };
 
 export default BrandRedirector;

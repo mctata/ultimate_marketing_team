@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -14,6 +14,8 @@ import UXAnalyticsDashboard from './UXAnalyticsDashboard';
 import AccessibilityIcon from '@mui/icons-material/Accessibility';
 import { ChartAccessibilityProvider } from '../../context/ChartAccessibilityContext';
 import ChartAccessibilitySettings from '../../components/analytics/ChartAccessibilitySettings';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -44,6 +46,11 @@ const TabPanel = (props: TabPanelProps) => {
 const Analytics = () => {
   const [tabValue, setTabValue] = useState(0);
   const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
+  const { selectedBrand } = useSelector((state: RootState) => state.brands);
+  
+  useEffect(() => {
+    console.log('Analytics component rendered with selected brand:', selectedBrand);
+  }, [selectedBrand]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
