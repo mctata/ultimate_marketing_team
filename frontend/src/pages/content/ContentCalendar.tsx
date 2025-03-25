@@ -65,15 +65,29 @@ const SimpleContentCalendar = () => {
         <Typography variant="h6" gutterBottom>
           Calendar Insights
         </Typography>
-        {insights.map(insight => (
-          <Alert 
-            key={insight.id} 
-            severity={insight.severity || "info"} 
-            sx={{ mb: 1 }}
-          >
-            {insight.message}
-          </Alert>
-        ))}
+        {insights.map(insight => {
+          // Map custom severity values to valid Alert severities
+          const severityMap: {[key: string]: "error" | "warning" | "info" | "success"} = {
+            "critical": "error",
+            "warning": "warning",
+            "info": "info",
+            "suggestion": "info",
+            "success": "success"
+          };
+          
+          // Use the mapped severity or default to "info"
+          const alertSeverity = severityMap[insight.severity] || "info";
+          
+          return (
+            <Alert 
+              key={insight.id} 
+              severity={alertSeverity}
+              sx={{ mb: 1 }}
+            >
+              {insight.message}
+            </Alert>
+          );
+        })}
       </Paper>
       
       {/* Simple calendar entries */}

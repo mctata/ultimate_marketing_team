@@ -245,28 +245,28 @@ const contentCalendarService = {
     */
   },
   
-  // Static calendar insights data at the module level
+  // Static calendar insights data at the module level - using valid Alert severity values
   _staticCalendarInsights: [
     {
       id: "insight-1",
       type: "warning",
       message: "Content distribution is not optimal. Consider spreading out your Instagram posts.",
       affectedItems: ["1", "2"],
-      severity: "warning",
+      severity: "warning", // Valid MUI Alert severity
       action: "Reschedule posts for better engagement"
     },
     {
       id: "insight-2",
-      type: "suggestion",
+      type: "info",
       message: "Your email content is performing well. Consider creating more email campaigns.",
-      severity: "info",
+      severity: "info", // Valid MUI Alert severity
       action: "Increase email frequency"
     },
     {
       id: "insight-3",
-      type: "critical",
+      type: "error",
       message: "Multiple posts scheduled at the same time on March 15.",
-      severity: "critical",
+      severity: "error", // Valid MUI Alert severity
       date: "2025-03-15",
       affectedItems: ["5", "8"],
       action: "Reschedule one of the conflicting posts"
