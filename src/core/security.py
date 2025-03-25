@@ -5,13 +5,15 @@ import secrets
 import hashlib
 import string
 import uuid
+import logging
+import time
 from datetime import datetime, timedelta
 from functools import wraps
 from enum import Enum
-from typing import Optional, Union, Any, Dict, List, Tuple
+from typing import Optional, Union, Any, Dict, List, Tuple, Set
 
 # Third-party imports
-from fastapi import Depends, HTTPException, status, Request, Header
+from fastapi import Depends, HTTPException, status, Request, Header, Cookie
 from fastapi.security import OAuth2PasswordBearer, OAuth2AuthorizationCodeBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -20,11 +22,16 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from sqlalchemy.orm import Session
 import pyotp
+from sqlalchemy import and_, or_
 
 # Local imports
 from src.core.settings import settings
 from src.core.database import get_db
 from src.core.cache import cache
+from src.core.secrets_manager import secrets_manager
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -82,6 +89,205 @@ def get_password_hash(password: str) -> str:
     """
     return pwd_context.hash(password)
 
+class JWTManager:
+    """Manages JWT secrets, rotation, and token operations."""
+    
+    def __init__(self):
+        """Initialize JWT Manager with secret key rotation support."""
+        self._active_key_id = None
+        self._keys = {}
+        self._key_rotation_interval = int(os.getenv("JWT_KEY_ROTATION_DAYS", "30"))  # Default 30 days
+        self._initialized = False
+        
+    def initialize(self, db: Optional[Session] = None):
+        """Initialize JWT keys from database or environment."""
+        if self._initialized:
+            return
+            
+        try:
+            # Try to load keys from database
+            if db:
+                self._load_keys_from_db(db)
+            
+            # If no keys loaded, create initial key
+            if not self._keys:
+                initial_key = secrets_manager.get_jwt_secret() or settings.JWT_SECRET
+                key_id = self._generate_key_id()
+                self._keys[key_id] = {
+                    "key": initial_key,
+                    "created_at": datetime.utcnow(),
+                    "expires_at": datetime.utcnow() + timedelta(days=self._key_rotation_interval),
+                    "is_active": True
+                }
+                self._active_key_id = key_id
+                
+                # Save to database if available
+                if db:
+                    self._save_key_to_db(db, key_id, initial_key)
+            
+            self._initialized = True
+            logger.info(f"JWT Manager initialized with {len(self._keys)} keys")
+        except Exception as e:
+            logger.error(f"Failed to initialize JWT Manager: {str(e)}")
+            # Fallback to a single key from settings
+            key_id = self._generate_key_id()
+            self._keys[key_id] = {
+                "key": settings.JWT_SECRET,
+                "created_at": datetime.utcnow(),
+                "expires_at": datetime.utcnow() + timedelta(days=self._key_rotation_interval),
+                "is_active": True
+            }
+            self._active_key_id = key_id
+            self._initialized = True
+            logger.warning("Using fallback JWT key from settings")
+    
+    def _generate_key_id(self) -> str:
+        """Generate a unique key ID."""
+        return str(uuid.uuid4())
+    
+    def _load_keys_from_db(self, db: Session):
+        """Load JWT keys from database."""
+        from src.models.system import JWTSecretKey
+        
+        try:
+            # Get all non-expired keys
+            keys = db.query(JWTSecretKey).filter(
+                JWTSecretKey.expires_at > datetime.utcnow()
+            ).all()
+            
+            for key in keys:
+                self._keys[key.key_id] = {
+                    "key": key.key,
+                    "created_at": key.created_at,
+                    "expires_at": key.expires_at,
+                    "is_active": key.is_active
+                }
+                
+                # Set active key
+                if key.is_active:
+                    self._active_key_id = key.key_id
+            
+            # If no active key, set the most recent one as active
+            if not self._active_key_id and self._keys:
+                # Sort keys by creation date (descending)
+                sorted_keys = sorted(self._keys.items(), 
+                                    key=lambda x: x[1]["created_at"], 
+                                    reverse=True)
+                self._active_key_id = sorted_keys[0][0]
+                
+            logger.info(f"Loaded {len(self._keys)} JWT keys from database")
+        except Exception as e:
+            logger.error(f"Failed to load JWT keys from database: {str(e)}")
+    
+    def _save_key_to_db(self, db: Session, key_id: str, key: str):
+        """Save JWT key to database."""
+        from src.models.system import JWTSecretKey
+        
+        try:
+            # Create new key record
+            key_data = self._keys[key_id]
+            key_record = JWTSecretKey(
+                key_id=key_id,
+                key=key,
+                created_at=key_data["created_at"],
+                expires_at=key_data["expires_at"],
+                is_active=key_data["is_active"]
+            )
+            
+            # Save to database
+            db.add(key_record)
+            db.commit()
+            logger.info(f"Saved JWT key {key_id} to database")
+        except Exception as e:
+            logger.error(f"Failed to save JWT key to database: {str(e)}")
+            db.rollback()
+    
+    def rotate_keys(self, db: Session):
+        """Rotate JWT keys, creating a new active key and keeping old ones valid."""
+        if not self._initialized:
+            self.initialize(db)
+        
+        try:
+            # Generate new key
+            new_key = secrets.token_hex(32)
+            key_id = self._generate_key_id()
+            
+            # Mark current active key as inactive
+            if self._active_key_id:
+                self._keys[self._active_key_id]["is_active"] = False
+                
+                # Update in database
+                from src.models.system import JWTSecretKey
+                db.query(JWTSecretKey).filter(
+                    JWTSecretKey.key_id == self._active_key_id
+                ).update({"is_active": False})
+            
+            # Add new key
+            self._keys[key_id] = {
+                "key": new_key,
+                "created_at": datetime.utcnow(),
+                "expires_at": datetime.utcnow() + timedelta(days=self._key_rotation_interval),
+                "is_active": True
+            }
+            self._active_key_id = key_id
+            
+            # Save to database
+            self._save_key_to_db(db, key_id, new_key)
+            
+            # Clean up expired keys
+            self._clean_up_expired_keys(db)
+            
+            logger.info(f"Rotated JWT keys. New active key: {key_id}")
+        except Exception as e:
+            logger.error(f"Failed to rotate JWT keys: {str(e)}")
+    
+    def _clean_up_expired_keys(self, db: Session):
+        """Remove expired keys from memory and database."""
+        from src.models.system import JWTSecretKey
+        
+        # Current time
+        now = datetime.utcnow()
+        
+        # Remove expired keys from memory
+        expired_keys = [k for k, v in self._keys.items() if v["expires_at"] < now]
+        for key_id in expired_keys:
+            del self._keys[key_id]
+        
+        # Remove from database
+        db.query(JWTSecretKey).filter(
+            JWTSecretKey.expires_at < now
+        ).delete()
+        db.commit()
+        
+        logger.info(f"Cleaned up {len(expired_keys)} expired JWT keys")
+    
+    def get_active_key(self) -> str:
+        """Get the currently active JWT key."""
+        if not self._initialized:
+            self.initialize()
+            
+        if not self._active_key_id:
+            logger.warning("No active JWT key found, using settings fallback")
+            return settings.JWT_SECRET
+            
+        return self._keys[self._active_key_id]["key"]
+    
+    def get_key_by_id(self, key_id: str) -> Optional[str]:
+        """Get JWT key by ID."""
+        if key_id in self._keys:
+            return self._keys[key_id]["key"]
+        return None
+    
+    def get_all_valid_keys(self) -> List[str]:
+        """Get all non-expired JWT keys."""
+        now = datetime.utcnow()
+        return [v["key"] for v in self._keys.values() if v["expires_at"] > now]
+
+
+# Create JWT manager instance
+jwt_manager = JWTManager()
+
+
 def create_access_token(
     subject: Union[str, Any], 
     expires_delta: Optional[timedelta] = None,
@@ -97,30 +303,84 @@ def create_access_token(
     Returns:
         str: The encoded JWT token
     """
+    # Initialize JWT manager if needed
+    if not jwt_manager._initialized:
+        jwt_manager.initialize()
+    
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(seconds=settings.JWT_EXPIRY)
     
-    to_encode = {"exp": expire, "sub": str(subject)}
+    # Get active key ID
+    key_id = jwt_manager._active_key_id or "default"
+    
+    to_encode = {
+        "exp": expire, 
+        "sub": str(subject),
+        "iat": datetime.utcnow(),
+        "kid": key_id  # Include key ID in token
+    }
     
     # Add any additional data to the token
     if additional_data:
         to_encode.update(additional_data)
         
     encoded_jwt = jwt.encode(
-        to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM
+        to_encode, jwt_manager.get_active_key(), algorithm=settings.JWT_ALGORITHM
     )
     return encoded_jwt
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decode a JWT token and return the full payload."""
+    # Initialize JWT manager if needed
+    if not jwt_manager._initialized:
+        jwt_manager.initialize()
+    
     try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+        # First try to decode without verification to get the key ID
+        unverified_payload = jwt.decode(
+            token, 
+            options={"verify_signature": False}
         )
-        return payload
-    except jwt.JWTError:
+        
+        # Get key ID from token
+        key_id = unverified_payload.get("kid")
+        
+        # If key ID is in token and exists in our keys, use that key
+        if key_id and key_id != "default":
+            key = jwt_manager.get_key_by_id(key_id)
+            if key:
+                try:
+                    payload = jwt.decode(
+                        token, key, algorithms=[settings.JWT_ALGORITHM]
+                    )
+                    return payload
+                except JWTError:
+                    logger.warning(f"Failed to decode token with key ID {key_id}")
+                    pass
+        
+        # Try with all valid keys
+        valid_keys = jwt_manager.get_all_valid_keys()
+        for key in valid_keys:
+            try:
+                payload = jwt.decode(
+                    token, key, algorithms=[settings.JWT_ALGORITHM]
+                )
+                return payload
+            except JWTError:
+                continue
+        
+        # Fallback to settings key
+        try:
+            payload = jwt.decode(
+                token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+            )
+            return payload
+        except JWTError:
+            return None
+                
+    except JWTError:
         return None
 
 def verify_token(token: str) -> Optional[str]:
@@ -129,6 +389,158 @@ def verify_token(token: str) -> Optional[str]:
     if payload:
         return payload.get("sub")
     return None
+
+# CSRF Protection
+class CSRFProtection:
+    """Manages CSRF token generation, validation, and middleware."""
+    
+    def __init__(self):
+        """Initialize CSRF Protection."""
+        self._secret = None
+        self._cookie_name = "csrf_token"
+        self._header_name = "X-CSRF-Token"
+        self._cookie_max_age = 60 * 60 * 24  # 24 hours
+        self._csrf_token_length = 32
+        self._safe_methods = {"GET", "HEAD", "OPTIONS", "TRACE"}
+        
+    @property
+    def secret(self) -> str:
+        """Get the CSRF secret key."""
+        if not self._secret:
+            # Try to get from secrets manager first
+            csrf_secret = secrets_manager.get_secret("CSRF_SECRET") or settings.CSRF_SECRET
+            if not csrf_secret:
+                # Generate a new secret if not available
+                csrf_secret = secrets.token_hex(32)
+                logger.warning(
+                    "CSRF_SECRET not found in environment or secrets manager. "
+                    "Generated temporary secret. This is not recommended for production."
+                )
+            self._secret = csrf_secret
+        return self._secret
+    
+    def generate_token(self, user_id: str = None) -> str:
+        """Generate a new CSRF token."""
+        # Create raw token
+        raw_token = secrets.token_hex(self._csrf_token_length)
+        
+        # Add timestamp and optional user ID
+        data = {
+            "token": raw_token,
+            "ts": int(time.time()),
+        }
+        
+        if user_id:
+            data["uid"] = str(user_id)
+            
+        # Create signed token
+        data_str = json.dumps(data)
+        signature = self._create_signature(data_str)
+        
+        # Combine as base64
+        token = base64.urlsafe_b64encode(
+            f"{data_str}|{signature}".encode()
+        ).decode().rstrip("=")
+        
+        return token
+    
+    def _create_signature(self, data: str) -> str:
+        """Create HMAC signature for data using the secret key."""
+        return hmac.new(
+            self.secret.encode(),
+            data.encode(),
+            hashlib.sha256
+        ).hexdigest()
+    
+    def validate_token(self, token: str, user_id: str = None) -> bool:
+        """Validate a CSRF token."""
+        try:
+            # Add padding if needed
+            padding = 4 - (len(token) % 4)
+            if padding < 4:
+                token += "=" * padding
+                
+            # Decode token
+            decoded = base64.urlsafe_b64decode(token.encode()).decode()
+            data_str, signature = decoded.split("|", 1)
+            
+            # Verify signature
+            expected_signature = self._create_signature(data_str)
+            if not hmac.compare_digest(signature, expected_signature):
+                return False
+                
+            # Parse data
+            data = json.loads(data_str)
+            
+            # Check expiry (24 hours)
+            if int(time.time()) - data["ts"] > self._cookie_max_age:
+                return False
+                
+            # Verify user ID if provided
+            if user_id and data.get("uid") != str(user_id):
+                return False
+                
+            return True
+        except Exception as e:
+            logger.error(f"CSRF token validation error: {str(e)}")
+            return False
+    
+    async def csrf_protect_middleware(self, request: Request, call_next):
+        """Middleware to protect against CSRF attacks."""
+        # Skip for "safe" methods that don't modify state
+        if request.method.upper() in self._safe_methods:
+            return await call_next(request)
+        
+        # Skip for specific paths (like OAuth callbacks)
+        path = request.url.path
+        if path.startswith(("/api/v1/auth/oauth-callback", "/api/v1/webhook")):
+            return await call_next(request)
+            
+        # For state-changing operations, validate CSRF token
+        # Get token from header or form
+        csrf_token = request.headers.get(self._header_name)
+        if not csrf_token:
+            # Try to get from form data
+            try:
+                form_data = await request.form()
+                csrf_token = form_data.get("csrf_token")
+            except:
+                pass
+                
+        # Get token from cookie
+        csrf_cookie = request.cookies.get(self._cookie_name)
+        
+        # If no tokens present, reject
+        if not csrf_token or not csrf_cookie:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "CSRF token missing or invalid"}
+            )
+            
+        # Validate token
+        if not self.validate_token(csrf_token):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "CSRF token missing or invalid"}
+            )
+            
+        # Token is valid, continue
+        return await call_next(request)
+    
+    def get_csrf_token_cookie(self, user_id: str = None) -> str:
+        """Get a CSRF token cookie to be set in the response."""
+        token = self.generate_token(user_id)
+        return token
+
+
+# Create CSRF protection instance
+csrf_protection = CSRFProtection()
+
+# Import here to avoid circular import
+from fastapi.responses import JSONResponse
+import hmac
+import json
+
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),

@@ -1,18 +1,23 @@
 """
-Simplified API Gateway - minimal version with just health endpoint
-for performance optimization
+Ultimate Marketing Team API Gateway with enhanced security features
 """
 
-from fastapi import FastAPI, Request, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 import time
 import uuid
 import os
 import sys
+from typing import Callable, List
+
+from fastapi import FastAPI, Request, WebSocket, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from src.core.settings import settings
 from src.core.logging import setup_logging, get_logger
+from src.core.security import csrf_protection, jwt_manager
 
 # Add current directory to path to help with imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -31,10 +36,115 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+# Custom security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Middleware to add security headers to all responses."""
+    
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Content Security Policy
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https://*; "
+            "connect-src 'self' https://api.openai.com https://api.anthropic.com; "
+            "frame-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'self'; "
+            "block-all-mixed-content; "
+            "upgrade-insecure-requests;"
+        )
+        
+        # Other security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
+        # Feature Policy / Permissions Policy
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        )
+        
+        return response
+
+# Rate limiting middleware
+class RateLimitingMiddleware(BaseHTTPMiddleware):
+    """Middleware to implement rate limiting."""
+    
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
+        # Use Redis or in-memory store for rate limiting counters
+        self.rate_limit_store = {}  # Replace with Redis in production
+    
+    async def dispatch(self, request: Request, call_next):
+        # Extract client IP
+        client_ip = request.client.host if request.client else "unknown"
+        
+        # Skip rate limiting for trusted IPs
+        trusted_ips = os.getenv("TRUSTED_IPS", "127.0.0.1,::1").split(",")
+        if client_ip in trusted_ips:
+            return await call_next(request)
+        
+        # Check if IP is already blocked
+        if self._is_ip_blocked(client_ip):
+            return Response(
+                content="Too many requests. Please try again later.",
+                status_code=429
+            )
+        
+        # Get current count for this IP
+        current_time = int(time.time())
+        window_start = current_time - (settings.RATE_LIMIT_WINDOW_MS // 1000)
+        
+        # Clean up old entries
+        if client_ip in self.rate_limit_store:
+            self.rate_limit_store[client_ip] = [
+                timestamp for timestamp in self.rate_limit_store[client_ip]
+                if timestamp > window_start
+            ]
+        else:
+            self.rate_limit_store[client_ip] = []
+        
+        # Check if rate limit exceeded
+        if len(self.rate_limit_store[client_ip]) >= settings.RATE_LIMIT_MAX_REQUESTS:
+            return Response(
+                content="Too many requests. Please try again later.",
+                status_code=429,
+                headers={"Retry-After": str(settings.RATE_LIMIT_WINDOW_MS // 1000)}
+            )
+        
+        # Add current timestamp to the store
+        self.rate_limit_store[client_ip].append(current_time)
+        
+        # Process the request
+        return await call_next(request)
+    
+    def _is_ip_blocked(self, ip: str) -> bool:
+        """Check if an IP is blocked."""
+        # In a real implementation, this would check a database or cache
+        return False
+
 # Startup and shutdown events
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION} in {settings.ENV} environment")
+    
+    # Initialize JWT manager with database connection
+    from src.core.database import get_db
+    db = next(get_db())
+    try:
+        jwt_manager.initialize(db)
+        logger.info("JWT manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize JWT manager: {str(e)}")
+    
     logger.info("Application startup complete")
 
 @app.on_event("shutdown")
@@ -46,14 +156,30 @@ async def shutdown_event():
     await general_ws_manager.shutdown()
     logger.info("Application shutdown complete")
 
-# Configure CORS
+# Configure CORS with more restrictive settings
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
+
+# Add security middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitingMiddleware)
+
+# Add trusted host middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["*"] if settings.ENV == "development" else settings.CORS_ORIGINS + ["localhost"]
+)
+
+# Add CSRF protection middleware
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    return await csrf_protection.csrf_protect_middleware(request, call_next)
 
 # Import routers
 from src.api.routers import health
@@ -71,7 +197,15 @@ app.include_router(templates.router, prefix=f"{settings.API_PREFIX}/templates", 
 app.include_router(seed_templates.router, prefix=f"{settings.API_PREFIX}/seed-templates", tags=["Templates"])
 
 # Include content calendar router
-app.include_router(content_calendar.router, tags=["Content Calendar"])
+app.include_router(content_calendar.router, prefix=f"{settings.API_PREFIX}/calendar", tags=["Content Calendar"])
+
+# Add CSRF token endpoint
+@app.get(f"{settings.API_PREFIX}/csrf-token", tags=["Security"])
+async def get_csrf_token(request: Request):
+    """Get a new CSRF token for forms."""
+    token = csrf_protection.generate_token()
+    response = {"token": token}
+    return response
 
 # Add WebSocket endpoints
 app.add_websocket_route("/ws", websocket_endpoint)

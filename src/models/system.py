@@ -558,3 +558,38 @@ class UXABTestVariant(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class JWTSecretKey(Base):
+    """Stores JWT secret keys with rotation capabilities."""
+    
+    __tablename__ = "jwt_secret_keys"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    key_id = Column(String(36), unique=True, nullable=False, index=True)
+    key = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    description = Column(String(255), nullable=True)
+
+
+class SecurityAlert(Base):
+    """Security alert for suspicious activities."""
+    
+    __tablename__ = "security_alerts"
+    __table_args__ = {"schema": "umt"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    alert_type = Column(String(50), nullable=False)  # bruteforce, token_theft, permission, etc
+    severity = Column(String(20), nullable=False)  # low, medium, high, critical
+    source_ip = Column(String(50), nullable=True)
+    user_id = Column(Integer, ForeignKey("umt.users.id"), nullable=True, index=True)
+    user_agent = Column(String(255), nullable=True)
+    message = Column(String(500), nullable=False)
+    details = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by_user_id = Column(Integer, ForeignKey("umt.users.id"), nullable=True)
+    resolution_notes = Column(String(1000), nullable=True)

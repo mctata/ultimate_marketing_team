@@ -4,6 +4,10 @@ Settings for the Ultimate Marketing Team application
 
 import os
 from typing import Dict, List, Optional, Union, Any, Tuple
+import secrets
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Settings:
     """Application settings."""
@@ -28,9 +32,61 @@ class Settings:
     PERFORMANCE_TRACKING_ENABLED = True
     
     # Security settings
-    JWT_SECRET = os.getenv("JWT_SECRET", "development_secret_key_change_in_production_please")
-    JWT_ALGORITHM = "HS256"
-    JWT_EXPIRY = 60 * 60 * 24 * 7  # 7 days
+    def __init__(self):
+        # Generate secure defaults for development only, but log warnings
+        if os.getenv("JWT_SECRET") is None and self.ENV != "test":
+            generated = secrets.token_hex(32)
+            logger.warning(
+                "JWT_SECRET environment variable not set! Using generated secret. "
+                "This is acceptable for development but NOT for production."
+            )
+            self._jwt_secret = generated
+        else:
+            self._jwt_secret = os.getenv("JWT_SECRET")
+            
+        if os.getenv("CSRF_SECRET") is None and self.ENV != "test":
+            generated = secrets.token_hex(32)
+            logger.warning(
+                "CSRF_SECRET environment variable not set! Using generated secret. "
+                "This is acceptable for development but NOT for production."
+            )
+            self._csrf_secret = generated
+        else:
+            self._csrf_secret = os.getenv("CSRF_SECRET")
+            
+        if os.getenv("ENCRYPTION_KEY") is None and self.ENV != "test":
+            generated = secrets.token_urlsafe(32)
+            logger.warning(
+                "ENCRYPTION_KEY environment variable not set! Using generated key. "
+                "This is acceptable for development but NOT for production."
+            )
+            self._encryption_key = generated
+        else:
+            self._encryption_key = os.getenv("ENCRYPTION_KEY")
+    
+    @property
+    def JWT_SECRET(self) -> str:
+        """Get JWT secret key with validation"""
+        if not self._jwt_secret:
+            raise ValueError("JWT_SECRET must be set")
+        return self._jwt_secret
+        
+    @property
+    def CSRF_SECRET(self) -> str:
+        """Get CSRF secret key with validation"""
+        if not self._csrf_secret:
+            raise ValueError("CSRF_SECRET must be set")
+        return self._csrf_secret
+        
+    @property
+    def ENCRYPTION_KEY(self) -> str:
+        """Get encryption key with validation"""
+        if not self._encryption_key:
+            raise ValueError("ENCRYPTION_KEY must be set")
+        return self._encryption_key
+        
+    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRY = int(os.getenv("JWT_EXPIRY", "86400"))  # 24 hours by default
     SESSION_EXPIRY = 60 * 60 * 24 * 30  # 30 days
     
     # Enhanced rate limiting settings
@@ -105,7 +161,31 @@ class Settings:
     GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
     
     # Database settings
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+    @property
+    def DATABASE_URL(self) -> str:
+        """Get database URL with credentials from environment variables"""
+        if os.getenv("DATABASE_URL"):
+            return os.getenv("DATABASE_URL")
+        
+        # Construct from components
+        pg_user = os.getenv("POSTGRES_USER")
+        pg_password = os.getenv("POSTGRES_PASSWORD")
+        pg_host = os.getenv("POSTGRES_HOST", "postgres")
+        pg_port = os.getenv("POSTGRES_PORT", "5432")
+        pg_db = os.getenv("POSTGRES_DB", "ultimatemarketing")
+        
+        # For development only, use default credentials with warning
+        if (not pg_user or not pg_password) and self.ENV != "test":
+            logger.warning(
+                "Database credentials not provided via environment variables. "
+                "Using default credentials for development. "
+                "This is NOT secure for production."
+            )
+            pg_user = pg_user or "postgres"
+            pg_password = pg_password or "postgres"
+        
+        return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
+    
     DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
     DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
     DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
@@ -114,20 +194,72 @@ class Settings:
     DB_ENABLE_METRICS = os.getenv("DB_ENABLE_METRICS", "true").lower() == "true"
     
     # Redis settings
-    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    @property
+    def REDIS_URL(self) -> str:
+        """Get Redis URL with credentials from environment variables"""
+        if os.getenv("REDIS_URL"):
+            return os.getenv("REDIS_URL")
+        
+        # Construct from components
+        redis_host = os.getenv("REDIS_HOST", "redis")
+        redis_port = os.getenv("REDIS_PORT", "6379")
+        redis_password = os.getenv("REDIS_PASSWORD", "")
+        redis_db = os.getenv("REDIS_DB", "0")
+        
+        # Include password if provided
+        if redis_password:
+            return f"redis://:{redis_password}@{redis_host}:{redis_port}/{redis_db}"
+        else:
+            return f"redis://{redis_host}:{redis_port}/{redis_db}"
     
     # RabbitMQ settings
-    RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+    @property
+    def RABBITMQ_URL(self) -> str:
+        """Get RabbitMQ URL with credentials from environment variables"""
+        if os.getenv("RABBITMQ_URL"):
+            return os.getenv("RABBITMQ_URL")
+            
+        # Construct from components
+        rabbitmq_user = os.getenv("RABBITMQ_USER")
+        rabbitmq_password = os.getenv("RABBITMQ_PASSWORD")
+        rabbitmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+        rabbitmq_port = os.getenv("RABBITMQ_PORT", "5672")
+        rabbitmq_vhost = os.getenv("RABBITMQ_VHOST", "/")
+        
+        # For development only, use default credentials with warning
+        if (not rabbitmq_user or not rabbitmq_password) and self.ENV != "test":
+            logger.warning(
+                "RabbitMQ credentials not provided via environment variables. "
+                "Using default credentials for development. "
+                "This is NOT secure for production."
+            )
+            rabbitmq_user = rabbitmq_user or "guest"
+            rabbitmq_password = rabbitmq_password or "guest"
+        
+        return f"amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}/{rabbitmq_vhost}"
+    
     RABBITMQ_QUEUE_PREFIX = os.getenv("RABBITMQ_QUEUE_PREFIX", "umt_")
     
     # Email settings
-    SMTP_TLS = True
-    SMTP_PORT = 587
+    SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     SMTP_HOST = os.getenv("SMTP_HOST")
     SMTP_USER = os.getenv("SMTP_USER")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-    EMAILS_FROM_EMAIL = os.getenv("EMAILS_FROM_EMAIL", "info@example.com")
+    EMAILS_FROM_EMAIL = os.getenv("EMAILS_FROM_EMAIL")
     EMAILS_FROM_NAME = os.getenv("EMAILS_FROM_NAME", "Ultimate Marketing Team")
+    
+    # Email validation
+    def validate_email_settings(self) -> bool:
+        """Check if email settings are configured properly"""
+        if self.ENV == "production" or self.ENV == "staging":
+            required = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAILS_FROM_EMAIL"]
+            missing = [field for field in required if not getattr(self, field)]
+            
+            if missing:
+                logger.error(f"Missing required email configuration: {', '.join(missing)}")
+                return False
+        return True
     
     # File storage settings
     UPLOADS_DIR = os.getenv("UPLOADS_DIR", "uploads")
@@ -138,17 +270,39 @@ class Settings:
     LOG_JSON_FORMAT = os.getenv("LOG_JSON_FORMAT", "true").lower() == "true"
     LOG_REQUEST_BODY_ENABLED = os.getenv("LOG_REQUEST_BODY_ENABLED", "false").lower() == "true"
     LOG_RESPONSE_BODY_ENABLED = os.getenv("LOG_RESPONSE_BODY_ENABLED", "false").lower() == "true"
+    # Never log sensitive data by default
     LOG_SENSITIVE_DATA = os.getenv("LOG_SENSITIVE_DATA", "false").lower() == "true"
     LOG_SLOW_API_THRESHOLD_MS = int(os.getenv("LOG_SLOW_API_THRESHOLD_MS", "500"))
     LOG_SLOW_DB_THRESHOLD_MS = int(os.getenv("LOG_SLOW_DB_THRESHOLD_MS", "100"))
     
     # Initial admin user
-    FIRST_SUPERUSER_EMAIL = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@example.com")
-    FIRST_SUPERUSER_PASSWORD = os.getenv("FIRST_SUPERUSER_PASSWORD", "changeme")
+    FIRST_SUPERUSER_EMAIL = os.getenv("FIRST_SUPERUSER_EMAIL")
+    FIRST_SUPERUSER_PASSWORD = os.getenv("FIRST_SUPERUSER_PASSWORD")
     
-    # Test user for development
-    TEST_USER_EMAIL = "test@example.com"
-    TEST_USER_PASSWORD = "password123"
+    def validate_superuser_settings(self) -> bool:
+        """Check if superuser settings are configured properly for production"""
+        if self.ENV == "production" or self.ENV == "staging":
+            if not self.FIRST_SUPERUSER_EMAIL or not self.FIRST_SUPERUSER_PASSWORD:
+                logger.error("Superuser credentials must be provided in production")
+                return False
+            # Check password strength
+            if len(self.FIRST_SUPERUSER_PASSWORD) < 12:
+                logger.error("Superuser password is too weak (min 12 chars)")
+                return False
+        return True
+    
+    # Test user for development only
+    @property
+    def TEST_USER_EMAIL(self) -> str:
+        if self.ENV != "development" and self.ENV != "test":
+            logger.warning("Test user should only be used in development")
+        return os.getenv("TEST_USER_EMAIL", "test@example.com")
+    
+    @property
+    def TEST_USER_PASSWORD(self) -> str:
+        if self.ENV != "development" and self.ENV != "test":
+            logger.warning("Test user should only be used in development")
+        return os.getenv("TEST_USER_PASSWORD", "password123")
     
     # AI settings
     ENABLE_MODEL_CACHING = os.getenv("ENABLE_MODEL_CACHING", "true").lower() == "true"
@@ -169,4 +323,53 @@ class Settings:
     SLO_CONTENT_GENERATION_SUCCESS_RATE = float(os.getenv("SLO_CONTENT_GENERATION_SUCCESS_RATE", "0.98"))
     
 
+# Add validation method to Settings class
+def validate_all_settings(self) -> bool:
+    """Validate all critical settings before startup"""
+    if self.ENV == "production" or self.ENV == "staging":
+        validators = [
+            self.validate_email_settings,
+            self.validate_superuser_settings,
+        ]
+        
+        for validator in validators:
+            if not validator():
+                return False
+    
+    return True
+
+# Add validation method to detect secrets in code
+def check_for_hardcoded_secrets(self) -> bool:
+    """Check for potentially hardcoded secrets remaining in settings"""
+    potential_hardcoded = []
+    
+    # Check for anything that looks like a token, key, or password in the code
+    for attr_name in dir(self):
+        if attr_name.startswith('_'):
+            continue
+            
+        attr_value = getattr(self, attr_name)
+        # Skip methods and properties
+        if callable(attr_value) or isinstance(attr_value, property):
+            continue
+            
+        # Check if it's a string and looks suspicious
+        if isinstance(attr_value, str) and len(attr_value) > 8:
+            suspicious_patterns = ['key', 'secret', 'password', 'token', 'credential']
+            if any(pattern in attr_name.lower() for pattern in suspicious_patterns):
+                if attr_value and not attr_value.startswith(('os.getenv', '{', '$')):
+                    potential_hardcoded.append(attr_name)
+    
+    if potential_hardcoded:
+        logger.warning(f"Potential hardcoded secrets found in settings: {', '.join(potential_hardcoded)}")
+        return False
+    
+    return True
+
+Settings.validate_all_settings = validate_all_settings
+Settings.check_for_hardcoded_secrets = check_for_hardcoded_secrets
+
 settings = Settings()
+
+# Check for hardcoded secrets at import time
+settings.check_for_hardcoded_secrets()

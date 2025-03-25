@@ -21,9 +21,39 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 # Models
 class UserCredentials(BaseModel):
     email: EmailStr
-    password: str
-    mfa_code: Optional[str] = None
-    device_name: Optional[str] = None
+    password: str = Field(..., min_length=8)
+    mfa_code: Optional[str] = Field(None, min_length=6, max_length=6)
+    device_name: Optional[str] = Field(None, max_length=100)
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Additional email validation beyond basic format."""
+        # Check for disposable email domains (example check)
+        disposable_domains = ["tempmail.com", "throwaway.com", "mailinator.com"]
+        domain = v.split('@')[1].lower()
+        if domain in disposable_domains:
+            raise ValueError("Email from disposable domains not allowed")
+        return v
+    
+    @validator('mfa_code')
+    def validate_mfa_code(cls, v):
+        """Validate MFA code if provided."""
+        if v is not None:
+            if not v.isdigit():
+                raise ValueError("MFA code must contain only digits")
+            if len(v) != 6:
+                raise ValueError("MFA code must be exactly 6 digits")
+        return v
+    
+    @validator('device_name')
+    def validate_device_name(cls, v):
+        """Validate device name if provided."""
+        if v is not None:
+            if len(v) < 1:
+                raise ValueError("Device name cannot be empty")
+            # Sanitize the device name to prevent XSS
+            v = re.sub(r'[<>]', '', v)
+        return v
 
 class Token(BaseModel):
     access_token: str
@@ -44,7 +74,39 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+    
+    @validator('password')
+    def password_strength(cls, v):
+        """Validate password strength."""
+        # Check for minimum complexity
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        
+        # Check for at least one uppercase, lowercase, digit, and special character
+        if not re.search(r'[A-Z]', v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r'[a-z]', v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'\d', v):
+            raise ValueError("Password must contain at least one digit")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError("Password must contain at least one special character")
+        
+        # Check for common passwords
+        common_passwords = ["password", "123456", "qwerty", "welcome", "admin"]
+        if any(common in v.lower() for common in common_passwords):
+            raise ValueError("Password contains a common password pattern")
+        
+        return v
+    
+    @validator('confirm_password')
+    def passwords_match(cls, v, values, **kwargs):
+        """Validate that passwords match."""
+        if 'password' in values and v != values['password']:
+            raise ValueError("Passwords do not match")
+        return v
     
 class MFASetupResponse(BaseModel):
     secret_key: str
@@ -52,12 +114,78 @@ class MFASetupResponse(BaseModel):
     backup_codes: List[str]
 
 class MFAVerifyRequest(BaseModel):
-    code: str
+    code: str = Field(..., min_length=6, max_length=6)
+    
+    @validator('code')
+    def validate_code_format(cls, v):
+        """Validate that the MFA code is numeric and 6 digits."""
+        if not v.isdigit():
+            raise ValueError("MFA code must contain only digits")
+        if len(v) != 6:
+            raise ValueError("MFA code must be exactly 6 digits")
+        return v
     
 class MFAType(str, Enum):
     APP = "app"
     SMS = "sms"
     EMAIL = "email"
+
+class OAuthRequest(BaseModel):
+    provider: str
+    redirect_uri: str
+    response_type: str = Field(default="code")
+    scope: Optional[str] = Field(default="openid profile email")
+    state: Optional[str] = None
+    code_challenge: Optional[str] = None
+    code_challenge_method: Optional[str] = None
+    
+    @validator('provider')
+    def validate_provider(cls, v):
+        """Validate that the provider is supported."""
+        allowed_providers = ["google", "microsoft", "okta", "github", "facebook"]
+        if v.lower() not in allowed_providers:
+            raise ValueError(f"Provider {v} not supported. Allowed providers: {', '.join(allowed_providers)}")
+        return v.lower()
+    
+    @validator('redirect_uri')
+    def validate_redirect_uri(cls, v):
+        """Validate the redirect URI against an allowlist."""
+        # Get allowed redirect URIs from settings or environment
+        allowed_redirect_uris = [
+            "http://localhost:3000/auth/callback",
+            "http://localhost:8000/api/v1/auth/callback",
+            "https://ultimate-marketing-team.example.com/auth/callback"
+        ]
+        
+        # Parse the redirect URI
+        from urllib.parse import urlparse
+        parsed_uri = urlparse(v)
+        
+        # Check if the redirect URI is in the allowlist
+        if v not in allowed_redirect_uris:
+            # If not in exact allowlist, check domain match
+            allowed_domains = ["localhost", "ultimate-marketing-team.example.com"]
+            if parsed_uri.netloc not in allowed_domains:
+                raise ValueError(f"Redirect URI domain not allowed: {parsed_uri.netloc}")
+        
+        # Ensure HTTPS in production
+        if parsed_uri.scheme != "https" and parsed_uri.netloc != "localhost":
+            raise ValueError("Redirect URI must use HTTPS")
+        
+        return v
+    
+    @validator('code_challenge_method')
+    def validate_challenge_method(cls, v, values):
+        """Validate the code challenge method."""
+        if v is not None:
+            if v not in ["S256", "plain"]:
+                raise ValueError("Code challenge method must be S256 or plain")
+                
+            # If method is provided, challenge must also be provided
+            if values.get('code_challenge') is None:
+                raise ValueError("Code challenge is required when code_challenge_method is provided")
+                
+        return v
     
 class MFARequest(BaseModel):
     mfa_type: MFAType
