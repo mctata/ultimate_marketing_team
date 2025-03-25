@@ -1,115 +1,85 @@
-import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Box, useMediaQuery, useTheme } from '@mui/material';
-import { ErrorBoundary } from 'react-error-boundary';
-
-// Components
-import Sidebar from './Sidebar';
+// frontend/src/components/layout/Layout.tsx
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 import Header from './Header';
+import Sidebar from './Sidebar';
 import Footer from './Footer';
-import ConfirmDialog from '../common/ConfirmDialog';
-import ToastContainer from '../common/ToastContainer';
-import GlobalErrorFallback from '../common/GlobalErrorFallback';
+import { lightTheme, darkTheme } from '../../theme';
+import { BrandProvider } from '../../context/BrandContext';
 
-// Redux
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState, useAppDispatch, useAppSelector } from '../../store';
-import { setSidebarOpen, setOfflineMode } from '../../store/slices/uiSlice';
+const drawerWidth = 280;
 
 const Layout = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { sidebarOpen, offlineMode } = useAppSelector((state: RootState) => state.ui);
-  const dispatch = useAppDispatch();
+  const [open, setOpen] = useState(true);
+  const { darkMode } = useSelector((state: RootState) => state.ui);
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  const isMobile = useMediaQuery('(max-width:960px)');
+  const location = useLocation();
+  
+  // Set the drawer to closed on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setOpen(false);
+    } else {
+      setOpen(true);
+    }
+  }, [isMobile]);
+  
+  // Close the drawer when route changes on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  }, [location.pathname, isMobile]);
   
   const handleDrawerToggle = () => {
-    dispatch(setSidebarOpen(!sidebarOpen));
+    setOpen(!open);
   };
-
-  // Monitor online status
-  useEffect(() => {
-    const handleOnline = () => {
-      dispatch(setOfflineMode(false));
-    };
-    
-    const handleOffline = () => {
-      dispatch(setOfflineMode(true));
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    // Check initial status
-    if (navigator.onLine !== !offlineMode) {
-      dispatch(setOfflineMode(!navigator.onLine));
-    }
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [dispatch, offlineMode]);
-
-  // Automatically close sidebar on mobile
-  useEffect(() => {
-    if (isMobile && sidebarOpen) {
-      dispatch(setSidebarOpen(false));
-    }
-  }, [isMobile, sidebarOpen, dispatch]);
-
-  const drawerWidth = 280;
-
+  
+  // Use the theme based on the user preference or system preference
+  const theme = createTheme(darkMode ? darkTheme : lightTheme);
+  
   return (
-    <Box sx={{ display: 'flex', height: '100%' }}>
-      {/* Global dialogs */}
-      <ConfirmDialog />
-      
-      {/* Sidebar navigation */}
-      <Sidebar 
-        open={sidebarOpen} 
-        onClose={handleDrawerToggle}
-        width={drawerWidth}
-      />
-      
-      {/* Main content area */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: { md: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },
-          transition: theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Header with app bar */}
-        <Header 
-          onDrawerToggle={handleDrawerToggle}
-        />
-        
-        {/* Main content with error boundary */}
-        <Box
-          sx={{
-            p: 3,
-            overflow: 'auto',
-            flexGrow: 1,
-            bgcolor: 'background.default',
-          }}
-        >
-          <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
-            <Outlet />
-          </ErrorBoundary>
+    <ThemeProvider theme={theme}>
+      <BrandProvider>
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+          <CssBaseline />
+          
+          {/* App Header */}
+          <Header onDrawerToggle={handleDrawerToggle} />
+          
+          {/* Sidebar Navigation */}
+          <Sidebar open={open} onClose={handleDrawerToggle} width={drawerWidth} />
+          
+          {/* Main Content */}
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              padding: (theme) => theme.spacing(3),
+              width: { md: `calc(100% - ${open ? drawerWidth : 0}px)` },
+              marginLeft: { md: open ? `${drawerWidth}px` : 0 },
+              marginTop: '64px', // Header height
+              transition: (theme) =>
+                theme.transitions.create(['margin', 'width'], {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.leavingScreen,
+                }),
+            }}
+          >
+            <Box sx={{ minHeight: 'calc(100vh - 148px)' }}> {/* 64px header + 24px padding + 60px footer */}
+              <Outlet />
+            </Box>
+            
+            {/* App Footer */}
+            <Footer />
+          </Box>
         </Box>
-        
-        {/* Footer */}
-        <Footer />
-      </Box>
-    </Box>
+      </BrandProvider>
+    </ThemeProvider>
   );
 };
 
