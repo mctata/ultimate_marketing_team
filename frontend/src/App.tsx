@@ -1,17 +1,20 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from './hooks/useAuth';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/common/LoadingScreen';
+import BrandRedirector from './components/common/BrandRedirector';
 import websocketService from './services/websocket';
 import { setupNetworkMonitoring } from './services/api';
 import { lazyPage } from './utils/lazyImport';
 import GlobalErrorFallback from './components/common/GlobalErrorFallback';
 import authService from './services/authService';
 import { loginSuccess } from './store/slices/authSlice';
+import { RootState } from './store';
+import { selectBrand } from './store/slices/brandsSlice';
 
 // Lazy-loaded route-based code splitting for better performance
 const Dashboard = lazyPage(() => import('./pages/Dashboard'));
@@ -71,6 +74,45 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Brand context route component
+const BrandContextRoute = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { brands, selectedBrand } = useSelector((state: RootState) => state.brands);
+  
+  // Extract brandId from the URL
+  const pathParts = location.pathname.split('/');
+  const brandIdIndex = pathParts.indexOf('brand') + 1;
+  const urlBrandId = brandIdIndex > 0 && pathParts.length > brandIdIndex ? pathParts[brandIdIndex] : null;
+  
+  useEffect(() => {
+    // If URL contains a brand ID, select that brand
+    if (urlBrandId && brands.some(brand => brand.id === urlBrandId)) {
+      if (!selectedBrand || selectedBrand.id !== urlBrandId) {
+        dispatch(selectBrand(urlBrandId));
+      }
+    } 
+    // If no brand in URL but we have a selected brand, redirect to include it
+    else if (selectedBrand && !urlBrandId) {
+      // Construct the new URL with the selected brand
+      let newPath = location.pathname;
+      if (!newPath.includes('/brands')) {
+        const basePath = pathParts.slice(0, 2).join('/');
+        const restPath = pathParts.slice(2).join('/');
+        newPath = `${basePath}/brand/${selectedBrand.id}${restPath ? '/' + restPath : ''}`;
+        navigate(newPath, { replace: true });
+      }
+    }
+    // If no brand selected and we have brands, select the first one
+    else if (!selectedBrand && brands.length > 0) {
+      dispatch(selectBrand(brands[0].id));
+    }
+  }, [urlBrandId, brands, selectedBrand, dispatch, location, navigate]);
+  
+  return <>{children}</>;
+};
+
 // Create a new QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,6 +127,7 @@ const queryClient = new QueryClient({
 function App() {
   const { isAuthenticated } = useAuth();
   const dispatch = useDispatch();
+  const { brands } = useSelector((state: RootState) => state.brands);
   
   // Initialize WebSocket connection when authenticated
   useEffect(() => {
@@ -215,57 +258,60 @@ function App() {
               <Register />
             </PublicOnlyRoute>
           } />
-        
-        {/* OAuth callback routes */}
-        <Route path="/auth/callback/google" element={<OAuthCallback provider="google" />} />
-        <Route path="/auth/callback/facebook" element={<OAuthCallback provider="facebook" />} />
-        <Route path="/auth/callback/linkedin" element={<OAuthCallback provider="linkedin" />} />
-        
-        {/* Protected routes with layout */}
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="brands" element={<Brands />} />
-          <Route path="brands/new" element={<BrandNew />} />
-          <Route path="brands/:id" element={<BrandDetail />} />
-          {/* Content section with all subpages */}
-          <Route path="content" element={<Content />} />
-          <Route path="content/library" element={<ContentLibrary />} />
-          <Route path="content/calendar" element={<ContentCalendar />} />
-          <Route path="content/templates" element={<Templates />} />
-          <Route path="content/templates/diagnostics" element={<TemplateDiagnostics />} />
-          <Route path="content/templates/test-workspace" element={<TemplateTestWorkspace />} />
-          <Route path="content/templates/admin" element={<AdminTemplatesUtility />} />
-          <Route path="content/templates/:id" element={<TemplateDetail />} />
-          <Route path="content/templates/:id/test" element={<TemplateDetail testMode={true} />} />
-          <Route path="content/templates/:id/use" element={<TemplateDetail useMode={true} />} />
-          <Route path="content/:id" element={<ContentDetail />} />
           
-          {/* Legacy routes - redirect to new structure */}
-          <Route path="templates" element={<Navigate to="/content/templates" replace />} />
-          <Route path="templates/admin" element={<Navigate to="/content/templates/admin" replace />} />
-          <Route path="templates/diagnostics" element={<Navigate to="/content/templates/diagnostics" replace />} />
-          <Route path="templates/test-workspace" element={<Navigate to="/content/templates/test-workspace" replace />} />
-          <Route path="templates/:id" element={<Navigate to="/content/templates/:id" replace />} />
+          {/* OAuth callback routes */}
+          <Route path="/auth/callback/google" element={<OAuthCallback provider="google" />} />
+          <Route path="/auth/callback/facebook" element={<OAuthCallback provider="facebook" />} />
+          <Route path="/auth/callback/linkedin" element={<OAuthCallback provider="linkedin" />} />
           
-          {/* Campaign Routes */}
-          <Route path="campaigns" element={<Campaigns />} />
-          <Route path="campaigns/:id" element={<CampaignDetail />} />
-          <Route path="campaigns/:id/ab-testing" element={<ABTestingDashboard />} />
-          <Route path="campaigns/ab-testing" element={<CampaignABTestList />} />
-          <Route path="campaigns/roi-analytics" element={<CampaignROIAnalytics />} />
+          {/* Brand management routes (not brand-specific) */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<BrandRedirector><Dashboard /></BrandRedirector>} />
+            <Route path="brands" element={<Brands />} />
+            <Route path="brands/new" element={<BrandNew />} />
+            <Route path="brands/:id" element={<BrandDetail />} />
+            <Route path="settings" element={<Settings />} />
+            
+            {/* Brand-specific routes */}
+            <Route path="brand/:brandId/*" element={<BrandContextRoute><Routes>
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="content" element={<Content />} />
+              <Route path="content/library" element={<ContentLibrary />} />
+              <Route path="content/calendar" element={<ContentCalendar />} />
+              <Route path="content/templates" element={<Templates />} />
+              <Route path="content/templates/diagnostics" element={<TemplateDiagnostics />} />
+              <Route path="content/templates/test-workspace" element={<TemplateTestWorkspace />} />
+              <Route path="content/templates/admin" element={<AdminTemplatesUtility />} />
+              <Route path="content/templates/:id" element={<TemplateDetail />} />
+              <Route path="content/templates/:id/test" element={<TemplateDetail testMode={true} />} />
+              <Route path="content/templates/:id/use" element={<TemplateDetail useMode={true} />} />
+              <Route path="content/:id" element={<ContentDetail />} />
+              
+              {/* Campaign Routes */}
+              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="campaigns/:id" element={<CampaignDetail />} />
+              <Route path="campaigns/:id/ab-testing" element={<ABTestingDashboard />} />
+              <Route path="campaigns/ab-testing" element={<CampaignABTestList />} />
+              <Route path="campaigns/roi-analytics" element={<CampaignROIAnalytics />} />
+              
+              <Route path="analytics" element={<AnalyticsPage />} />
+            </Routes></BrandContextRoute>} />
+            
+            {/* Legacy routes - redirect to new structure */}
+            <Route path="content/*" element={<BrandRedirector />} />
+            <Route path="campaigns/*" element={<BrandRedirector />} />
+            <Route path="analytics" element={<BrandRedirector />} />
+            <Route path="templates/*" element={<Navigate to="/content/templates" replace />} />
+          </Route>
           
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-        
-        {/* 404 route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* 404 route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </QueryClientProvider>
     </ErrorBoundary>
   );
