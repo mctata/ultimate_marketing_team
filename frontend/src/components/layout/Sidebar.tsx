@@ -107,14 +107,13 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
     });
   }, [location.pathname]);
   
+  const { navigateToBrandRoute } = useBrand();
+  
   const handleNavigation = (path: string) => {
-    // If we have a current brand and we're not going to brands or settings, prepend the brand path
-    if (currentBrand && !path.startsWith('/brands') && !path.startsWith('/settings')) {
-      navigate(`/brand/${currentBrand.id}${path}`);
-    } else {
-      navigate(path);
-    }
+    // Use the consolidated navigation logic from BrandContext
+    navigateToBrandRoute(path);
     
+    // Close drawer on mobile after navigation
     if (theme) {
       onClose();
     }

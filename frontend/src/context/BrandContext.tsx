@@ -1,7 +1,7 @@
 // frontend/src/context/BrandContext.tsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { RootState } from '../store';
 import { selectBrand } from '../store/slices/brandsSlice';
 
@@ -16,6 +16,8 @@ interface BrandContextType {
   error: string | null;
   allBrands: Brand[];
   switchBrand: (brandId: string) => void;
+  navigateToBrandRoute: (path: string) => void;
+  isBrandRoute: (path: string) => boolean;
 }
 
 // Create the context with default values
@@ -26,6 +28,8 @@ const BrandContext = createContext<BrandContextType>({
   error: null,
   allBrands: [],
   switchBrand: () => {},
+  navigateToBrandRoute: () => {},
+  isBrandRoute: () => false,
 });
 
 export const useBrand = () => useContext(BrandContext);
@@ -37,11 +41,62 @@ interface BrandProviderProps {
 export const BrandProvider: React.FC<BrandProviderProps> = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { brandId } = useParams<{ brandId: string }>();
   
   const { brands, selectedBrand, isLoading, error } = useSelector(
     (state: RootState) => state.brands
   );
+  
+  // Helper function to check if a route is a brand-specific route
+  const isBrandRoute = (path: string): boolean => {
+    // Non-brand routes like brands management, settings, etc.
+    const nonBrandRoutes = ['/brands', '/settings', '/login', '/register', '/auth'];
+    return !nonBrandRoutes.some(route => path.startsWith(route));
+  };
+  
+  // Helper function for navigating to brand routes - consolidating the logic
+  const navigateToBrandRoute = (path: string): void => {
+    // If this is not a path that should have a brand, just navigate directly
+    if (!isBrandRoute(path)) {
+      navigate(path);
+      return;
+    }
+    
+    // If we don't have a selected brand but do have brands available, use the first one
+    const targetBrand = selectedBrand || (brands.length > 0 ? brands[0] : null);
+    
+    if (!targetBrand) {
+      // No brands available, just navigate to the path as is
+      navigate(path);
+      return;
+    }
+    
+    // If the path already includes '/brand/', extract the pure route part
+    let routePart = path;
+    
+    if (path.includes('/brand/')) {
+      const pathSegments = path.split('/');
+      const brandIndex = pathSegments.indexOf('brand');
+      
+      if (brandIndex >= 0 && brandIndex < pathSegments.length - 1) {
+        // Remove 'brand' and the brandId segments to get the route part
+        const routeSegments = [...pathSegments.slice(0, brandIndex), ...pathSegments.slice(brandIndex + 2)];
+        routePart = routeSegments.join('/');
+      }
+    }
+    
+    // Ensure the route part doesn't start with a slash
+    if (routePart.startsWith('/')) {
+      routePart = routePart.substring(1);
+    }
+    
+    // Construct the brand-specific path
+    const brandPath = `/brand/${targetBrand.id}/${routePart}`;
+    
+    // Navigate to the brand-specific path
+    navigate(brandPath);
+  };
   
   // When the URL's brandId changes, update Redux state with validation
   useEffect(() => {
@@ -147,8 +202,10 @@ export const BrandProvider: React.FC<BrandProviderProps> = ({ children }) => {
       error,
       allBrands: brands,
       switchBrand: handleSwitchBrand,
+      navigateToBrandRoute, // Add navigation helper
+      isBrandRoute, // Add route check helper
     }),
-    [selectedBrand, isLoading, isSwitchingBrand, error, brands]
+    [selectedBrand, isLoading, isSwitchingBrand, error, brands, navigateToBrandRoute, isBrandRoute]
   );
   
   return (
