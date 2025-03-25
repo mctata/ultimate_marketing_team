@@ -104,8 +104,8 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
           
           {/* Single flexbox to handle all right-aligned elements */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-            {/* Brand selector dropdown near theme toggle */}
-            <Box sx={{ mr: 1 }}>
+            {/* Brand selector dropdown with more prominence */}
+            <Box sx={{ mr: 2 }}>
               <BrandSelector variant="dropdown" />
             </Box>
             
