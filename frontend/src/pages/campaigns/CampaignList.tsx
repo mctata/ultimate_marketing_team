@@ -197,16 +197,23 @@ const CampaignList = () => {
     navigate(`/campaigns/${id}/ab-testing`);
   };
   
+  // Update routes to work with the existing app structure
   const handleViewBenchmark = (id: string) => {
-    navigate(`/campaigns/${id}/benchmark`);
+    // Open in a modal or temporarily just alert the user
+    alert(`Competitor benchmark for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+    // When staging is ready, we can navigate to: `/campaigns/${id}?tab=benchmark`
   };
   
   const handleViewAlerts = (id: string) => {
-    navigate(`/campaigns/${id}/alerts`);
+    // Open in a modal or temporarily just alert the user
+    alert(`Performance alerts for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+    // When staging is ready, we can navigate to: `/campaigns/${id}?tab=alerts`
   };
   
   const handleViewReports = () => {
-    navigate(`/campaigns/reports`);
+    // Open in a modal or temporarily just alert the user
+    alert(`Custom reports dashboard would open here. This feature will be fully integrated once the staging environment is ready.`);
+    // When staging is ready, we can navigate to: `/campaigns/reports` or implement as a tab
   };
   
   const handleToggleCampaignStatus = (campaign: Campaign) => {
