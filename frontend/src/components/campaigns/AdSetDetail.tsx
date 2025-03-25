@@ -158,24 +158,22 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
   };
 
   // Get reach estimate based on current targeting
-  const getReachEstimate = useMemo(() => {
-    return async (audience: AudienceTarget) => {
-      try {
-        setLoading(true);
-        const estimate = await audienceService.getReachEstimate(audience);
-        setReachEstimate(estimate);
-      } catch (error) {
-        console.error('Error getting reach estimate:', error);
-        // Set default values to prevent UI from showing loading indefinitely
-        setReachEstimate({
-          reach: 750000,
-          dailyResults: 5000
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-  }, []); // Empty dependency array ensures the function reference is stable
+  const getReachEstimate = async (audience: AudienceTarget) => {
+    try {
+      setLoading(true);
+      const estimate = await audienceService.getReachEstimate(audience);
+      setReachEstimate(estimate);
+    } catch (error) {
+      console.error('Error getting reach estimate:', error);
+      // Set default values to prevent UI from showing loading indefinitely
+      setReachEstimate({
+        reach: 750000,
+        dailyResults: 5000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Save ad set
   const handleSave = async () => {

@@ -153,8 +153,15 @@ const contentCalendarService = {
     startDate: string, 
     endDate: string
   ): Promise<SchedulingInsight[]> => {
+    const url = `${API_BASE_URL}/content-calendar/insights/conflicts`;
+    const params = new URLSearchParams();
+    
+    params.append('project_id', projectId.toString());
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+    
     const response = await axios.get<SchedulingInsight[]>(
-      `${API_BASE_URL}/content-calendar/insights/conflicts?project_id=${projectId}&start_date=${startDate}&end_date=${endDate}`
+      `${url}?${params.toString()}`
     );
     return response.data;
   },
