@@ -95,16 +95,16 @@ const Campaigns = () => {
   // Handlers for new features
   const handleViewBenchmark = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    alert(`Competitor benchmark for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+    navigate(`/campaigns/${id}/benchmark`);
   };
   
   const handleViewAlerts = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    alert(`Performance alerts for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+    navigate(`/campaigns/${id}/alerts`);
   };
   
   const handleViewReports = () => {
-    alert(`Custom reports dashboard would open here. This feature will be fully integrated once the staging environment is ready.`);
+    navigate('/campaigns/reports');
   };
   
   if (error) {

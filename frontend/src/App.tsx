@@ -32,6 +32,10 @@ const CampaignDetail = lazyPage(() => import('./pages/campaigns/CampaignDetail')
 const ABTestingDashboard = lazyPage(() => import('./pages/campaigns/ABTestingDashboard'));
 const CampaignABTestList = lazyPage(() => import('./pages/campaigns/CampaignABTestList'));
 const CampaignROIAnalytics = lazyPage(() => import('./pages/campaigns/CampaignROIAnalytics'));
+// New campaign feature components
+const CompetitorBenchmark = lazyPage(() => import('./pages/campaigns/CompetitorBenchmark'));
+const CustomReportsDashboard = lazyPage(() => import('./pages/campaigns/CustomReportsDashboard'));
+const CampaignPerformanceAlerts = lazyPage(() => import('./pages/campaigns/CampaignPerformanceAlerts'));
 // Import Analytics component directly to avoid "default cannot be resolved by star export" error
 import Analytics from './pages/analytics/Analytics';
 const AnalyticsPage = () => <Analytics />;
@@ -296,8 +300,11 @@ function App() {
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="campaigns/:id" element={<CampaignDetail />} />
               <Route path="campaigns/:id/ab-testing" element={<ABTestingDashboard />} />
+              <Route path="campaigns/:id/benchmark" element={<CompetitorBenchmark />} />
+              <Route path="campaigns/:id/alerts" element={<CampaignPerformanceAlerts />} />
               <Route path="campaigns/ab-testing" element={<CampaignABTestList />} />
               <Route path="campaigns/roi-analytics" element={<CampaignROIAnalytics />} />
+              <Route path="campaigns/reports" element={<CustomReportsDashboard />} />
               
               <Route path="analytics" element={<AnalyticsPage />} />
             </Routes></BrandContextRoute>} />
