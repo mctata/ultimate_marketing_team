@@ -53,8 +53,24 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
   
   const handleBrandSelect = useCallback((brandId: string) => {
     dispatch(selectBrand(brandId));
+    
+    // Update URL to maintain current path but change brand ID
+    const currentPath = window.location.pathname;
+    const brandPathRegex = /\/brand\/(\d+)(\/.*)?/;
+    const match = currentPath.match(brandPathRegex);
+    
+    if (match) {
+      const currentBrandId = match[1];
+      const remainingPath = match[2] || '';
+      const newPath = `/brand/${brandId}${remainingPath}`;
+      
+      if (currentBrandId !== brandId) {
+        navigate(newPath);
+      }
+    }
+    
     handleClose();
-  }, [dispatch, handleClose]);
+  }, [dispatch, handleClose, navigate]);
   
   const handleCreateNewBrand = useCallback(() => {
     navigate('/brands/new');

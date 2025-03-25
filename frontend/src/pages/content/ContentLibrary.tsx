@@ -16,7 +16,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import CreateMenu from '../../components/common/CreateMenu';
 import { 
@@ -31,131 +32,50 @@ import {
   Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-
-// Mock content items for the library
-const contentItems = [
-  {
-    id: '1',
-    title: 'Top 10 Marketing Trends for 2025',
-    type: 'blog',
-    status: 'published',
-    date: '2025-03-15',
-    author: 'Jane Smith',
-    score: 92,
-    performance: {
-      views: 1250,
-      engagement: 4.8,
-      conversion: 2.3
-    }
-  },
-  {
-    id: '2',
-    title: 'March Newsletter: Product Updates',
-    type: 'email',
-    status: 'scheduled',
-    date: '2025-03-25',
-    author: 'John Doe',
-    score: 88,
-    performance: {
-      views: 0,
-      engagement: 0,
-      conversion: 0
-    }
-  },
-  {
-    id: '3',
-    title: 'Spring Sale Announcement',
-    type: 'social',
-    status: 'draft',
-    date: '2025-03-10',
-    author: 'Sarah Johnson',
-    score: 76,
-    performance: {
-      views: 0,
-      engagement: 0,
-      conversion: 0
-    }
-  },
-  {
-    id: '4',
-    title: 'Product Launch: Next-Gen Platform',
-    type: 'blog',
-    status: 'published',
-    date: '2025-03-05',
-    author: 'Michael Brown',
-    score: 95,
-    performance: {
-      views: 3200,
-      engagement: 5.2,
-      conversion: 3.7
-    }
-  },
-  {
-    id: '5',
-    title: 'Customer Success Story: ABC Corp',
-    type: 'blog',
-    status: 'published',
-    date: '2025-02-28',
-    author: 'Emily Chen',
-    score: 90,
-    performance: {
-      views: 980,
-      engagement: 4.1,
-      conversion: 1.9
-    }
-  },
-  {
-    id: '6',
-    title: 'Social Media Campaign April',
-    type: 'social',
-    status: 'draft',
-    date: '2025-03-18',
-    author: 'Chris Wilson',
-    score: 82,
-    performance: {
-      views: 0,
-      engagement: 0,
-      conversion: 0
-    }
-  },
-  {
-    id: '7',
-    title: 'Product Feature Announcement',
-    type: 'email',
-    status: 'scheduled',
-    date: '2025-03-30',
-    author: 'Alex Taylor',
-    score: 85,
-    performance: {
-      views: 0,
-      engagement: 0,
-      conversion: 0
-    }
-  },
-  {
-    id: '8',
-    title: 'How AI is Transforming Marketing',
-    type: 'blog',
-    status: 'published',
-    date: '2025-02-20',
-    author: 'Jane Smith',
-    score: 91,
-    performance: {
-      views: 1870,
-      engagement: 4.9,
-      conversion: 2.8
-    }
-  }
-];
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import contentService, { ContentItem } from '../../services/contentService';
 
 // ContentLibrary component
 const ContentLibrary: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredContent, setFilteredContent] = useState(contentItems);
-  const [isLoading, setIsLoading] = useState(false);
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+  const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
+  const { selectedBrand } = useSelector((state: RootState) => state.brands);
+
+  // Load brand-specific content
+  useEffect(() => {
+    const loadContent = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        if (selectedBrand) {
+          console.log('Loading content for brand:', selectedBrand.id);
+          const items = await contentService.getContentItems(selectedBrand.id);
+          setContentItems(items);
+          setFilteredContent(items);
+        } else {
+          console.log('No brand selected, using all content');
+          const items = await contentService.getContentItems();
+          setContentItems(items);
+          setFilteredContent(items);
+        }
+      } catch (err) {
+        console.error('Error loading content:', err);
+        setError('Failed to load content. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadContent();
+  }, [selectedBrand]);
 
   // Handle search input change
   useEffect(() => {
@@ -173,7 +93,7 @@ const ContentLibrary: React.FC = () => {
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, contentItems]);
 
   // Menu handlers
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, contentId: string) => {
@@ -308,8 +228,32 @@ const ContentLibrary: React.FC = () => {
         </Box>
       )}
       
+      {/* Error message */}
+      {error && (
+        <Box sx={{ my: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+          <Button 
+            variant="outlined" 
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        </Box>
+      )}
+      
+      {/* Brand selection message */}
+      {!isLoading && !error && !selectedBrand && (
+        <Box sx={{ my: 4 }}>
+          <Alert severity="info">
+            Please select a brand from the dropdown in the header to view brand-specific content.
+          </Alert>
+        </Box>
+      )}
+      
       {/* No results message */}
-      {!isLoading && filteredContent.length === 0 && (
+      {!isLoading && !error && filteredContent.length === 0 && (
         <Box sx={{ textAlign: 'center', my: 6 }}>
           <Typography variant="h6" color="text.secondary">
             No content items found matching your search.

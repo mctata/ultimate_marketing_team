@@ -7,7 +7,13 @@ import {
   Tab, 
   Paper,
   IconButton,
-  Tooltip
+  Tooltip,
+  Alert,
+  CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  Divider
 } from '@mui/material';
 import ApiMetrics from './ApiMetrics';
 import UXAnalyticsDashboard from './UXAnalyticsDashboard';
@@ -16,6 +22,7 @@ import { ChartAccessibilityProvider } from '../../context/ChartAccessibilityCont
 import ChartAccessibilitySettings from '../../components/analytics/ChartAccessibilitySettings';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import brandAnalyticsService, { BrandAnalyticsOverview } from '../../services/brandAnalyticsService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -46,10 +53,32 @@ const TabPanel = (props: TabPanelProps) => {
 const Analytics = () => {
   const [tabValue, setTabValue] = useState(0);
   const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<BrandAnalyticsOverview | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { selectedBrand } = useSelector((state: RootState) => state.brands);
   
+  // Load brand-specific analytics data
   useEffect(() => {
-    console.log('Analytics component rendered with selected brand:', selectedBrand);
+    const loadAnalytics = async () => {
+      if (!selectedBrand) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        console.log('Loading analytics for brand:', selectedBrand.id);
+        const data = await brandAnalyticsService.getAnalyticsOverview(selectedBrand.id);
+        setAnalyticsData(data);
+      } catch (err) {
+        console.error('Error loading analytics:', err);
+        setError('Failed to load analytics data. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadAnalytics();
   }, [selectedBrand]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -105,9 +134,284 @@ const Analytics = () => {
             <Typography variant="h5" component="h2" gutterBottom>
               Dashboard Overview
             </Typography>
-            <Typography variant="body1">
-              Select a tab to view detailed analytics for different aspects of your marketing efforts.
-            </Typography>
+            
+            {/* Brand selection message */}
+            {!selectedBrand && (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Please select a brand from the dropdown in the header to view brand-specific analytics.
+              </Alert>
+            )}
+            
+            {/* Loading indicator */}
+            {isLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            
+            {/* Error message */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {/* Analytics overview */}
+            {!isLoading && analyticsData && (
+              <Grid container spacing={3}>
+                {/* Content metrics */}
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Content Performance
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Content Items
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.totalContentItems}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Published Items
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.publishedItems}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Average Score
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.averageScore}/100
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Top Performing Type
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.topPerformingType}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Views
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.totalViews.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Engagement Rate
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.contentMetrics.engagementRate}%
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                {/* Campaign metrics */}
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Campaign Performance
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Active Campaigns
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.campaignMetrics.activeCampaigns}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Spend
+                          </Typography>
+                          <Typography variant="h6">
+                            ${analyticsData.campaignMetrics.totalSpend.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Revenue
+                          </Typography>
+                          <Typography variant="h6">
+                            ${analyticsData.campaignMetrics.totalRevenue.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Average ROI
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.campaignMetrics.averageROI}x
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Best Platform
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.campaignMetrics.bestPerformingPlatform}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Conversion Rate
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.campaignMetrics.conversionRate}%
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                {/* Social metrics */}
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Social Media Performance
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Followers
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.totalFollowers.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Followers Growth
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.followersGrowth}%
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Engagement Rate
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.engagementRate}%
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Top Platform
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.topPerformingPlatform}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Average Reach
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.averageReach.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Average Impressions
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.socialMetrics.averageImpressions.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                {/* Website metrics */}
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Website Performance
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Visitors
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.visitors.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Page Views
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.pageViews.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Avg. Session Duration
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.averageSessionDuration} min
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Bounce Rate
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.bounceRate}%
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Organic Traffic
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.organicTraffic.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Paid Traffic
+                          </Typography>
+                          <Typography variant="h6">
+                            {analyticsData.websiteMetrics.paidTraffic.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
           </TabPanel>
           
           <TabPanel value={tabValue} index={1}>
