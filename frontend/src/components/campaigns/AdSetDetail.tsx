@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import {
   Box,
   Typography,
@@ -17,6 +18,7 @@ import {
   Tooltip,
   Chip,
 } from '@mui/material';
+import GlobalErrorFallback from '../common/GlobalErrorFallback';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -55,7 +57,7 @@ interface AdSetDetailProps {
   onSave?: (adSet: any) => void;
 }
 
-const AdSetDetail: React.FC<AdSetDetailProps> = ({
+const AdSetDetailContent: React.FC<AdSetDetailProps> = ({
   adSetId,
   campaignId,
   onSave,
@@ -176,6 +178,9 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
 
   // Get reach estimate based on current targeting
   const getReachEstimate = async (audience: AudienceTarget) => {
+    // Store current loading state to reset if needed
+    const wasLoading = loading;
+    
     try {
       setLoading(true);
       const estimate = await audienceService.getReachEstimate(audience);
@@ -188,7 +193,10 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
         dailyResults: 5000
       });
     } finally {
-      setLoading(false);
+      // Only update loading state if we were the ones who set it
+      if (wasLoading !== loading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -396,6 +404,15 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
         />
       </TabPanel>
     </Box>
+  );
+};
+
+// Wrap the component with ErrorBoundary
+const AdSetDetail: React.FC<AdSetDetailProps> = (props) => {
+  return (
+    <ErrorBoundary FallbackComponent={GlobalErrorFallback}>
+      <AdSetDetailContent {...props} />
+    </ErrorBoundary>
   );
 };
 

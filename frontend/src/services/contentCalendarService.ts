@@ -189,36 +189,38 @@ const contentCalendarService = {
   
   // Get best time recommendations
   getBestTimeRecommendations: async (projectId: string | number): Promise<BestTimeRecommendation[]> => {
+    // Generate mock data for development since the API endpoint is not available
+    const platforms = ['instagram', 'facebook', 'twitter', 'linkedin', 'tiktok'];
+    
     try {
-      try {
-        const response = await axios.get<BestTimeRecommendation[]>(
-          `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
-        );
-        return response.data || [];
-      } catch (error) {
-        console.warn('Error in getBestTimeRecommendations API call, returning mock data:', error);
+      // Skip API call attempt for development to avoid 404 errors
+      console.log('Using mock best time data for development');
+      
+      return platforms.map(platform => {
+        // Generate stable random values based on platform name
+        const hash = platform.split('').reduce((acc, char) => {
+          return acc + char.charCodeAt(0);
+        }, 0);
         
-        // Generate mock data for development
-        const platforms = ['instagram', 'facebook', 'twitter', 'linkedin', 'tiktok'];
+        const dayOfWeek = hash % 7;
+        const hourOfDay = 8 + (hash % 12); // Hours between 8 AM and 7 PM
         
-        return platforms.map(platform => {
-          // Generate stable random values based on platform name
-          const hash = platform.split('').reduce((acc, char) => {
-            return acc + char.charCodeAt(0);
-          }, 0);
-          
-          const dayOfWeek = hash % 7;
-          const hourOfDay = 8 + (hash % 12); // Hours between 8 AM and 7 PM
-          
-          return {
-            platform,
-            day_of_week: dayOfWeek,
-            hour_of_day: hourOfDay,
-            average_engagement: 0.05 + (hash % 100) / 1000,
-            confidence: 0.7 + (hash % 30) / 100
-          };
-        });
-      }
+        return {
+          platform,
+          day_of_week: dayOfWeek,
+          hour_of_day: hourOfDay,
+          average_engagement: 0.05 + (hash % 100) / 1000,
+          confidence: 0.7 + (hash % 30) / 100
+        };
+      });
+      
+      /* 
+      // Uncomment this when the API endpoint is ready
+      const response = await axios.get<BestTimeRecommendation[]>(
+        `${API_BASE_URL}/content-calendar/insights/best-times?project_id=${projectId}`
+      );
+      return response.data || [];
+      */
     } catch (error) {
       console.error('Unexpected error in getBestTimeRecommendations:', error);
       // Return empty array on error to prevent UI crashes
