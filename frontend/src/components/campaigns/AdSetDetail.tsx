@@ -141,30 +141,29 @@ const AdSetDetail: React.FC<AdSetDetailProps> = ({
   // Add lookalike audience
   const handleAddLookalike = (lookalike: { id: string; name: string }) => {
     setAudienceData((prev) => {
-      if (!prev) {
-        // Return a default object instead of null to prevent hook issues
-        return {
-          id: '',
-          name: name || 'New Ad Set',
-          demographic: { gender: 'all', ageRange: { min: 18, max: 65 }, locations: [] },
-          behaviors: [],
-          interests: [],
-          lifeEvents: [],
-          lookalikeAudiences: [lookalike.id],
-          devices: {
-            deviceTypes: ['mobile', 'desktop', 'tablet'],
-            operatingSystems: [],
-            browsers: [],
-          },
-          estimatedReach: 0,
-          estimatedDailyResults: 0,
-        };
-      }
+      // Create a default object if prev is null
+      const baseAudience = prev || {
+        id: '',
+        name: name || 'New Ad Set',
+        demographic: { gender: 'all', ageRange: { min: 18, max: 65 }, locations: [] },
+        behaviors: [],
+        interests: [],
+        lifeEvents: [],
+        lookalikeAudiences: [],
+        devices: {
+          deviceTypes: ['mobile', 'desktop', 'tablet'],
+          operatingSystems: [],
+          browsers: [],
+        },
+        estimatedReach: 0,
+        estimatedDailyResults: 0,
+      };
       
+      // Always return a modified copy of the object
       return {
-        ...prev,
+        ...baseAudience,
         lookalikeAudiences: [
-          ...(prev.lookalikeAudiences || []),
+          ...(baseAudience.lookalikeAudiences || []),
           lookalike.id,
         ],
       };
