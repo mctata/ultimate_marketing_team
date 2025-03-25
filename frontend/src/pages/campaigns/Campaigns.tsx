@@ -26,6 +26,10 @@ import {
   FilterList as FilterListIcon,
   Campaign as CampaignIcon,
   Science as ScienceIcon,
+  Assessment as AssessmentIcon,
+  BarChart as BenchmarkIcon,
+  NotificationsActive as AlertsIcon,
+  Description as ReportsIcon,
 } from '@mui/icons-material';
 import useCampaigns from '../../hooks/useCampaigns';
 import { CampaignFilters } from '../../services/campaignService';
@@ -88,6 +92,21 @@ const Campaigns = () => {
     }).format(budget);
   };
   
+  // Handlers for new features
+  const handleViewBenchmark = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    alert(`Competitor benchmark for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+  };
+  
+  const handleViewAlerts = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    alert(`Performance alerts for campaign ${id} would open here. This feature will be fully integrated once the staging environment is ready.`);
+  };
+  
+  const handleViewReports = () => {
+    alert(`Custom reports dashboard would open here. This feature will be fully integrated once the staging environment is ready.`);
+  };
+  
   if (error) {
     return <Typography color="error">Error loading campaigns: {(error as Error).message}</Typography>;
   }
@@ -100,13 +119,23 @@ const Campaigns = () => {
             Campaigns
           </Typography>
           
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/campaigns/new')}
-          >
-            Create Campaign
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="secondary" 
+              startIcon={<ReportsIcon />}
+              onClick={handleViewReports}
+            >
+              Custom Reports
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/campaigns/new')}
+            >
+              Create Campaign
+            </Button>
+          </Box>
         </Box>
         
         {/* Search and filters */}
@@ -244,7 +273,7 @@ const Campaigns = () => {
                       
                       <Divider />
                       
-                      <CardActions>
+                      <CardActions sx={{ flexWrap: 'wrap', gap: 0.5, justifyContent: 'flex-start' }}>
                         <Button 
                           size="small" 
                           onClick={(e) => {
@@ -273,6 +302,22 @@ const Campaigns = () => {
                           }}
                         >
                           A/B Test
+                        </Button>
+                        <Button 
+                          size="small"
+                          startIcon={<BenchmarkIcon />}
+                          color="primary"
+                          onClick={(e) => handleViewBenchmark(campaign.id, e)}
+                        >
+                          Benchmark
+                        </Button>
+                        <Button 
+                          size="small"
+                          startIcon={<AlertsIcon />}
+                          color="warning"
+                          onClick={(e) => handleViewAlerts(campaign.id, e)}
+                        >
+                          Alerts
                         </Button>
                       </CardActions>
                     </Card>
