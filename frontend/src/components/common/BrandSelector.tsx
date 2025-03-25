@@ -61,15 +61,15 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     handleClose();
   }, [navigate, handleClose]);
   
-  // For dropdown variant with no brands, show a simplified dropdown
+  // For dropdown variant with no brands, show a dropdown with just the Add Brand option
   if (brands.length === 0 && variant === 'dropdown') {
     return (
       <Box>
         <Tooltip title="Add Brand">
           <IconButton
-            onClick={handleCreateNewBrand}
+            onClick={handleClick}
             size="small"
-            aria-label="Add brand"
+            aria-label="Brand Menu"
             sx={{ 
               border: '1px solid',
               borderColor: 'divider',
@@ -80,6 +80,50 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
             <AddIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        
+        <Menu
+          id="brand-menu-empty-dropdown"
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleClose}
+          MenuListProps={{
+            'aria-labelledby': 'brand-dropdown-button',
+            role: 'listbox',
+            'aria-label': 'Create your first brand',
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            elevation: 3,
+            sx: {
+              minWidth: 200,
+              mt: 1,
+            },
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+            Get Started
+          </Typography>
+          
+          <MenuItem
+            onClick={handleCreateNewBrand}
+            sx={{ color: 'primary.main' }}
+          >
+            <ListItemIcon>
+              <AddIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Create Your First Brand" 
+              primaryTypographyProps={{ variant: 'body2' }}
+            />
+          </MenuItem>
+        </Menu>
       </Box>
     );
   }
