@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
 import { Brand } from '../../services/brandService';
+import useBrands from '../../hooks/useBrands';
+import { fetchBrandsStart, fetchBrandsSuccess, fetchBrandsFailure } from '../../store/slices/brandsSlice';
 
 interface BrandRedirectorProps {
   children?: React.ReactNode;
@@ -16,14 +18,40 @@ interface BrandRedirectorProps {
 const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const { brands, selectedBrand, isLoading } = useSelector((state: RootState) => state.brands);
   const [redirecting, setRedirecting] = useState(false);
   const redirectAttempts = useRef(0);
   const maxRedirectAttempts = 3;
   const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hasLoadedBrands = useRef(false);
   
   // Track which paths we've already tried to prevent loops
   const attemptedPaths = useRef<Set<string>>(new Set());
+  
+  // Load brands data at startup if not already loaded
+  useEffect(() => {
+    // Only try to load brands if we don't already have them and haven't tried yet
+    if (!hasLoadedBrands.current && !isLoading && brands.length === 0) {
+      hasLoadedBrands.current = true;
+      dispatch(fetchBrandsStart());
+      
+      // Get brands from the service
+      const loadBrands = async () => {
+        try {
+          const brandService = (await import('../../services/brandService')).default;
+          const brandsData = await brandService.getBrands();
+          dispatch(fetchBrandsSuccess(brandsData));
+          console.log('Brands loaded successfully:', brandsData);
+        } catch (error) {
+          console.error('Failed to load brands:', error);
+          dispatch(fetchBrandsFailure((error as Error).message));
+        }
+      };
+      
+      loadBrands();
+    }
+  }, [dispatch, isLoading, brands.length]);
   
   // Clear timeout on unmount
   useEffect(() => {
