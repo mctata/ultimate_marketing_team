@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Header.tsx
 import {
   AppBar,
   Avatar,
@@ -10,6 +11,8 @@ import {
   Tooltip,
   Typography,
   useTheme,
+  Divider,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -24,6 +27,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { toggleDarkMode } from '../../store/slices/uiSlice';
 import NotificationsMenu from '../common/NotificationsMenu';
+import BrandSelector from '../common/BrandSelector';
 
 interface HeaderProps {
   onDrawerToggle: () => void;
@@ -37,6 +41,7 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const user = useSelector((state: RootState) => state.auth.user);
   const { darkMode, notifications } = useSelector((state: RootState) => state.ui);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -91,12 +96,26 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ display: { xs: 'none', sm: 'block' }, flexGrow: 1 }}
+            sx={{ display: { xs: 'none', sm: 'block' }, mr: 4 }}
           >
             Ultimate Marketing Team
           </Typography>
           
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {/* Add BrandSelector */}
+          <Box sx={{ 
+            display: { xs: 'none', md: 'flex' }, 
+            alignItems: 'center', 
+            flexGrow: 1 
+          }}>
+            <BrandSelector variant="full" />
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
+            {/* For mobile, show compact brand selector */}
+            {isMobile && (
+              <BrandSelector variant="compact" />
+            )}
+            
             <Tooltip title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={handleThemeToggle} color="inherit">
                 {darkMode ? <LightMode /> : <DarkMode />}
