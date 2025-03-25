@@ -65,6 +65,11 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
         // Determine which brand to use
         const targetBrand: Brand = selectedBrand || brands[0];
         
+        // For Content and Campaigns, ensure direct path
+        if (routePart === 'content' || routePart === 'campaigns') {
+          console.log('Redirecting to brand-specific route:', `/brand/${targetBrand.id}/${routePart}`);
+        }
+        
         // Construct the new brand-specific path
         const brandPath = `/brand/${targetBrand.id}/${routePart}`;
         
@@ -78,6 +83,8 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
         // Add this path to our attempted paths
         attemptedPaths.current.add(brandPath);
         
+        console.log(`Redirecting from ${currentPath} to ${brandPath}`);
+        
         // Set a timeout to prevent UI from getting stuck if navigation fails
         redirectTimeout.current = setTimeout(() => {
           setRedirecting(false);
@@ -90,6 +97,7 @@ const BrandRedirector: React.FC<BrandRedirectorProps> = ({ children }) => {
               clearTimeout(redirectTimeout.current);
             }
             setRedirecting(false);
+            console.log('Navigation successful to', brandPath);
           })
           .catch(error => {
             console.error("Navigation error:", error);
