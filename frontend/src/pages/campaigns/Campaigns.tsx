@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,6 +36,8 @@ import useCampaigns from '../../hooks/useCampaigns';
 import { CampaignFilters } from '../../services/campaignService';
 import { ErrorBoundary } from 'react-error-boundary';
 import GlobalErrorFallback from '../../components/common/GlobalErrorFallback';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 const statusOptions = [
   { value: '', label: 'All Statuses' },
@@ -46,15 +49,33 @@ const statusOptions = [
 
 const Campaigns = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<CampaignFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const { selectedBrand } = useSelector((state: RootState) => state.brands);
+  
+  useEffect(() => {
+    console.log('Campaigns component rendered with:');
+    console.log('- Location:', location);
+    console.log('- Params:', params);
+    console.log('- Selected Brand:', selectedBrand);
+    
+    // Update filters when brand changes
+    if (selectedBrand) {
+      setFilters(prev => ({
+        ...prev,
+        brandId: selectedBrand.id
+      }));
+    }
+  }, [location, params, selectedBrand]);
   
   // Use the React Query hook
   const { getCampaignsList } = useCampaigns();
   const { data: campaigns, isLoading, error } = getCampaignsList(filters);
   
-  console.log('Campaigns data:', campaigns, 'isLoading:', isLoading, 'error:', error);
+  console.log('Campaigns data:', campaigns, 'isLoading:', isLoading, 'error:', error, 'filters:', filters);
   
   // Filter campaigns based on search term
   const filteredCampaigns = useMemo(() => {
@@ -111,6 +132,20 @@ const Campaigns = () => {
   
   if (error) {
     return <Typography color="error">Error loading campaigns: {(error as Error).message}</Typography>;
+  }
+  
+  // If no brand is selected, show a helpful message
+  if (!selectedBrand) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Please select a brand using the dropdown in the header to view campaigns.
+        </Alert>
+        <Typography variant="body1">
+          Campaign management requires a brand context. Use the brand selector in the top right of the header.
+        </Typography>
+      </Box>
+    );
   }
   
   return (
