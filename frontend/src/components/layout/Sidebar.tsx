@@ -341,6 +341,9 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             boxSizing: 'border-box', 
             width: width,
             boxShadow: 3,
+            marginTop: '64px', // Align with AppBar height
+            height: 'calc(100% - 64px)',
+            position: 'fixed'
           },
         }}
       >
@@ -349,15 +352,24 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
       
       {/* Desktop drawer */}
       <Drawer
-        variant="persistent"
+        variant="permanent"
         open={open}
         sx={{
           display: { xs: 'none', md: 'block' },
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
-            width: width,
+            width: open ? width : 0,
             borderRight: '1px solid rgba(0, 0, 0, 0.12)',
             boxShadow: 'none',
+            marginTop: '64px', // Align with AppBar height
+            height: 'calc(100% - 64px)',
+            position: 'fixed',
+            transition: (theme) =>
+              theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            overflowX: 'hidden',
           },
         }}
       >

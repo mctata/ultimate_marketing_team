@@ -60,8 +60,8 @@ const Layout = () => {
             sx={{
               flexGrow: 1,
               padding: (theme) => theme.spacing(3),
-              width: { md: `calc(100% - ${open ? drawerWidth : 0}px)` },
-              marginLeft: { md: open ? `${drawerWidth}px` : 0 },
+              width: { sm: `calc(100% - ${open ? drawerWidth : 0}px)` },
+              marginLeft: { sm: open ? `${drawerWidth}px` : 0 },
               marginTop: '64px', // Header height
               transition: (theme) =>
                 theme.transitions.create(['margin', 'width'], {
@@ -70,7 +70,8 @@ const Layout = () => {
                 }),
             }}
           >
-            <Box sx={{ minHeight: 'calc(100vh - 148px)' }}> {/* 64px header + 24px padding + 60px footer */}
+            <Toolbar /> {/* This creates space for the fixed AppBar */}
+            <Box sx={{ minHeight: 'calc(100vh - 212px)' }}> {/* 64px header + 64px toolbar spacer + 24px padding + 60px footer */}
               <Outlet />
             </Box>
             

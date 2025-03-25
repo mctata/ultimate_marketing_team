@@ -73,13 +73,14 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
   return (
     <>
       <AppBar
-        position="sticky"
+        position="fixed"
         color="default"
         elevation={0}
         sx={{
           bgcolor: 'background.paper',
           borderBottom: '1px solid',
           borderColor: 'divider',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar>
