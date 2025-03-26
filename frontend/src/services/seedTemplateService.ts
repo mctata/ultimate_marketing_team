@@ -1,6 +1,21 @@
 import * as templateService from './templateService';
+import { TemplateCategory, TemplateIndustry, TemplateFormat } from './templateService';
 import { industries, categories, formats, templates, templateCounts } from '../data/templateData';
 import api from './api';
+
+// Extended interfaces for seeding data
+interface ExtendedTemplateCategory extends Partial<TemplateCategory> {
+  icon?: string;
+}
+
+interface ExtendedTemplateIndustry extends Partial<TemplateIndustry> {
+  icon?: string;
+}
+
+interface ExtendedTemplateFormat extends Partial<TemplateFormat> {
+  platform?: string;
+  specs?: Record<string, any>;
+}
 
 /**
  * Service for seeding and initializing the templates library with predefined templates
@@ -14,11 +29,12 @@ export const seedCategories = async () => {
   
   for (const category of categories) {
     try {
-      await templateService.createTemplateCategory({
+      const categoryData: ExtendedTemplateCategory = {
         name: category.name,
         description: category.description,
         icon: category.icon
-      });
+      };
+      await templateService.createTemplateCategory(categoryData);
       console.log(`Created category: ${category.name}`);
     } catch (error) {
       console.error(`Error creating category ${category.name}:`, error);
@@ -36,11 +52,12 @@ export const seedIndustries = async () => {
   
   for (const industry of industries) {
     try {
-      await templateService.createTemplateIndustry({
+      const industryData: ExtendedTemplateIndustry = {
         name: industry.name,
         description: industry.description,
         icon: industry.icon
-      });
+      };
+      await templateService.createTemplateIndustry(industryData);
       console.log(`Created industry: ${industry.name}`);
     } catch (error) {
       console.error(`Error creating industry ${industry.name}:`, error);
@@ -58,13 +75,14 @@ export const seedFormats = async () => {
   
   for (const format of formats) {
     try {
-      await templateService.createTemplateFormat({
+      const formatData: ExtendedTemplateFormat = {
         name: format.name,
         description: format.description,
         platform: format.platform,
         content_type: format.content_type,
         specs: format.specs
-      });
+      };
+      await templateService.createTemplateFormat(formatData);
       console.log(`Created format: ${format.name}`);
     } catch (error) {
       console.error(`Error creating format ${format.name}:`, error);
