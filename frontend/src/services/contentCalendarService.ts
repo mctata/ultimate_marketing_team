@@ -1,17 +1,27 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
+import { CalendarItemStatus } from '../types/common';
+
 // Define types
 export interface CalendarItem {
-  id: number;
+  id: string;
   project_id: number;
   content_draft_id: number | null;
   scheduled_date: string;
+  scheduledDate: string;
   published_date: string | null;
-  status: string;
-  title?: string;
+  status: CalendarItemStatus;
+  title: string;
+  contentType: "blog" | "social" | "email" | "ad" | "other";
   content_type?: string;
   platform?: string;
+  brandId: string;
+  tags: string[];
+  author: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Type interfaces needed by contentSlice.ts
@@ -27,8 +37,11 @@ export interface CalendarEntryResponse {
 export interface BestTimeRecommendation {
   platform: string;
   day_of_week: number;
+  dayOfWeek: string;
   hour_of_day: number;
+  timeOfDay: string;
   average_engagement: number;
+  engagementScore: number;
   confidence: number;
 }
 
@@ -192,36 +205,51 @@ const contentCalendarService = {
     {
       platform: 'instagram',
       day_of_week: 2,
+      dayOfWeek: 'Tuesday',
       hour_of_day: 12,
+      timeOfDay: '12:00 PM',
       average_engagement: 0.072,
+      engagementScore: 72,
       confidence: 0.82
     },
     {
       platform: 'facebook',
       day_of_week: 4,
+      dayOfWeek: 'Thursday',
       hour_of_day: 15,
+      timeOfDay: '3:00 PM',
       average_engagement: 0.064,
+      engagementScore: 64,
       confidence: 0.78
     },
     {
       platform: 'twitter',
       day_of_week: 1,
+      dayOfWeek: 'Monday',
       hour_of_day: 9,
+      timeOfDay: '9:00 AM',
       average_engagement: 0.098,
+      engagementScore: 98,
       confidence: 0.85
     },
     {
       platform: 'linkedin',
       day_of_week: 3,
+      dayOfWeek: 'Wednesday',
       hour_of_day: 11,
+      timeOfDay: '11:00 AM',
       average_engagement: 0.083,
+      engagementScore: 83,
       confidence: 0.79
     },
     {
       platform: 'tiktok',
       day_of_week: 5,
+      dayOfWeek: 'Friday',
       hour_of_day: 18,
+      timeOfDay: '6:00 PM',
       average_engagement: 0.105,
+      engagementScore: 105,
       confidence: 0.89
     }
   ] as BestTimeRecommendation[],
