@@ -28,6 +28,16 @@ export interface AnalyticsFilter {
   page?: number;
 }
 
+export interface UserAnalytics {
+  userId: string | number;
+  totalEvents: number;
+  lastActive: string;
+  eventBreakdown: Record<string, number>;
+  sessionCount: number;
+  averageSessionDuration: number;
+  topFeatures: Array<{ feature: string; usageCount: number }>;
+}
+
 const analyticsService = {
   /**
    * Track an analytics event
@@ -95,7 +105,7 @@ const analyticsService = {
    * Get user activity analytics
    */
   getUserAnalytics: (userId: string | number) => {
-    return api.get<any>(`/analytics/users/${userId}`);
+    return api.get<UserAnalytics>(`/analytics/users/${userId}`);
   },
 
   /**
