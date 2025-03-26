@@ -26,8 +26,8 @@ import brandAnalyticsService, { BrandAnalyticsOverview } from '../../services/br
 
 interface TabPanelProps {
   children?: React.ReactNode;
-  index: any;
-  value: any;
+  index: number;
+  value: number;
 }
 
 const TabPanel = (props: TabPanelProps) => {
@@ -39,10 +39,11 @@ const TabPanel = (props: TabPanelProps) => {
       hidden={value !== index}
       id={`analytics-tabpanel-${index}`}
       aria-labelledby={`analytics-tab-${index}`}
+      style={{ overflow: 'auto' }}
       {...other}
     >
       {value === index && (
-        <Box sx={{ pt: 3 }}>
+        <Box sx={{ pt: 3, maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
           {children}
         </Box>
       )}
@@ -61,7 +62,7 @@ const Analytics = () => {
   // Load brand-specific analytics data
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!selectedBrand) return;
+      if (!selectedBrand?.id) return;
       
       setIsLoading(true);
       setError(null);

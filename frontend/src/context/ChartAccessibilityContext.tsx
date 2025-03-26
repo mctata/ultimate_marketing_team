@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 // Define the accessibility configuration interface
 export interface ChartAccessibilityConfig {
@@ -61,8 +62,8 @@ export const ChartAccessibilityProvider: React.FC<{children: ReactNode}> = ({ ch
   });
   
   // Sync with Redux UI state for theme settings if available
-  const darkMode = useSelector((state: any) => state.ui?.darkMode) || false;
-  const currentTheme = useSelector((state: any) => state.ui?.currentTheme) || 'default';
+  const darkMode = useSelector((state: RootState) => state.ui?.darkMode) || false;
+  const currentTheme = useSelector((state: RootState) => state.ui?.currentTheme) || 'default';
   
   useEffect(() => {
     // If the UI has "highContrast" theme, sync with accessibility settings
@@ -83,7 +84,7 @@ export const ChartAccessibilityProvider: React.FC<{children: ReactNode}> = ({ ch
   // Helper function to get colorblind-safe color palettes
   const getColorBlindSafeColors = () => {
     // Color palettes optimized for different types of color blindness
-    const palettes = {
+    const palettes: Record<ChartAccessibilityConfig['colorBlindMode'], string[]> = {
       none: [
         '#4153AF', '#E8543E', '#69BE64', '#B85DD9', '#F3AC41', '#5DBBC5',
         '#D35CBA', '#63A875', '#D2CA4E', '#6F7B88', '#AA655F', '#3793C9'
@@ -126,8 +127,16 @@ export const ChartAccessibilityProvider: React.FC<{children: ReactNode}> = ({ ch
     ];
   };
   
+  // Define the chart data point interface
+  interface ChartDataPoint {
+    name?: string;
+    value: number;
+    date?: string;
+    [key: string]: any;
+  }
+  
   // Helper to generate accessible text summaries of charts
-  const generateChartSummary = (title: string, data: any[], type: string): string => {
+  const generateChartSummary = (title: string, data: ChartDataPoint[], type: string): string => {
     if (!data || data.length === 0) return `${title}: No data available.`;
     
     let summary = `${title}: `;
