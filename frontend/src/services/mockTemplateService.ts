@@ -5,7 +5,8 @@
  * for testing and development purposes when the API is not available.
  */
 
-import { Template, TemplateCategory, TemplateIndustry, TemplateFormat } from './templateService';
+import { TemplateCategory, TemplateIndustry, TemplateFormat } from './templateService';
+import { Template } from '../types/templates';
 
 // Static data for mock implementation
 const CATEGORIES: TemplateCategory[] = [

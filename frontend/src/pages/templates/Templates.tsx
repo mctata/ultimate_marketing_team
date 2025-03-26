@@ -49,6 +49,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import healthWellnessTemplates from '../../healthWellnessTemplates';
+import { DisplayTemplate } from '../../types/templates';
 
 // Mock template categories
 const templateCategories = [
@@ -78,7 +79,7 @@ const templateIndustries = [
 ];
 
 // Adapt the template data structure for display
-const adaptedTemplates = healthWellnessTemplates.map(template => {
+const adaptedTemplates: DisplayTemplate[] = healthWellnessTemplates.map(template => {
   const formatObj = templateFormats.find(f => f.id === template.format_id) || { name: "Unknown" };
   const categoryObjs = template.categories.map(catId => 
     templateCategories.find(c => c.id === catId) || { id: catId, name: catId }
@@ -111,33 +112,8 @@ const Templates: React.FC = () => {
   const [fromScratchDialogOpen, setFromScratchDialogOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   
-  // Define a proper type for the template instead of using any
-  interface ExtendedTemplate {
-    id: string;
-    name: string;
-    title: string;
-    description: string;
-    format_id: string;
-    format: {
-      id: string;
-      name: string;
-    };
-    categories: Array<{
-      id: string;
-      name: string;
-    }>;
-    industries: Array<{
-      id: string;
-      name: string;
-    }>;
-    is_premium: boolean;
-    preview_image?: string;
-    content?: string;
-    community_rating?: number;
-    usage_count?: number;
-  }
-  
-  const [selectedTemplate, setSelectedTemplate] = useState<ExtendedTemplate | null>(null);
+  // Use the DisplayTemplate from our centralized types
+  const [selectedTemplate, setSelectedTemplate] = useState<DisplayTemplate | null>(null);
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -317,7 +293,7 @@ const Templates: React.FC = () => {
   };
   
   // Handle preview for template
-  const handleOpenPreview = (template: ExtendedTemplate) => {
+  const handleOpenPreview = (template: DisplayTemplate) => {
     setSelectedTemplate(template);
     setPreviewModalOpen(true);
   };

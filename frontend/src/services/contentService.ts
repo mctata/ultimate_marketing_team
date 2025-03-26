@@ -9,6 +9,10 @@ export interface ContentItem {
   author: string;
   score: number;
   brandId: string;
+  body?: string;
+  topics?: string[];
+  updated_at?: string;
+  created_at?: string;
   performance: {
     views: number;
     engagement: number;
@@ -29,6 +33,10 @@ const mockContentByBrand: Record<string, ContentItem[]> = {
       author: 'Jane Smith',
       score: 92,
       brandId: '1',
+      body: '<p>In 2025, SaaS is evolving faster than ever. Here are the top 10 trends...</p>',
+      topics: ['Technology', 'SaaS', 'Cloud', 'Trends'],
+      updated_at: '2025-03-15T10:30:00Z',
+      created_at: '2025-03-10T14:20:00Z',
       performance: {
         views: 1250,
         engagement: 4.8,
@@ -350,6 +358,29 @@ export interface ContentPerformance {
   }>;
 }
 
+export interface ABTest {
+  id: string;
+  name: string;
+  content_draft_id: string;
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  metrics: string[];
+  start_date: string;
+  end_date: string;
+}
+
+export interface ABTestVariant {
+  id: string;
+  test_id: string;
+  variant_name: string;
+  content: string;
+  is_control: boolean;
+  performance?: {
+    views: number;
+    clicks: number;
+    engagement: number;
+  };
+}
+
 class ContentService {
   /**
    * Get all content items for a specific brand
@@ -471,6 +502,244 @@ class ContentService {
     // Reuse getContentItemById for now, but in a real implementation,
     // this would specifically fetch draft content
     return this.getContentItemById(id);
+  }
+
+  /**
+   * Get all drafts with optional filters
+   */
+  async getDrafts(filters?: any): Promise<ContentItem[]> {
+    try {
+      // First try API
+      return await apiMethods.get<ContentItem[]>('/drafts', { params: filters });
+    } catch (error) {
+      console.log('Using mock draft data for development');
+      
+      // Fall back to mock data - filter for drafts from all content
+      const allContent = Object.values(mockContentByBrand).flat();
+      let drafts = [...allContent];
+
+      // Apply filters if provided
+      if (filters) {
+        if (filters.draftStatus) {
+          drafts = drafts.filter(item => item.status === filters.draftStatus);
+        }
+        if (filters.brandId) {
+          drafts = drafts.filter(item => item.brandId === filters.brandId);
+        }
+        if (filters.type) {
+          drafts = drafts.filter(item => item.type === filters.type);
+        }
+        if (filters.searchQuery) {
+          const query = filters.searchQuery.toLowerCase();
+          drafts = drafts.filter(item => 
+            item.title.toLowerCase().includes(query));
+        }
+      }
+
+      return Promise.resolve(drafts);
+    }
+  }
+
+  /**
+   * Create a new draft
+   */
+  async createDraft(draft: Partial<ContentItem>): Promise<ContentItem> {
+    try {
+      // First try API
+      return await apiMethods.post<ContentItem>('/drafts', draft);
+    } catch (error) {
+      console.log('Using mock draft creation for development');
+      
+      // Generate a mock response with an ID
+      const newDraft: ContentItem = {
+        id: `${draft.brandId || '0'}-${Date.now()}`,
+        title: draft.title || 'New Draft',
+        type: draft.type || 'blog',
+        status: 'draft',
+        date: new Date().toISOString().split('T')[0],
+        author: draft.author || 'Current User',
+        score: 0,
+        brandId: draft.brandId || '1',
+        performance: {
+          views: 0,
+          engagement: 0,
+          conversion: 0
+        }
+      };
+      
+      return Promise.resolve(newDraft);
+    }
+  }
+
+  /**
+   * Update an existing draft
+   */
+  async updateDraft(draft: Partial<ContentItem>): Promise<ContentItem> {
+    try {
+      // First try API
+      return await apiMethods.put<ContentItem>(`/drafts/${draft.id}`, draft);
+    } catch (error) {
+      console.log(`Using mock draft update for ID: ${draft.id}`);
+      
+      // Simulate an update by returning the draft with updated properties
+      return Promise.resolve({
+        id: draft.id || '0',
+        title: draft.title || 'Updated Draft',
+        type: draft.type || 'blog',
+        status: draft.status || 'draft',
+        date: new Date().toISOString().split('T')[0],
+        author: draft.author || 'Current User',
+        score: 0,
+        brandId: draft.brandId || '1',
+        performance: {
+          views: 0,
+          engagement: 0,
+          conversion: 0
+        }
+      });
+    }
+  }
+
+  /**
+   * Delete a draft
+   */
+  async deleteDraft(id: string): Promise<void> {
+    try {
+      // First try API
+      await apiMethods.delete(`/drafts/${id}`);
+    } catch (error) {
+      console.log(`Mock deleting draft ID: ${id}`);
+      // In a mock scenario we just simulate success
+      return Promise.resolve();
+    }
+  }
+
+  /**
+   * Get all topics for content categorization
+   */
+  async getTopics(): Promise<string[]> {
+    try {
+      // First try API
+      return await apiMethods.get<string[]>('/topics');
+    } catch (error) {
+      console.log('Using mock topics data for development');
+      
+      // Return mock topics
+      return Promise.resolve([
+        'Technology', 'Marketing', 'Business', 'Design', 'Development',
+        'AI', 'Machine Learning', 'Cloud', 'Security', 'Mobile',
+        'Web', 'Social Media', 'Content Strategy', 'SEO', 'Analytics'
+      ]);
+    }
+  }
+
+  /**
+   * Get A/B tests for a content item
+   */
+  async getABTests(contentId: string): Promise<any[]> {
+    try {
+      // First try API
+      return await apiMethods.get<any[]>(`/content/${contentId}/abtests`);
+    } catch (error) {
+      console.log(`Using mock A/B tests data for content ID: ${contentId}`);
+      
+      // Return mock A/B tests
+      return Promise.resolve([
+        {
+          id: '1',
+          name: 'Headline Optimization Test',
+          content_draft_id: contentId,
+          status: 'active',
+          metrics: ['clicks', 'views', 'engagement'],
+          start_date: '2025-03-01',
+          end_date: '2025-03-15'
+        },
+        {
+          id: '2',
+          name: 'CTA Button Test',
+          content_draft_id: contentId,
+          status: 'completed',
+          metrics: ['clicks', 'conversion'],
+          start_date: '2025-02-15',
+          end_date: '2025-02-28'
+        }
+      ]);
+    }
+  }
+
+  /**
+   * Get a specific A/B test by ID
+   */
+  async getABTestById(testId: string): Promise<any> {
+    try {
+      // First try API
+      return await apiMethods.get<any>(`/abtests/${testId}`);
+    } catch (error) {
+      console.log(`Using mock A/B test data for test ID: ${testId}`);
+      
+      // Return mock A/B test
+      return Promise.resolve({
+        id: testId,
+        name: 'Headline Optimization Test',
+        content_draft_id: '1-1',
+        status: 'active',
+        metrics: ['clicks', 'views', 'engagement'],
+        start_date: '2025-03-01',
+        end_date: '2025-03-15'
+      });
+    }
+  }
+
+  /**
+   * Get variants for an A/B test
+   */
+  async getABTestVariants(testId: string): Promise<any[]> {
+    try {
+      // First try API
+      return await apiMethods.get<any[]>(`/abtests/${testId}/variants`);
+    } catch (error) {
+      console.log(`Using mock A/B test variants for test ID: ${testId}`);
+      
+      // Return mock variants
+      return Promise.resolve([
+        {
+          id: '1',
+          test_id: testId,
+          variant_name: 'Control',
+          content: '<p>This is the control content</p>',
+          is_control: true,
+          performance: {
+            views: 500,
+            clicks: 50,
+            engagement: 0.1
+          }
+        },
+        {
+          id: '2',
+          test_id: testId,
+          variant_name: 'Variant A',
+          content: '<p>This is variant A content</p>',
+          is_control: false,
+          performance: {
+            views: 490,
+            clicks: 65,
+            engagement: 0.13
+          }
+        },
+        {
+          id: '3',
+          test_id: testId,
+          variant_name: 'Variant B',
+          content: '<p>This is variant B content</p>',
+          is_control: false,
+          performance: {
+            views: 505,
+            clicks: 48,
+            engagement: 0.095
+          }
+        }
+      ]);
+    }
   }
 }
 

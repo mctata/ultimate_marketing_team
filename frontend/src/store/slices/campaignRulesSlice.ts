@@ -202,8 +202,8 @@ export const executeRuleManually = createAsyncThunk(
   }
 );
 
-export const getNotificationConfig = createAsyncThunk(
-  'campaignRules/getNotificationConfig',
+export const fetchNotificationConfig = createAsyncThunk(
+  'campaignRules/fetchNotificationConfig',
   async (ruleId: string, { rejectWithValue }) => {
     try {
       const response = await campaignRulesService.getNotificationConfig(ruleId);
@@ -213,6 +213,9 @@ export const getNotificationConfig = createAsyncThunk(
     }
   }
 );
+
+// Keep the old name for backward compatibility
+export const getNotificationConfig = fetchNotificationConfig;
 
 export const updateNotificationConfig = createAsyncThunk(
   'campaignRules/updateNotificationConfig',
@@ -400,16 +403,16 @@ const campaignRulesSlice = createSlice({
         state.executionHistory.data.unshift(action.payload);
       })
       
-      // Notification Config reducers
-      .addCase(getNotificationConfig.pending, (state) => {
+      // Notification Config reducers - we only need one set since fetchNotificationConfig and getNotificationConfig reference the same thunk
+      .addCase(fetchNotificationConfig.pending, (state) => {
         state.notifications.loading = true;
         state.notifications.error = null;
       })
-      .addCase(getNotificationConfig.fulfilled, (state, action) => {
+      .addCase(fetchNotificationConfig.fulfilled, (state, action) => {
         state.notifications.loading = false;
         state.notifications.data[action.payload.ruleId] = action.payload.data;
       })
-      .addCase(getNotificationConfig.rejected, (state, action) => {
+      .addCase(fetchNotificationConfig.rejected, (state, action) => {
         state.notifications.loading = false;
         state.notifications.error = action.payload as string;
       })
@@ -470,6 +473,7 @@ export const selectNotificationConfig = (state: RootState) => {
   return null;
 };
 export const selectNotificationConfigLoading = (state: RootState) => state.campaignRules.notifications.loading;
+export const selectNotificationsLoading = selectNotificationConfigLoading; // Alias for backward compatibility
 export const selectNotificationConfigError = (state: RootState) => state.campaignRules.notifications.error;
 
 export const selectPerformanceThresholds = (state: RootState, campaignId: string) => 

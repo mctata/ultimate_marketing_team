@@ -48,7 +48,7 @@ export interface Insight {
 }
 
 interface AutomatedInsightsProps {
-  insights: Insight[];
+  insights: Insight[] | null | undefined;
   title?: string;
   description?: string;
   isLoading?: boolean;
@@ -56,7 +56,7 @@ interface AutomatedInsightsProps {
   onRefresh?: () => void;
   onCreateAlert?: (insightId: string) => void;
   maxItems?: number;
-  showCategories?: string[];
+  showCategories?: string[] | null | undefined;
 }
 
 const AutomatedInsights: React.FC<AutomatedInsightsProps> = ({
@@ -75,9 +75,10 @@ const AutomatedInsights: React.FC<AutomatedInsightsProps> = ({
   const [visibleInsights, setVisibleInsights] = useState(maxItems);
 
   // Filter insights by categories if provided
-  const filteredInsights = (showCategories && Array.isArray(showCategories) && insights)
-    ? insights.filter(insight => showCategories.includes(insight.category))
-    : insights || [];
+  const safeInsights = insights || [];
+  const filteredInsights = (showCategories && Array.isArray(showCategories) && safeInsights.length > 0)
+    ? safeInsights.filter(insight => showCategories.includes(insight.category))
+    : safeInsights;
 
   // Handle accordion expansion
   const handleChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {

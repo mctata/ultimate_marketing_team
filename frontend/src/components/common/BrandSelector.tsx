@@ -56,7 +56,7 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     
     // Update URL to maintain current path but change brand ID
     const currentPath = window.location.pathname;
-    const brandPathRegex = /\/brand\/(\d+)(\/.*)?/;
+    const brandPathRegex = /\/brand\/([^/]+)(\/.*)?/;
     const match = currentPath.match(brandPathRegex);
     
     if (match) {
@@ -64,9 +64,9 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
       const remainingPath = match[2] || '';
       const newPath = `/brand/${brandId}${remainingPath}`;
       
-      if (currentBrandId !== brandId) {
-        navigate(newPath);
-      }
+      // Always navigate even if IDs appear to be the same
+      // This ensures the URL is properly updated when manually changed
+      navigate(newPath, { replace: true });
     }
     
     handleClose();

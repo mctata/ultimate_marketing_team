@@ -13,9 +13,10 @@ import {
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { useTemplates } from '../../hooks/useContentGeneration';
-import { Template as ApiTemplate } from '../../services/contentGenerationService';
+import { Template } from '../../types/templates';
 
 // Map API template to component's internal template format
+// Uses fields from imported Template interface
 interface TemplateView {
   id: string;
   name: string;
@@ -44,13 +45,13 @@ const TemplateSelector = ({
   const { templatesQuery } = useTemplates();
   
   // Map API templates to view templates
-  const mapApiTemplateToView = (apiTemplate: ApiTemplate): TemplateView => ({
+  const mapApiTemplateToView = (apiTemplate: Template): TemplateView => ({
     id: apiTemplate.id,
     name: apiTemplate.name,
     description: apiTemplate.description,
     // Map content_type to type or use 'other' as fallback
     type: (apiTemplate.content_type as 'blog' | 'email' | 'social' | 'ad' | 'landing' | 'other') || 'other',
-    tags: apiTemplate.tags,
+    tags: apiTemplate.tags || [],
     lastModified: apiTemplate.updated_at
   });
 

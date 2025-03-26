@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import contentGenerationApi, {
+  TaskStatusResponse,
+  ABTest,
+  ABTestRequest
+} from '../services/contentGenerationService';
+import {
   Template,
   GenerationRequest,
   GenerationResponse,
   ContentVariation,
-  TaskStatusResponse,
-  QualityAssessment,
-  ABTest,
-  ABTestRequest
-} from '../services/contentGenerationService';
+  QualityAssessment
+} from '../types/templates';
 import { contentWebSocketService, ContentGenerationEvent } from '../services/contentWebSocketService';
 
 // Constants

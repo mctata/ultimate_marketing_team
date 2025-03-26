@@ -42,7 +42,9 @@ const uiFrameworks = [
 const chartLibraries = [
   'chart.js',
   'recharts',
-  '@nivo',
+  '@nivo/core',
+  '@nivo/line',
+  '@nivo/pie',
   'd3',
 ];
 

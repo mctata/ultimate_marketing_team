@@ -100,6 +100,7 @@ interface ContentState {
     type?: string;
     brandId?: string;
     searchQuery?: string;
+    draftStatus?: string;
   };
   calendar: CalendarState;
   performance: {
@@ -107,6 +108,14 @@ interface ContentState {
     isLoading: boolean;
     error: string | null;
   };
+  abTests: any[];
+  selectedABTest: any | null;
+  abTestVariants: any[];
+  abTestsLoading: boolean;
+  abTestsError: string | null;
+  topics: string[];
+  topicsLoading: boolean;
+  topicsError: string | null;
 }
 
 const initialState: ContentState = {
@@ -130,7 +139,15 @@ const initialState: ContentState = {
     data: [],
     isLoading: false,
     error: null
-  }
+  },
+  abTests: [],
+  selectedABTest: null,
+  abTestVariants: [],
+  abTestsLoading: false,
+  abTestsError: null,
+  topics: [],
+  topicsLoading: false,
+  topicsError: null
 };
 
 interface DateRangeParam {
@@ -299,6 +316,103 @@ export const fetchDraftById = createAsyncThunk<ContentItem, string, { rejectValu
       return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch draft content');
+    }
+  }
+);
+
+export const fetchDrafts = createAsyncThunk<ContentItem[], any, { rejectValue: string }>(
+  'content/fetchDrafts',
+  async (filters, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getDrafts(filters);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch drafts');
+    }
+  }
+);
+
+export const createDraft = createAsyncThunk<ContentItem, Partial<ContentItem>, { rejectValue: string }>(
+  'content/createDraft',
+  async (draft, { rejectWithValue }) => {
+    try {
+      const response = await contentService.createDraft(draft);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create draft');
+    }
+  }
+);
+
+export const updateDraft = createAsyncThunk<ContentItem, Partial<ContentItem>, { rejectValue: string }>(
+  'content/updateDraft',
+  async (draft, { rejectWithValue }) => {
+    try {
+      const response = await contentService.updateDraft(draft);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update draft');
+    }
+  }
+);
+
+export const deleteDraft = createAsyncThunk<string, string, { rejectValue: string }>(
+  'content/deleteDraft',
+  async (id, { rejectWithValue }) => {
+    try {
+      await contentService.deleteDraft(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete draft');
+    }
+  }
+);
+
+export const fetchTopics = createAsyncThunk<string[], void, { rejectValue: string }>(
+  'content/fetchTopics',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getTopics();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch topics');
+    }
+  }
+);
+
+// A/B Testing Thunks
+export const fetchABTests = createAsyncThunk<any[], string, { rejectValue: string }>(
+  'content/fetchABTests',
+  async (contentId: string, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getABTests(contentId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch A/B tests');
+    }
+  }
+);
+
+export const fetchABTestById = createAsyncThunk<any, string, { rejectValue: string }>(
+  'content/fetchABTestById',
+  async (testId: string, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getABTestById(testId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch A/B test');
+    }
+  }
+);
+
+export const fetchABTestVariants = createAsyncThunk<any[], string, { rejectValue: string }>(
+  'content/fetchABTestVariants',
+  async (testId: string, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getABTestVariants(testId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch A/B test variants');
     }
   }
 );
@@ -706,6 +820,111 @@ const contentSlice = createSlice({
       .addCase(fetchContentPerformance.rejected, (state, action) => {
         state.performance.isLoading = false;
         state.performance.error = action.payload as string;
+      })
+      
+      // Handle draft operations
+      .addCase(fetchDrafts.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchDrafts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = action.payload;
+      })
+      .addCase(fetchDrafts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(createDraft.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createDraft.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items.push(action.payload);
+      })
+      .addCase(createDraft.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(updateDraft.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateDraft.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.items.findIndex(item => item.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(updateDraft.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(deleteDraft.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteDraft.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = state.items.filter(item => item.id !== action.payload);
+      })
+      .addCase(deleteDraft.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Handle topics
+      .addCase(fetchTopics.pending, (state) => {
+        state.topicsLoading = true;
+        state.topicsError = null;
+      })
+      .addCase(fetchTopics.fulfilled, (state, action) => {
+        state.topicsLoading = false;
+        state.topics = action.payload;
+      })
+      .addCase(fetchTopics.rejected, (state, action) => {
+        state.topicsLoading = false;
+        state.topicsError = action.payload as string;
+      })
+      
+      // Handle A/B tests
+      .addCase(fetchABTests.pending, (state) => {
+        state.abTestsLoading = true;
+        state.abTestsError = null;
+      })
+      .addCase(fetchABTests.fulfilled, (state, action) => {
+        state.abTestsLoading = false;
+        state.abTests = action.payload;
+      })
+      .addCase(fetchABTests.rejected, (state, action) => {
+        state.abTestsLoading = false;
+        state.abTestsError = action.payload as string;
+      })
+      .addCase(fetchABTestById.pending, (state) => {
+        state.abTestsLoading = true;
+        state.abTestsError = null;
+      })
+      .addCase(fetchABTestById.fulfilled, (state, action) => {
+        state.abTestsLoading = false;
+        state.selectedABTest = action.payload;
+      })
+      .addCase(fetchABTestById.rejected, (state, action) => {
+        state.abTestsLoading = false;
+        state.abTestsError = action.payload as string;
+      })
+      .addCase(fetchABTestVariants.pending, (state) => {
+        state.abTestsLoading = true;
+        state.abTestsError = null;
+      })
+      .addCase(fetchABTestVariants.fulfilled, (state, action) => {
+        state.abTestsLoading = false;
+        state.abTestVariants = action.payload;
+      })
+      .addCase(fetchABTestVariants.rejected, (state, action) => {
+        state.abTestsLoading = false;
+        state.abTestsError = action.payload as string;
       });
   },
 });
@@ -737,6 +956,9 @@ export const {
   invalidateCalendarCache,
 } = contentSlice.actions;
 
+// Alias for backwards compatibility
+export const setFilters = setContentFilters;
+
 // Selectors for content
 export const selectAllContent = (state: RootState) => state.content.items;
 export const selectSelectedContent = (state: RootState) => state.content.selectedContent;
@@ -761,6 +983,19 @@ export const selectBestTimeRecommendations = (state: RootState) => state.content
 export const selectCalendarLoading = (state: RootState) => state.content.calendar.isLoading;
 export const selectCalendarError = (state: RootState) => state.content.calendar.error;
 export const selectCalendarLastFetched = (state: RootState) => state.content.calendar.lastFetched;
+
+// Selectors for Drafts
+export const selectDrafts = (state: RootState) => state.content.items || [];
+export const selectDraftsLoading = (state: RootState) => state.content.isLoading;
+
+// Selectors for A/B Tests
+export const selectABTests = (state: RootState) => (state as any).content.abTests || [];
+export const selectSelectedABTest = (state: RootState) => (state as any).content.selectedABTest || null;
+export const selectABTestVariants = (state: RootState) => (state as any).content.abTestVariants || [];
+export const selectABTestsLoading = (state: RootState) => (state as any).content.abTestsLoading || false;
+
+// Selectors for Topics
+export const selectTopics = (state: RootState) => (state as any).content.topics || [];
 
 // Selector to get calendar items for a specific date
 export const selectCalendarItemsForDate = (date: string) => (state: RootState) => {

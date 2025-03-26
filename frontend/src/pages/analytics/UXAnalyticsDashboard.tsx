@@ -134,7 +134,7 @@ const savedFilters = [
     filters: {
       dateRange: [subDays(new Date(), 14), new Date()],
       features: ['collaboration'],
-      platformType: 'web'
+      platformType: 'web'  // Using consistent platformType instead of platform
     }
   }
 ];
@@ -437,7 +437,7 @@ const UXAnalyticsDashboard: React.FC = () => {
       endDate,
       userType: filters.userType || 'all',
       features: Array.isArray(filters.features) ? filters.features.join(',') : undefined,
-      platform: filters.platformType !== 'all' ? filters.platformType : undefined
+      platformType: filters.platformType !== 'all' ? filters.platformType : undefined
     };
   }, [filters, getDateRange]);
   
@@ -532,13 +532,17 @@ const UXAnalyticsDashboard: React.FC = () => {
       // Make a safe copy of the saved filters to avoid mutations
       const filtersCopy = JSON.parse(JSON.stringify(savedFilter.filters));
       
-      // If platform is in the filters, ensure it's properly handled
+      // Handle legacy platform filter and rename to platformType to prevent conflicts
       if ('platform' in filtersCopy) {
+        // Copy the value to the new platformType field
+        filtersCopy.platformType = filtersCopy.platform;
         // Make sure we're not accidentally setting a bad value
-        if (typeof filtersCopy.platform !== 'string' || 
-            !['all', 'web', 'mobile'].includes(filtersCopy.platform)) {
-          filtersCopy.platform = 'all';
+        if (typeof filtersCopy.platformType !== 'string' || 
+            !['all', 'web', 'mobile'].includes(filtersCopy.platformType)) {
+          filtersCopy.platformType = 'all';
         }
+        // Remove the old field
+        delete filtersCopy.platform;
       }
       
       setFilters(filtersCopy);

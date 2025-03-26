@@ -1,4 +1,4 @@
-import { Template } from './services/contentGenerationService';
+import { Template } from './types/templates';
 
 /**
  * Health and Wellness Content Templates
@@ -8,16 +8,14 @@ import { Template } from './services/contentGenerationService';
  * focused on health, wellness, fitness, nutrition, and mental health topics.
  */
 
-// Define the extended template interface with properties used in Templates.tsx
-interface ExtendedTemplate extends Template {
-  title: string;
-  description: string;
-  format_id: string;
-  categories: string[];
-  industries: string[];
-  is_premium: boolean;
-  preview_image?: string;
-  content: string;
+// Define only additional properties not already in the Template interface
+interface HealthWellnessTemplate extends Template {
+  // We don't need to redefine properties already in Template or BaseTemplate:
+  // id, name, title, description, content_type, format_id, categories, industries,
+  // is_premium, preview_image, content, created_at, updated_at, is_default, is_featured,
+  // template_content, variables, category, tags, version
+  
+  // We only need to define new properties specific to HealthWellnessTemplate
   dynamic_fields: Record<string, {
     label: string;
     description: string;
@@ -32,7 +30,7 @@ interface ExtendedTemplate extends Template {
   }>;
 }
 
-const healthWellnessTemplates: ExtendedTemplate[] = [
+const healthWellnessTemplates: HealthWellnessTemplate[] = [
   // Blog Post Templates
   {
     id: 'health-blog-wellness-tips',

@@ -53,7 +53,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   CategoryOutlined as CategoryOutlinedIcon,
 } from '@mui/icons-material';
-import { Template } from './TemplateSelector';
+import { Template, TemplateVariable } from '../../types/templates';
 
 interface TemplatePermission {
   roleId: string;

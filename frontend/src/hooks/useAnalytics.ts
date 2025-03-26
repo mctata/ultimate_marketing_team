@@ -377,7 +377,7 @@ const getMockData = (type: string) => {
 /**
  * Custom hook for analytics data fetching and management
  */
-export const useAnalytics = () => {
+const useAnalytics = () => {
   // Feature usage metrics
   const getFeatureUsageMetrics = useCallback(async (params: DateRangeParams) => {
     try {
@@ -500,3 +500,7 @@ export const useAnalytics = () => {
     getDashboardData
   };
 };
+
+// Export as both default and named export for compatibility
+export default useAnalytics;
+export { useAnalytics };

@@ -1,67 +1,12 @@
 import api from './api';
-
-export interface Template {
-  id: string;
-  name: string;
-  description: string;
-  content_type: string;
-  template_content: string;
-  variables: TemplateVariable[];
-  category: string;
-  tags: string[];
-  version: string;
-  created_at: string;
-  updated_at: string;
-  is_default: boolean;
-  is_featured: boolean;
-  sample_output?: string;
-  author?: string;
-}
-
-export interface TemplateVariable {
-  name: string;
-  label: string;
-  description: string;
-  type: 'string' | 'number' | 'boolean' | 'text' | 'select';
-  required: boolean;
-  default_value?: string | number | boolean;
-  options?: Array<{ value: string; label: string }>;
-  min?: number;
-  max?: number;
-  validation?: string;
-}
-
-export interface GenerationRequest {
-  content_type: string;
-  template_id: string;
-  variables: Record<string, any>;
-  language?: string;
-  industry?: string;
-  model_preferences?: Record<string, any>;
-  quality_assessment?: boolean;
-  brand_id?: number;
-  seo_keywords?: string[];
-  batch_id?: string;
-}
-
-export interface ContentVariation {
-  variation_id: string;
-  content: string;
-  quality_score?: number;
-  quality_assessment?: Record<string, any>;
-  strengths?: string[];
-  improvement_areas?: string[];
-}
-
-export interface GenerationResponse {
-  task_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  variations?: ContentVariation[];
-  error?: string;
-  message?: string;
-  estimated_completion_time?: string;
-  progress?: number;
-}
+import {
+  Template,
+  TemplateVariable,
+  GenerationRequest,
+  ContentVariation,
+  GenerationResponse,
+  QualityAssessment
+} from '../types/templates';
 
 export interface TaskStatusResponse {
   task_id: string;
@@ -74,28 +19,6 @@ export interface TaskStatusResponse {
   error?: string;
   message?: string;
   estimated_completion_time?: string;
-}
-
-export interface QualityAssessment {
-  content_id: string;
-  overall_score: number;
-  metrics: {
-    readability: number;
-    engagement: number;
-    seo_alignment: number;
-    brand_alignment: number;
-    factual_accuracy: number;
-    grammar_spelling: number;
-  };
-  strengths: string[];
-  improvement_areas: string[];
-  improvement_suggestions: string[];
-  keywords_analysis?: {
-    keyword: string;
-    frequency: number;
-    density: number;
-    prominence: number;
-  }[];
 }
 
 export interface ABTestRequest {

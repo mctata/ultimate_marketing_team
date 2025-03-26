@@ -20,8 +20,10 @@ import {
   AccountCircle,
   LightMode,
   DarkMode,
+  Fullscreen,
+  FullscreenExit,
 } from '@mui/icons-material';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
@@ -39,9 +41,22 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
   const { logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const user = useSelector((state: RootState) => state.auth.user);
   const { darkMode, notifications } = useSelector((state: RootState) => state.ui);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Track fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
   
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -66,6 +81,18 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
   
   const handleThemeToggle = () => {
     dispatch(toggleDarkMode());
+  };
+  
+  const handleFullscreenToggle = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen mode: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
   };
   
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
@@ -112,6 +139,12 @@ const Header = ({ onDrawerToggle }: HeaderProps) => {
             <Tooltip title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={handleThemeToggle} color="inherit">
                 {darkMode ? <LightMode /> : <DarkMode />}
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+              <IconButton onClick={handleFullscreenToggle} color="inherit">
+                {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
               </IconButton>
             </Tooltip>
             

@@ -1,26 +1,7 @@
 import api from './api';
+import { Template, BaseTemplate, DisplayTemplate } from '../types/templates';
 
-// Types
-export interface Template {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-  variables: Record<string, any>;
-  format: TemplateFormat;
-  categories: TemplateCategory[];
-  industry: TemplateIndustry;
-  preview_image?: string;
-  created_at: string;
-  updated_at: string;
-  is_featured: boolean;
-  is_premium: boolean;
-  status: 'active' | 'draft' | 'archived';
-  usage_count: number;
-  community_rating: number;
-  user_rating?: number;
-}
-
+// Types not covered by centralized types
 export interface TemplateCategory {
   id: string;
   name: string;
