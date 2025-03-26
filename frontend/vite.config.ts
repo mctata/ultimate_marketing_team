@@ -12,7 +12,7 @@ const isAnalyze = process.env.ANALYZE === 'true';
 
 // Load environment-specific configuration
 const modeConfig = isProd 
-  ? { minify: true, sourcemap: false } 
+  ? { minify: 'terser', sourcemap: false } 
   : { minify: false, sourcemap: true };
 
 // Cached import bundling strategy
@@ -140,7 +140,7 @@ export default defineConfig({
     // Enable/disable source maps based on mode
     sourcemap: modeConfig.sourcemap,
     // Enable minification based on mode
-    minify: modeConfig.minify ? 'terser' : false,
+    minify: modeConfig.minify,
     terserOptions: {
       compress: {
         drop_console: isProd,
@@ -240,7 +240,7 @@ export default defineConfig({
     },
   },
   
-  // Optimizatopm
+  // Optimization
   optimizeDeps: {
     // Force including these dependencies in the optimization
     include: [

@@ -8,7 +8,7 @@ import CompetitorAdFeed from '../../components/campaigns/CompetitorAdFeed';
 import CompetitorPerformanceComparison from '../../components/campaigns/CompetitorPerformanceComparison';
 import IndustryBenchmarkChart from '../../components/campaigns/IndustryBenchmarkChart';
 import AlertSubscriptionPanel from '../../components/campaigns/AlertSubscriptionPanel';
-import { campaignService } from '../../services/campaignService';
+import campaignService from '../../services/campaignService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -58,7 +58,7 @@ const CompetitorBenchmark: React.FC = () => {
       setLoading(true);
       try {
         // In a real implementation, these would be API calls
-        const campaign = await campaignService.getCampaign(id);
+        const campaign = await campaignService.getCampaignById(id);
         setCampaignData(campaign);
         
         // Mock data - in production this would come from an API
