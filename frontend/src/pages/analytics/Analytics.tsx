@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -9,25 +9,48 @@ import {
   IconButton,
   Tooltip,
   Alert,
+  AlertTitle,
   CircularProgress,
   Grid,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Snackbar
 } from '@mui/material';
 import ApiMetrics from './ApiMetrics';
 import UXAnalyticsDashboard from './UXAnalyticsDashboard';
 import AccessibilityIcon from '@mui/icons-material/Accessibility';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ChartAccessibilityProvider } from '../../context/ChartAccessibilityContext';
 import ChartAccessibilitySettings from '../../components/analytics/ChartAccessibilitySettings';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import brandAnalyticsService, { BrandAnalyticsOverview } from '../../services/brandAnalyticsService';
+import axios, { AxiosError } from 'axios';
 
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+}
+
+// Define specific error types for better error handling
+enum ErrorType {
+  NETWORK = 'network',
+  AUTHORIZATION = 'authorization',
+  NOT_FOUND = 'not_found',
+  SERVER = 'server',
+  UNKNOWN = 'unknown',
+  TIMEOUT = 'timeout',
+  DATA_PARSING = 'data_parsing'
+}
+
+interface AnalyticsError {
+  type: ErrorType;
+  message: string;
+  details?: string;
+  retry?: boolean;
 }
 
 const TabPanel = (props: TabPanelProps) => {
@@ -56,35 +79,174 @@ const Analytics = () => {
   const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<BrandAnalyticsOverview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AnalyticsError | null>(null);
+  const [toast, setToast] = useState<{show: boolean, message: string, severity: 'success' | 'info' | 'warning' | 'error'}>({
+    show: false,
+    message: '',
+    severity: 'info'
+  });
   const { selectedBrand } = useSelector((state: RootState) => state.brands);
   
-  // Load brand-specific analytics data
-  useEffect(() => {
-    const loadAnalytics = async () => {
-      if (!selectedBrand?.id) {
-        setAnalyticsData(null);
-        return;
+  // Helper function to parse errors
+  const parseError = (err: unknown): AnalyticsError => {
+    // Check if it's an Axios error
+    if (axios.isAxiosError(err)) {
+      const axiosError = err as AxiosError;
+      
+      if (axiosError.code === 'ECONNABORTED') {
+        return {
+          type: ErrorType.TIMEOUT,
+          message: 'Request timed out. Please try again.',
+          retry: true
+        };
       }
       
-      setIsLoading(true);
-      setError(null);
+      if (!axiosError.response) {
+        return {
+          type: ErrorType.NETWORK,
+          message: 'Network error. Please check your internet connection.',
+          details: axiosError.message,
+          retry: true
+        };
+      }
       
-      try {
-        console.log('Loading analytics for brand:', selectedBrand.id);
-        const data = await brandAnalyticsService.getAnalyticsOverview(selectedBrand.id);
-        setAnalyticsData(data);
-      } catch (err) {
-        console.error('Error loading analytics:', err);
-        setError('Failed to load analytics data. Please try again later.');
-        setAnalyticsData(null);
-      } finally {
-        setIsLoading(false);
+      // Handle different status codes
+      switch (axiosError.response.status) {
+        case 401:
+        case 403:
+          return {
+            type: ErrorType.AUTHORIZATION,
+            message: 'You do not have permission to access this data.',
+            details: 'Please check your login credentials or contact an administrator.',
+            retry: false
+          };
+        case 404:
+          return {
+            type: ErrorType.NOT_FOUND,
+            message: 'Analytics data not found for this brand.',
+            details: 'The requested analytics data could not be found.',
+            retry: false
+          };
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          return {
+            type: ErrorType.SERVER,
+            message: 'Server error. Our team has been notified.',
+            details: `Status: ${axiosError.response.status}. Please try again later.`,
+            retry: true
+          };
+        default:
+          return {
+            type: ErrorType.UNKNOWN,
+            message: 'An unexpected error occurred.',
+            details: axiosError.message,
+            retry: true
+          };
+      }
+    }
+    
+    // Handle TypeError (often for JSON parsing issues)
+    if (err instanceof TypeError) {
+      return {
+        type: ErrorType.DATA_PARSING,
+        message: 'Error processing the data.',
+        details: err.message,
+        retry: true
+      };
+    }
+    
+    // Default case
+    return {
+      type: ErrorType.UNKNOWN,
+      message: 'An unexpected error occurred.',
+      details: err instanceof Error ? err.message : String(err),
+      retry: true
+    };
+  };
+
+  // Load brand-specific analytics data
+  const loadAnalytics = useCallback(async () => {
+    if (!selectedBrand?.id) {
+      setAnalyticsData(null);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Loading analytics for brand:', selectedBrand.id);
+      const data = await brandAnalyticsService.getAnalyticsOverview(selectedBrand.id);
+      
+      // Validate required data properties
+      if (!data || !data.contentMetrics || !data.campaignMetrics || 
+          !data.socialMetrics || !data.websiteMetrics) {
+        throw new TypeError('Incomplete analytics data received');
+      }
+      
+      setAnalyticsData(data);
+      
+      // Show success message if previously had an error
+      if (error) {
+        setToast({
+          show: true,
+          message: 'Analytics data loaded successfully',
+          severity: 'success'
+        });
+      }
+    } catch (err) {
+      console.error('Error loading analytics:', err);
+      const parsedError = parseError(err);
+      setError(parsedError);
+      setAnalyticsData(null);
+      
+      // Track error to analytics/monitoring service
+      console.error(`[Analytics Error] Type: ${parsedError.type}, Message: ${parsedError.message}`);
+      // Here you would normally call a tracking service like:
+      // errorTrackingService.logError('analytics_load_failure', parsedError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedBrand, error]);
+  
+  useEffect(() => {
+    loadAnalytics();
+    
+    // Set up a periodic refresh for the data (every 5 minutes)
+    const refreshInterval = setInterval(() => {
+      if (selectedBrand?.id) {
+        console.log('Refreshing analytics data automatically');
+        loadAnalytics();
+      }
+    }, 5 * 60 * 1000);
+    
+    // Clean up on unmount
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [selectedBrand, loadAnalytics]);
+  
+  // Handle network status changes
+  useEffect(() => {
+    const handleOnline = () => {
+      if (error?.type === ErrorType.NETWORK && selectedBrand?.id) {
+        setToast({
+          show: true,
+          message: 'You are back online. Refreshing data...',
+          severity: 'info'
+        });
+        loadAnalytics();
       }
     };
     
-    loadAnalytics();
-  }, [selectedBrand]);
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [error, selectedBrand, loadAnalytics]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -92,6 +254,68 @@ const Analytics = () => {
 
   const toggleAccessibilitySettings = () => {
     setShowAccessibilitySettings(!showAccessibilitySettings);
+  };
+  
+  const handleRetry = () => {
+    loadAnalytics();
+  };
+  
+  const handleToastClose = () => {
+    setToast({...toast, show: false});
+  };
+
+  // Render error UI based on error type
+  const renderErrorUI = () => {
+    if (!error) return null;
+    
+    return (
+      <Alert 
+        severity="error" 
+        sx={{ mb: 3 }}
+        action={
+          error.retry ? (
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={handleRetry}
+              startIcon={<RefreshIcon />}
+            >
+              Retry
+            </Button>
+          ) : undefined
+        }
+        icon={<ErrorOutlineIcon />}
+      >
+        <AlertTitle>{error.message}</AlertTitle>
+        {error.details && <Typography variant="body2">{error.details}</Typography>}
+        
+        {error.type === ErrorType.NETWORK && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Please check your internet connection and try again.
+          </Typography>
+        )}
+        
+        {error.type === ErrorType.AUTHORIZATION && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            If you believe this is an error, please contact support.
+          </Typography>
+        )}
+      </Alert>
+    );
+  };
+
+  // Render content with defensive checks
+  const renderMetricSafely = (value: any, formatter?: (val: any) => string) => {
+    if (value === undefined || value === null) {
+      return 'N/A';
+    }
+    
+    try {
+      return formatter ? formatter(value) : value;
+    } catch (e) {
+      console.error('Error formatting metric:', e);
+      return 'Error';
+    }
   };
 
   return (
@@ -103,6 +327,16 @@ const Analytics = () => {
           </Typography>
           
           <Box display="flex" alignItems="center">
+            <Tooltip title="Refresh data">
+              <IconButton 
+                onClick={handleRetry} 
+                disabled={isLoading || !selectedBrand}
+                aria-label="Refresh analytics data"
+                sx={{ mr: 1 }}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Accessibility Settings">
               <IconButton 
                 onClick={toggleAccessibilitySettings} 
@@ -112,7 +346,10 @@ const Analytics = () => {
                 <AccessibilityIcon />
               </IconButton>
             </Tooltip>
-            <Button variant="contained">
+            <Button 
+              variant="contained"
+              disabled={!analyticsData}
+            >
               Export Report
             </Button>
           </Box>
@@ -155,11 +392,7 @@ const Analytics = () => {
             )}
             
             {/* Error message */}
-            {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error}
-              </Alert>
-            )}
+            {error && renderErrorUI()}
             
             {/* Analytics overview */}
             {!isLoading && analyticsData && (
@@ -179,7 +412,7 @@ const Analytics = () => {
                             Total Content Items
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.totalContentItems}
+                            {renderMetricSafely(analyticsData.contentMetrics.totalContentItems)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -187,7 +420,7 @@ const Analytics = () => {
                             Published Items
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.publishedItems}
+                            {renderMetricSafely(analyticsData.contentMetrics.publishedItems)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -195,7 +428,7 @@ const Analytics = () => {
                             Average Score
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.averageScore}/100
+                            {renderMetricSafely(analyticsData.contentMetrics.averageScore, val => `${val}/100`)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -203,7 +436,7 @@ const Analytics = () => {
                             Top Performing Type
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.topPerformingType}
+                            {renderMetricSafely(analyticsData.contentMetrics.topPerformingType)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -211,7 +444,7 @@ const Analytics = () => {
                             Total Views
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.totalViews.toLocaleString()}
+                            {renderMetricSafely(analyticsData.contentMetrics.totalViews, val => val.toLocaleString())}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -219,7 +452,7 @@ const Analytics = () => {
                             Engagement Rate
                           </Typography>
                           <Typography variant="h6">
-                            {analyticsData.contentMetrics.engagementRate}%
+                            {renderMetricSafely(analyticsData.contentMetrics.engagementRate, val => `${val}%`)}
                           </Typography>
                         </Grid>
                       </Grid>
@@ -482,6 +715,18 @@ const Analytics = () => {
             </Box>
           </Box>
         )}
+        
+        {/* Toast notifications */}
+        <Snackbar
+          open={toast.show}
+          autoHideDuration={6000}
+          onClose={handleToastClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={handleToastClose} severity={toast.severity}>
+            {toast.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </ChartAccessibilityProvider>
   );
