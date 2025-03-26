@@ -105,7 +105,7 @@ export const seedTemplates = async () => {
         description: template.description,
         content: template.content,
         format_id: template.format_id,
-        preview_image: template.preview_image,
+        preview_image: template.preview_image || undefined,
         dynamic_fields: template.dynamic_fields,
         tone_options: template.tone_options,
         is_featured: template.is_featured,
