@@ -191,16 +191,15 @@ const ContentPredictions: React.FC<ContentPredictionsProps> = ({
         topics: ['marketing', 'analytics', 'content']
       };
       
-      const result = await createPrediction({
-        content_id: contentId,
-        content_data: contentData,
-        target_metric: selectedMetric,
-        prediction_horizon: predictionHorizon
-      });
+      const result = await createPrediction();
       
       // Callback with result
-      if (onPredictionGenerated) {
-        onPredictionGenerated(result);
+      if (onPredictionGenerated && result) {
+        onPredictionGenerated({
+          content_id: contentId,
+          target_metric: selectedMetric,
+          ...result
+        });
       }
       
       // Refetch the prediction
@@ -217,9 +216,9 @@ const ContentPredictions: React.FC<ContentPredictionsProps> = ({
     const chartData = [...historicalData.map(point => ({
       date: point.date,
       actual: point.value,
-      predicted: null,
-      lower: null,
-      upper: null
+      predicted: undefined,
+      lower: undefined,
+      upper: undefined
     }))];
     
     // Add prediction if available
@@ -229,7 +228,7 @@ const ContentPredictions: React.FC<ContentPredictionsProps> = ({
       
       chartData.push({
         date: formattedDate,
-        actual: null,
+        actual: undefined,
         predicted: prediction.predicted_value,
         lower: prediction.confidence_interval_lower,
         upper: prediction.confidence_interval_upper

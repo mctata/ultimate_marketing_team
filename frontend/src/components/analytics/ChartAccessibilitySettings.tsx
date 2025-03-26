@@ -38,7 +38,7 @@ const ChartAccessibilitySettings: React.FC<ChartAccessibilitySettingsProps> = ({
   };
   
   const handleColorBlindModeChange = (event: SelectChangeEvent<"none" | "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia">) => {
-    updateConfig({ colorBlindMode: event.target.value });
+    updateConfig({ colorBlindMode: event.target.value as "none" | "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia" });
   };
   
   const handleTooltipDelayChange = (_event: any, newValue: number | number[]) => {
