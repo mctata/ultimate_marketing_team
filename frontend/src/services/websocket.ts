@@ -173,7 +173,7 @@ class WebSocketService {
         
         // Create WebSocket connection with auth token
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || '';
+        let wsBaseUrl = process.env.VITE_WS_BASE_URL || '';
         
         // If WS_BASE_URL is not provided, construct it based on the current host
         if (!wsBaseUrl) {

@@ -331,7 +331,7 @@ const AutomatedInsights: React.FC<AutomatedInsightsProps> = ({
                           
                           {insight.trend && (
                             <Chip 
-                              icon={getTrendDetails(insight.trend).icon}
+                              icon={getTrendDetails(insight.trend).icon || undefined}
                               label={insight.percent ? `${insight.percent > 0 ? '+' : ''}${insight.percent}%` : ''}
                               size="small"
                               sx={{ 

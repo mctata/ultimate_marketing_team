@@ -20,7 +20,11 @@ import {
   Autocomplete
 } from '@mui/material';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
-import { DateRange } from '@mui/x-date-pickers-pro/internals/models';
+// Define DateRange interface locally
+interface DateRange<T = Date> {
+  start: T | null;
+  end: T | null;
+}
 import { addDays, format, isValid } from 'date-fns';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SaveIcon from '@mui/icons-material/Save';

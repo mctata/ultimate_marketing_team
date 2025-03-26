@@ -185,7 +185,7 @@ const TemplateAnalytics: React.FC = () => {
                 {templateAnalytics?.totalUsage || 0}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {templateAnalytics?.usageGrowth > 0 ? '+' : ''}{templateAnalytics?.usageGrowth}% vs previous period
+                {templateAnalytics?.usageGrowth && templateAnalytics.usageGrowth > 0 ? '+' : ''}{templateAnalytics?.usageGrowth || 0}% vs previous period
               </Typography>
             </CardContent>
           </Card>
@@ -201,7 +201,7 @@ const TemplateAnalytics: React.FC = () => {
                 {templateAnalytics?.avgConversionRate || 0}%
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {templateAnalytics?.conversionGrowth > 0 ? '+' : ''}{templateAnalytics?.conversionGrowth}% vs previous period
+                {templateAnalytics?.conversionGrowth && templateAnalytics.conversionGrowth > 0 ? '+' : ''}{templateAnalytics?.conversionGrowth || 0}% vs previous period
               </Typography>
             </CardContent>
           </Card>
@@ -217,7 +217,7 @@ const TemplateAnalytics: React.FC = () => {
                 {templateAnalytics?.avgEngagementScore || 0}/10
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {templateAnalytics?.engagementGrowth > 0 ? '+' : ''}{templateAnalytics?.engagementGrowth}% vs previous period
+                {templateAnalytics?.engagementGrowth && templateAnalytics.engagementGrowth > 0 ? '+' : ''}{templateAnalytics?.engagementGrowth || 0}% vs previous period
               </Typography>
             </CardContent>
           </Card>
@@ -233,7 +233,7 @@ const TemplateAnalytics: React.FC = () => {
                 {templateAnalytics?.avgCompletionTime || 0}m
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {templateAnalytics?.completionTimeGrowth < 0 ? '' : '+'}{templateAnalytics?.completionTimeGrowth}% vs previous period
+                {templateAnalytics?.completionTimeGrowth && templateAnalytics.completionTimeGrowth < 0 ? '' : '+'}{templateAnalytics?.completionTimeGrowth || 0}% vs previous period
               </Typography>
             </CardContent>
           </Card>

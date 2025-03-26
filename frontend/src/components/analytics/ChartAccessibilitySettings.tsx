@@ -16,7 +16,8 @@ import {
   Button,
   useTheme,
   IconButton,
-  Tooltip
+  Tooltip,
+  SelectChangeEvent
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import RestoreIcon from '@mui/icons-material/RestoreOutlined';
@@ -36,8 +37,8 @@ const ChartAccessibilitySettings: React.FC<ChartAccessibilitySettingsProps> = ({
     updateConfig({ [name]: event.target.checked });
   };
   
-  const handleColorBlindModeChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    updateConfig({ colorBlindMode: event.target.value as any });
+  const handleColorBlindModeChange = (event: SelectChangeEvent<"none" | "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia">) => {
+    updateConfig({ colorBlindMode: event.target.value });
   };
   
   const handleTooltipDelayChange = (_event: any, newValue: number | number[]) => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -456,7 +456,9 @@ const CalendarListView: React.FC<CalendarListViewProps> = ({
                 const itemDate = parseISO(item.scheduled_date);
                 const isPastDate = isPast(itemDate) && !isToday(itemDate);
                 const isTodayDate = isToday(itemDate);
-                const statusConfig = {
+                const statusConfig: { 
+                  [key: string]: { color: string; opacity: number; icon?: React.ReactNode } 
+                } = {
                   draft: { color: theme.palette.grey[500], opacity: 1 },
                   scheduled: { color: theme.palette.warning.main, opacity: 1 },
                   published: { color: theme.palette.success.main, opacity: 1 },

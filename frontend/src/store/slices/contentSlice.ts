@@ -149,7 +149,7 @@ export const fetchBestTimeRecommendations = createAsyncThunk(
     try {
       // Change brandId parameter to project_id to match API expectations
       const response = await calendarService.getBestTimeRecommendations(projectId);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error fetching best time recommendations:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch best time recommendations');
@@ -161,8 +161,18 @@ export const createCalendarItem = createAsyncThunk(
   'content/createCalendarItem',
   async (item: Omit<CalendarItem, 'id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
     try {
-      const response = await calendarService.createCalendarEntry(item);
-      return response.data;
+      // Convert to ScheduleItemRequest format
+      const scheduleItem: any = {
+        project_id: parseInt(item.brandId),
+        content_draft_id: null,
+        scheduled_date: item.scheduledDate,
+        status: item.status,
+        platform: item.platform ? item.platform.join(',') : undefined,
+        content_type: item.contentType
+      };
+      
+      const response = await calendarService.createCalendarEntry(scheduleItem);
+      return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to create calendar item');
     }
@@ -173,8 +183,18 @@ export const updateCalendarItem = createAsyncThunk(
   'content/updateCalendarItem',
   async (item: CalendarItem, { rejectWithValue }) => {
     try {
-      const response = await calendarService.updateCalendarEntry(item.id, item);
-      return response.data;
+      const itemId = typeof item.id === 'string' ? parseInt(item.id) : item.id;
+      
+      // Convert to the expected format for the API
+      const updates: any = {
+        status: item.status,
+        scheduled_date: item.scheduledDate,
+        platform: item.platform ? item.platform.join(',') : undefined,
+        content_type: item.contentType
+      };
+      
+      const response = await calendarService.updateCalendarEntry(itemId, updates);
+      return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to update calendar item');
     }
@@ -185,7 +205,8 @@ export const deleteCalendarItem = createAsyncThunk(
   'content/deleteCalendarItem',
   async (itemId: string, { rejectWithValue }) => {
     try {
-      await calendarService.deleteCalendarEntry(itemId);
+      const numericId = parseInt(itemId);
+      await calendarService.deleteCalendarEntry(numericId);
       return itemId;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete calendar item');

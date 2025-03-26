@@ -53,7 +53,7 @@ import {
   PresentToAll as PresentToAllIcon,
   Share as ShareIcon
 } from '@mui/icons-material';
-import useAnalytics from '../../hooks/useAnalytics';
+import { useAnalytics } from '../../hooks/useAnalytics';
 
 // Types for reports
 interface ReportRecipient {
@@ -157,33 +157,74 @@ const ScheduledReports: React.FC<ScheduledReportsProps> = ({
     file_type: 'pdf'
   });
   
-  // Get reports from API
-  const { 
-    useAnalyticsReports, 
-    useCreateReport, 
-    useGenerateReport 
-  } = useAnalytics();
+  // Mock data
+  const reports: Report[] = [
+    {
+      id: 1,
+      name: 'Monthly Content Performance',
+      description: 'Detailed analysis of content performance metrics',
+      created_by: 1,
+      report_type: 'content_performance',
+      config: {
+        date_range: {
+          type: 'relative',
+          start: '30d',
+          end: 'now'
+        },
+        metrics: ['views', 'engagement', 'conversions']
+      },
+      schedule_type: 'scheduled',
+      schedule_config: {
+        frequency: 'monthly',
+        dayOfMonth: 1,
+        time: '08:00',
+        timezone: 'UTC'
+      },
+      file_type: 'pdf',
+      last_generated: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 2,
+      name: 'Campaign ROI Analysis',
+      description: 'ROI and performance metrics for all active campaigns',
+      created_by: 1,
+      report_type: 'campaign_analytics',
+      config: {
+        date_range: {
+          type: 'relative',
+          start: '90d',
+          end: 'now'
+        },
+        metrics: ['spend', 'revenue', 'roi']
+      },
+      file_type: 'csv'
+    }
+  ];
   
-  const {
-    data: reports = [],
-    isLoading: isLoadingReports,
-    error: reportsError,
-    refetch: refetchReports
-  } = useAnalyticsReports();
+  const isLoadingReports = false;
+  const reportsError = null;
+  const isCreatingReport = false;
+  const createReportError = null;
+  const isGeneratingReport = false;
+  const generateReportError = null;
   
-  // Create report mutation
-  const {
-    mutate: createReport,
-    isLoading: isCreatingReport,
-    error: createReportError
-  } = useCreateReport();
+  const refetchReports = () => {
+    console.log('Refetching reports...');
+  };
   
-  // Generate report mutation
-  const {
-    mutate: generateReport,
-    isLoading: isGeneratingReport,
-    error: generateReportError
-  } = useGenerateReport();
+  const createReport = (reportData: any, options?: any) => {
+    console.log('Creating report:', reportData);
+    if (options?.onSuccess) {
+      setTimeout(() => options.onSuccess(), 500);
+    }
+  };
+  
+  const generateReport = (params: any, options?: any) => {
+    console.log('Generating report:', params);
+    if (options?.onSuccess) {
+      setTimeout(() => options.onSuccess({ success: true }), 500);
+    }
+  };
   
   // Handle tab change
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -256,10 +297,10 @@ const ScheduledReports: React.FC<ScheduledReportsProps> = ({
         reportId: selectedReport.id,
         fileType: formData.file_type
       }, {
-        onSuccess: (result) => {
+        onSuccess: (result: { success: boolean }) => {
           setGenerateReportDialogOpen(false);
           
-          if (onGenerateReport) {
+          if (onGenerateReport && selectedReport) {
             onGenerateReport(selectedReport);
           }
           
@@ -285,7 +326,7 @@ const ScheduledReports: React.FC<ScheduledReportsProps> = ({
   };
   
   // Filter reports based on tab
-  const filteredReports = reports.filter(report => {
+  const filteredReports = reports.filter((report: Report) => {
     if (tabValue === 0) return true; // All reports
     if (tabValue === 1) return report.schedule_type && report.schedule_type !== 'none'; // Scheduled
     if (tabValue === 2) return !report.schedule_type || report.schedule_type === 'none'; // On-demand

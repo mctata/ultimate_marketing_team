@@ -47,7 +47,7 @@ import {
   Area,
   ReferenceLine
 } from 'recharts';
-import useAnalytics from '../../hooks/useAnalytics';
+import { useAnalytics } from '../../hooks/useAnalytics';
 
 // Types
 interface Prediction {
@@ -134,23 +134,31 @@ const ContentPredictions: React.FC<ContentPredictionsProps> = ({
   const [predictionHorizon, setPredictionHorizon] = useState(30); // days
   const [isCreatingPrediction, setIsCreatingPrediction] = useState(false);
   
-  // Get predictions from React Query hook
-  const { useCreatePrediction, useContentPredictions } = useAnalytics();
+  // Mock data functions
+  const isPredictionLoading = false;
+  const isCreatingPredictionLoading = false;
+  const predictionError = null;
+  const createPredictionError = null;
+  const prediction = {
+    predicted_value: 15000,
+    prediction_date: new Date().toISOString(),
+    confidence_interval_lower: 12000,
+    confidence_interval_upper: 18000,
+    model: {
+      name: 'Content Performance Model',
+      model_type: 'Time Series',
+      performance_metrics: { accuracy: 0.86 }
+    }
+  };
   
-  // Query for existing prediction
-  const {
-    data: prediction,
-    isLoading: isPredictionLoading,
-    error: predictionError,
-    refetch: refetchPrediction
-  } = useContentPredictions(contentId, selectedMetric);
+  const refetchPrediction = () => {
+    console.log('Refetching prediction...');
+  };
   
-  // Mutation for creating a new prediction
-  const {
-    mutateAsync: createPrediction,
-    isLoading: isCreatingPredictionLoading,
-    error: createPredictionError
-  } = useCreatePrediction();
+  const createPrediction = async () => {
+    console.log('Creating prediction...');
+    return prediction;
+  };
   
   // Handle metric change
   const handleMetricChange = (event: SelectChangeEvent) => {

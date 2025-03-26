@@ -67,7 +67,7 @@ export function memoizeLRU<Args extends unknown[], Result>(
 
 // Measured function execution time - useful for debugging performance issues
 export function measureTime<T>(fn: () => T, label: string): T {
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     console.time(label);
     const result = fn();
     console.timeEnd(label);
@@ -124,8 +124,8 @@ export function debounce<Args extends unknown[]>(
 }
 
 // Function to measure React component render time for performance debugging
-export function useRenderTimer(componentName: string): void {
-  if (import.meta.env.DEV) {
+export function useRenderTimer(componentName: string): () => void {
+  if (process.env.NODE_ENV === 'development') {
     const startTime = performance.now();
     
     return () => {
@@ -144,7 +144,7 @@ export function useRenderTimer(componentName: string): void {
 // Custom hook for detecting slow renders in development
 // Usage: useSlowRenderWarning('ComponentName');
 export function useSlowRenderWarning(componentName: string, threshold: number = 10): void {
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     const startTime = performance.now();
     
     // This runs after render

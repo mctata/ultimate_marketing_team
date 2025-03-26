@@ -13,6 +13,8 @@ import analyticsReducer from './slices/analyticsSlice';
 import uiReducer from './slices/uiSlice';
 import adsReducer from './slices/adsSlice';
 import projectsReducer from './slices/projectsSlice';
+import predictiveAnalyticsReducer from './slices/predictiveAnalyticsSlice';
+import campaignRulesReducer from './slices/campaignRulesSlice';
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -24,6 +26,8 @@ const rootReducer = combineReducers({
   ui: uiReducer,
   ads: adsReducer,
   projects: projectsReducer,
+  predictiveAnalytics: predictiveAnalyticsReducer,
+  campaignRules: campaignRulesReducer,
 });
 
 // Configuration for each persistable slice
@@ -93,6 +97,8 @@ const persistedReducer = persistReducer(persistConfig, combineReducers({
   ui: persistedUiReducer,
   ads: adsReducer,
   projects: projectsReducer,
+  predictiveAnalytics: predictiveAnalyticsReducer,
+  campaignRules: campaignRulesReducer,
 }));
 
 // Configure the store with the persisted reducer
