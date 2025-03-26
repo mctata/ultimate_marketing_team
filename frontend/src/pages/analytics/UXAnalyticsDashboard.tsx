@@ -97,7 +97,7 @@ const filterDefinitions = [
     ]
   },
   {
-    id: 'platform',
+    id: 'platformType',  // Changed from 'platform' to avoid conflicts with system theme
     name: 'Platform',
     type: 'toggle' as const,
     options: [
@@ -134,7 +134,7 @@ const savedFilters = [
     filters: {
       dateRange: [subDays(new Date(), 14), new Date()],
       features: ['collaboration'],
-      platform: 'web'
+      platformType: 'web'
     }
   }
 ];
@@ -437,7 +437,7 @@ const UXAnalyticsDashboard: React.FC = () => {
       endDate,
       userType: filters.userType || 'all',
       features: Array.isArray(filters.features) ? filters.features.join(',') : undefined,
-      platform: filters.platform !== 'all' ? filters.platform : undefined
+      platform: filters.platformType !== 'all' ? filters.platformType : undefined
     };
   }, [filters, getDateRange]);
   
@@ -529,7 +529,19 @@ const UXAnalyticsDashboard: React.FC = () => {
   const handleLoadFilter = (filterId: string) => {
     const savedFilter = savedFilters.find(f => f.id === filterId);
     if (savedFilter) {
-      setFilters(savedFilter.filters);
+      // Make a safe copy of the saved filters to avoid mutations
+      const filtersCopy = JSON.parse(JSON.stringify(savedFilter.filters));
+      
+      // If platform is in the filters, ensure it's properly handled
+      if ('platform' in filtersCopy) {
+        // Make sure we're not accidentally setting a bad value
+        if (typeof filtersCopy.platform !== 'string' || 
+            !['all', 'web', 'mobile'].includes(filtersCopy.platform)) {
+          filtersCopy.platform = 'all';
+        }
+      }
+      
+      setFilters(filtersCopy);
       setSnackbar({
         open: true,
         message: `Loaded filter: ${savedFilter.name}`,

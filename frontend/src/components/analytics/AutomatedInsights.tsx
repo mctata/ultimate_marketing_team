@@ -75,9 +75,9 @@ const AutomatedInsights: React.FC<AutomatedInsightsProps> = ({
   const [visibleInsights, setVisibleInsights] = useState(maxItems);
 
   // Filter insights by categories if provided
-  const filteredInsights = showCategories 
+  const filteredInsights = (showCategories && Array.isArray(showCategories) && insights)
     ? insights.filter(insight => showCategories.includes(insight.category))
-    : insights;
+    : insights || [];
 
   // Handle accordion expansion
   const handleChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
