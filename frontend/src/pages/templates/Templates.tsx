@@ -110,7 +110,34 @@ const Templates: React.FC = () => {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [fromScratchDialogOpen, setFromScratchDialogOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  
+  // Define a proper type for the template instead of using any
+  interface ExtendedTemplate {
+    id: string;
+    name: string;
+    title: string;
+    description: string;
+    format_id: string;
+    format: {
+      id: string;
+      name: string;
+    };
+    categories: Array<{
+      id: string;
+      name: string;
+    }>;
+    industries: Array<{
+      id: string;
+      name: string;
+    }>;
+    is_premium: boolean;
+    preview_image?: string;
+    content?: string;
+    community_rating?: number;
+    usage_count?: number;
+  }
+  
+  const [selectedTemplate, setSelectedTemplate] = useState<ExtendedTemplate | null>(null);
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -290,7 +317,7 @@ const Templates: React.FC = () => {
   };
   
   // Handle preview for template
-  const handleOpenPreview = (template: any) => {
+  const handleOpenPreview = (template: ExtendedTemplate) => {
     setSelectedTemplate(template);
     setPreviewModalOpen(true);
   };
