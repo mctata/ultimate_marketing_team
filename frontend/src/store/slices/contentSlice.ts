@@ -61,6 +61,22 @@ interface BestTimeRecommendation {
   confidence: number;
 }
 
+// API response interface
+interface CalendarItemApiResponse {
+  id: number;
+  project_id: number;
+  content_draft_id: number | null;
+  scheduled_date: string;
+  published_date?: string | null;
+  status: string;
+  content_type: string;
+  platform?: string[] | string;
+  title?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
 interface CalendarState {
   items: Record<string, CalendarItem>; // Keyed by ID for faster lookup
   itemsByDate: Record<string, string[]>; // Date string -> array of IDs
@@ -102,12 +118,26 @@ const initialState: ContentState = {
   }
 };
 
+interface DateRangeParam {
+  startDate: string;
+  endDate: string;
+  force?: boolean;
+}
+
+interface CalendarItemsResponse {
+  items: CalendarItem[];
+  dateRange: string;
+}
+
 // Async thunks for calendar operations
-export const fetchCalendarItems = createAsyncThunk(
+export const fetchCalendarItems = createAsyncThunk<CalendarItemsResponse | null, DateRangeParam, { 
+  rejectValue: string;
+  state: RootState;
+}>(
   'content/fetchCalendarItems',
-  async (dateRange: { startDate: string; endDate: string; force?: boolean }, { getState, rejectWithValue }) => {
+  async (dateRange: DateRangeParam, { getState, rejectWithValue }) => {
     try {
-      const state = getState() as RootState;
+      const state = getState();
       const rangeKey = `${dateRange.startDate}_${dateRange.endDate}`;
       const lastFetched = state.content.calendar.lastFetched[rangeKey] || 0;
       const CACHE_TTL = 60 * 1000; // 1 minute cache time
@@ -132,7 +162,7 @@ export const fetchCalendarItems = createAsyncThunk(
   }
 );
 
-export const fetchCalendarInsights = createAsyncThunk(
+export const fetchCalendarInsights = createAsyncThunk<CalendarInsight[], string, { rejectValue: string }>(
   'content/fetchCalendarInsights',
   async (projectId: string, { rejectWithValue }) => {
     try {
@@ -146,7 +176,7 @@ export const fetchCalendarInsights = createAsyncThunk(
   }
 );
 
-export const fetchBestTimeRecommendations = createAsyncThunk(
+export const fetchBestTimeRecommendations = createAsyncThunk<BestTimeRecommendation[], string, { rejectValue: string }>(
   'content/fetchBestTimeRecommendations',
   async (projectId: string, { rejectWithValue }) => {
     try {
@@ -160,12 +190,21 @@ export const fetchBestTimeRecommendations = createAsyncThunk(
   }
 );
 
-export const createCalendarItem = createAsyncThunk(
+interface ScheduleItemRequest {
+  project_id: number;
+  content_draft_id: number | null;
+  scheduled_date: string;
+  status: string;
+  platform?: string;
+  content_type: string;
+}
+
+export const createCalendarItem = createAsyncThunk<any, Omit<CalendarItem, 'id' | 'createdAt' | 'updatedAt'>, { rejectValue: string }>(
   'content/createCalendarItem',
   async (item: Omit<CalendarItem, 'id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
     try {
       // Convert to ScheduleItemRequest format
-      const scheduleItem: any = {
+      const scheduleItem: ScheduleItemRequest = {
         project_id: parseInt(item.brandId),
         content_draft_id: null,
         scheduled_date: item.scheduledDate,
@@ -182,14 +221,21 @@ export const createCalendarItem = createAsyncThunk(
   }
 );
 
-export const updateCalendarItem = createAsyncThunk(
+interface CalendarItemUpdateRequest {
+  status: string;
+  scheduled_date: string;
+  platform?: string;
+  content_type: string;
+}
+
+export const updateCalendarItem = createAsyncThunk<any, CalendarItem, { rejectValue: string }>(
   'content/updateCalendarItem',
   async (item: CalendarItem, { rejectWithValue }) => {
     try {
       const itemId = typeof item.id === 'string' ? parseInt(item.id) : item.id;
       
       // Convert to the expected format for the API
-      const updates: any = {
+      const updates: CalendarItemUpdateRequest = {
         status: item.status,
         scheduled_date: item.scheduledDate,
         platform: item.platform ? item.platform.join(',') : undefined,
@@ -204,7 +250,7 @@ export const updateCalendarItem = createAsyncThunk(
   }
 );
 
-export const deleteCalendarItem = createAsyncThunk(
+export const deleteCalendarItem = createAsyncThunk<string, string, { rejectValue: string }>(
   'content/deleteCalendarItem',
   async (itemId: string, { rejectWithValue }) => {
     try {
@@ -217,7 +263,7 @@ export const deleteCalendarItem = createAsyncThunk(
   }
 );
 
-export const publishCalendarItem = createAsyncThunk(
+export const publishCalendarItem = createAsyncThunk<CalendarItemApiResponse, string, { rejectValue: string }>(
   'content/publishCalendarItem',
   async (itemId: string, { rejectWithValue }) => {
     try {
