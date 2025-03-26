@@ -4,7 +4,8 @@ import path from 'path';
 import { viteCommonjs } from '@originjs/vite-plugin-commonjs';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { createHtmlPlugin } from 'vite-plugin-html';
-import { compression } from 'vite-plugin-compression2';
+// Import compression plugin with a different approach to avoid undefined errors
+import compression from 'vite-plugin-compression2';
 
 // Environment variables
 const isProd = process.env.NODE_ENV === 'production';
@@ -23,6 +24,41 @@ const cachedImports = [
   '@tanstack/react-query',
   '@reduxjs/toolkit',
   'react-redux',
+  'redux-persist',
+];
+
+// UI frameworks bundling
+const uiFrameworks = [
+  '@mui/material',
+  '@mui/icons-material',
+  '@mui/x-charts',
+  '@mui/x-data-grid',
+  '@mui/x-date-pickers-pro',
+  '@emotion/react',
+  '@emotion/styled',
+];
+
+// Chart libraries bundling
+const chartLibraries = [
+  'chart.js',
+  'recharts',
+  '@nivo',
+  'd3',
+];
+
+// Form libraries bundling
+const formLibraries = [
+  'formik',
+  'yup',
+];
+
+// Utility libraries bundling
+const utilLibraries = [
+  'date-fns',
+  'lodash',
+  'uuid',
+  'axios',
+  'file-saver',
 ];
 
 // https://vitejs.dev/config/
@@ -60,16 +96,18 @@ export default defineConfig({
       },
     }),
     
-    // Production compression
+    // Production brotli compression
     isProd && compression({
-      algorithm: 'brotli',
+      algorithm: 'brotliCompress',
       exclude: [/\.(br)$/, /\.(gz)$/, /\.(png|jpe?g|gif|svg|webp)$/i],
+      threshold: 10240, // Only compress files larger than 10KB
     }),
     
     // Production gzip compression
     isProd && compression({
       algorithm: 'gzip',
       exclude: [/\.(br)$/, /\.(gz)$/, /\.(png|jpe?g|gif|svg|webp)$/i],
+      threshold: 10240, // Only compress files larger than 10KB
     }),
     
     // Bundle analysis in analyze mode
@@ -170,33 +208,27 @@ export default defineConfig({
         // Advanced chunks strategy
         manualChunks: (id) => {
           // React and core libraries
-          if (cachedImports.some(pkg => id.includes(`/node_modules/${pkg}`))) {
+          if (cachedImports.some(pkg => id.includes(`/node_modules/${pkg}`) || id.includes(`node_modules/${pkg}/`))) {
             return 'vendor-react';
           }
           
-          // Material UI
-          if (id.includes('/node_modules/@mui/')) {
+          // Material UI and UI frameworks
+          if (uiFrameworks.some(pkg => id.includes(`/node_modules/${pkg}`) || id.includes(`node_modules/${pkg}/`))) {
             return 'vendor-mui';
           }
           
           // Chart libraries
-          if (id.includes('/node_modules/chart.js') || 
-              id.includes('/node_modules/recharts') ||
-              id.includes('/node_modules/@nivo/') ||
-              id.includes('/node_modules/d3')) {
+          if (chartLibraries.some(pkg => id.includes(`/node_modules/${pkg}`) || id.includes(`node_modules/${pkg}/`))) {
             return 'vendor-charts';
           }
           
           // Form libraries
-          if (id.includes('/node_modules/formik') || 
-              id.includes('/node_modules/yup')) {
+          if (formLibraries.some(pkg => id.includes(`/node_modules/${pkg}`) || id.includes(`node_modules/${pkg}/`))) {
             return 'vendor-forms';
           }
           
           // Utility libraries
-          if (id.includes('/node_modules/date-fns') ||
-              id.includes('/node_modules/lodash') ||
-              id.includes('/node_modules/uuid')) {
+          if (utilLibraries.some(pkg => id.includes(`/node_modules/${pkg}`) || id.includes(`node_modules/${pkg}/`))) {
             return 'vendor-utils';
           }
           
@@ -239,22 +271,24 @@ export default defineConfig({
     },
   },
   
-  // Optimization
+  // Dependency optimization
   optimizeDeps: {
     // Force including these dependencies in the optimization
     include: [
-      'react', 
-      'react-dom', 
-      'react-router-dom',
-      '@mui/material',
-      '@mui/icons-material',
-      '@reduxjs/toolkit',
-      'react-redux',
-      '@tanstack/react-query',
-      'formik',
-      'yup',
-      'axios',
-      'date-fns',
+      // Core React packages
+      ...cachedImports,
+      
+      // UI frameworks
+      ...uiFrameworks,
+      
+      // Chart libraries
+      ...chartLibraries,
+      
+      // Form libraries
+      ...formLibraries,
+      
+      // Utility libraries
+      ...utilLibraries,
     ],
     // Exclude dependencies with native ESM that shouldn't be bundled
     exclude: [],
@@ -268,5 +302,18 @@ export default defineConfig({
         '.svg': 'text',
       },
     },
+    // Pre-bundling options
+    entries: [
+      './src/main.tsx',
+      './src/pages/**/*.tsx',
+    ],
+    // Force re-optimization of packages if something was modified
+    force: process.env.FORCE_DEPS === 'true',
+  },
+  
+  // Performance optimization
+  performance: {
+    // Don't warn about large entry points
+    hints: false,
   },
 });
