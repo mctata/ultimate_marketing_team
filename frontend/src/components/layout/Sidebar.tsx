@@ -197,7 +197,10 @@ const Sidebar = ({ open, onClose, width }: SidebarProps): JSX.Element => {
                 textOverflow: 'ellipsis',
                 fontWeight: 500,
                 fontSize: '0.9rem',
-              }
+              },
+              // Ensure visibility in both light and dark modes
+              borderColor: 'primary.main',
+              color: 'text.primary',
             }}
             onClick={() => navigate(`/brands/${currentBrand.id}`)}
           />

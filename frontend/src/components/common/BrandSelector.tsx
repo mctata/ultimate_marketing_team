@@ -132,19 +132,20 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
     return (
       <Box>
         <Tooltip title="Add Brand">
-          <IconButton
+          <Button
             onClick={handleCreateNewBrand}
             size="small"
             aria-label="Add Brand"
+            variant="outlined"
+            startIcon={<AddIcon fontSize="small" />}
             sx={{ 
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '50%',
-              p: 1
+              borderRadius: '20px',
+              color: 'text.primary',
+              borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'divider',
             }}
           >
-            <AddIcon fontSize="small" />
-          </IconButton>
+            Add Brand
+          </Button>
         </Tooltip>
       </Box>
     );
@@ -181,9 +182,10 @@ const BrandSelector: React.FC<BrandSelectorProps> = ({ variant = 'full' }) => {
             borderRadius: '20px',
             backgroundColor: 'background.paper',
             border: '1px solid',
-            borderColor: 'divider',
+            borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'divider',
             px: 2,
             py: 0.5,
+            color: 'text.primary',  // Ensure text is visible in dark mode
             '&:hover': {
               backgroundColor: 'action.hover',
             },

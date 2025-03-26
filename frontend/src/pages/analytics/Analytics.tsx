@@ -62,7 +62,10 @@ const Analytics = () => {
   // Load brand-specific analytics data
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!selectedBrand?.id) return;
+      if (!selectedBrand?.id) {
+        setAnalyticsData(null);
+        return;
+      }
       
       setIsLoading(true);
       setError(null);
@@ -74,6 +77,7 @@ const Analytics = () => {
       } catch (err) {
         console.error('Error loading analytics:', err);
         setError('Failed to load analytics data. Please try again later.');
+        setAnalyticsData(null);
       } finally {
         setIsLoading(false);
       }

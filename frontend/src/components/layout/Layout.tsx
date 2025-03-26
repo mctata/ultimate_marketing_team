@@ -1,5 +1,5 @@
 // frontend/src/components/layout/Layout.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Box, CssBaseline, ThemeProvider, createTheme, useMediaQuery, Toolbar, useTheme } from '@mui/material';
 import { useSelector } from 'react-redux';
@@ -40,8 +40,11 @@ const Layout = (): JSX.Element => {
     setOpen(!open);
   };
   
-  // Use the theme based on the user preference or system preference
-  const currentTheme = darkMode ? darkTheme : theme;
+  // Create a stable reference to the theme to prevent unnecessary re-renders
+  // This ensures the theme doesn't change unless darkMode actually changes
+  const currentTheme = useMemo(() => {
+    return darkMode ? darkTheme : theme;
+  }, [darkMode]);
   
   return (
     <ThemeProvider theme={currentTheme}>

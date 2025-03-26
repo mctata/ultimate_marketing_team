@@ -67,7 +67,7 @@ export const ChartAccessibilityProvider: React.FC<{children: ReactNode}> = ({ ch
   
   useEffect(() => {
     // If the UI has "highContrast" theme, sync with accessibility settings
-    if (currentTheme.includes('highContrast')) {
+    if (typeof currentTheme === 'string' && currentTheme.includes('highContrast')) {
       setConfig(prev => ({ ...prev, highContrast: true }));
     }
   }, [currentTheme]);
