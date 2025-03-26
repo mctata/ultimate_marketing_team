@@ -52,9 +52,9 @@ const contentPersistConfig = {
   transforms: [
     createTransform(
       // On save
-      (state) => {
+      (state: any) => {
         // Keep only what we need for caching
-        if (state.calendar) {
+        if (state?.calendar) {
           return {
             items: state.calendar.items,
             itemsByDate: state.calendar.itemsByDate,
@@ -66,7 +66,7 @@ const contentPersistConfig = {
         return state;
       },
       // On load
-      (state) => state,
+      (state: any) => state,
       {
         whitelist: ['calendar'],
       }
