@@ -52,8 +52,11 @@ interface CalendarInsight {
 
 interface BestTimeRecommendation {
   platform: string;
-  dayOfWeek: number;
+  day_of_week: number;
+  dayOfWeek: string;
+  hour_of_day: number;
   timeOfDay: string;
+  average_engagement: number;
   engagementScore: number;
   confidence: number;
 }
@@ -436,7 +439,16 @@ const contentSlice = createSlice({
       })
       .addCase(fetchBestTimeRecommendations.fulfilled, (state, action) => {
         state.calendar.isLoading = false;
-        state.calendar.bestTimeRecommendations = action.payload;
+        
+        // Map API response to expected format for compatibility
+        const recommendations = action.payload.map(rec => ({
+          ...rec,
+          dayOfWeek: rec.dayOfWeek || rec.day_of_week.toString(),
+          timeOfDay: rec.timeOfDay || `${rec.hour_of_day}:00`,
+          engagementScore: rec.engagementScore || Math.round(rec.average_engagement * 100)
+        }));
+        
+        state.calendar.bestTimeRecommendations = recommendations;
       })
       .addCase(fetchBestTimeRecommendations.rejected, (state, action) => {
         state.calendar.isLoading = false;
@@ -445,7 +457,30 @@ const contentSlice = createSlice({
       
       // createCalendarItem
       .addCase(createCalendarItem.fulfilled, (state, action) => {
-        const item = action.payload;
+        const apiItem = action.payload;
+        
+        // Convert API response to our CalendarItem format
+        const item: CalendarItem = {
+          id: apiItem.id.toString(),
+          project_id: apiItem.project_id,
+          content_draft_id: apiItem.content_draft_id,
+          scheduled_date: apiItem.scheduled_date,
+          scheduledDate: apiItem.scheduled_date,
+          published_date: apiItem.published_date,
+          publishedDate: apiItem.published_date || undefined,
+          status: apiItem.status as any,
+          contentType: (apiItem.content_type || 'other') as any,
+          content_type: apiItem.content_type,
+          platform: apiItem.platform,
+          brandId: apiItem.project_id.toString(),
+          tags: [],
+          author: apiItem.title || 'Unknown',
+          title: apiItem.title || 'Untitled',
+          description: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
         state.calendar.items[item.id] = item;
         
         // Add to items by date
@@ -458,7 +493,30 @@ const contentSlice = createSlice({
       
       // updateCalendarItem
       .addCase(updateCalendarItem.fulfilled, (state, action) => {
-        const item = action.payload;
+        const apiItem = action.payload;
+        
+        // Convert the API response to our CalendarItem format
+        const item: CalendarItem = {
+          id: apiItem.id.toString(),
+          project_id: apiItem.project_id,
+          content_draft_id: apiItem.content_draft_id,
+          scheduled_date: apiItem.scheduled_date,
+          scheduledDate: apiItem.scheduled_date,
+          published_date: apiItem.published_date,
+          publishedDate: apiItem.published_date || undefined,
+          status: apiItem.status as any,
+          contentType: (apiItem.content_type || 'other') as any,
+          content_type: apiItem.content_type,
+          platform: apiItem.platform,
+          brandId: apiItem.project_id.toString(),
+          tags: [],
+          author: apiItem.title || 'Unknown',
+          title: apiItem.title || 'Untitled',
+          description: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
         const existingItem = state.calendar.items[item.id];
         
         if (existingItem) {
@@ -479,8 +537,21 @@ const contentSlice = createSlice({
             state.calendar.itemsByDate[newDate].push(item.id);
           }
           
-          // Update the item itself
+          // Preserve any fields not returned by the API
+          state.calendar.items[item.id] = {
+            ...existingItem,
+            ...item
+          };
+        } else {
+          // Just add the new item if it doesn't exist
           state.calendar.items[item.id] = item;
+          
+          // Add to items by date
+          const date = item.scheduledDate.split('T')[0];
+          if (!state.calendar.itemsByDate[date]) {
+            state.calendar.itemsByDate[date] = [];
+          }
+          state.calendar.itemsByDate[date].push(item.id);
         }
       })
       
