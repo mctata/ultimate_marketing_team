@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Provider } from 'react-redux'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, future } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistGate } from 'redux-persist/integration/react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -14,6 +14,10 @@ import CssBaseline from '@mui/material/CssBaseline'
 import theme from './theme'
 import GlobalErrorFallback from './components/common/GlobalErrorFallback'
 import ToastContainer from './components/common/ToastContainer'
+
+// Configure React Router v7 future flags
+future.v7_relativeSplatPath = true
+future.v7_startTransition = true
 
 // Configure React Query with improved defaults
 const queryClient = new QueryClient({
