@@ -12,8 +12,8 @@ import { BrandProvider } from '../../context/BrandContext';
 
 const drawerWidth = 280;
 
-const Layout = () => {
-  const [open, setOpen] = useState(true);
+const Layout = (): JSX.Element => {
+  const [open, setOpen] = useState<boolean>(true);
   const { darkMode } = useSelector((state: RootState) => state.ui);
   const muiTheme = useTheme();
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -62,6 +62,9 @@ const Layout = () => {
               flexGrow: 1,
               p: 0,
               width: '100%',
+              overflow: 'hidden', // Contain overflow at the main level
+              display: 'flex',
+              flexDirection: 'column',
               transition: (theme) =>
                 theme.transitions.create(['margin'], {
                   easing: theme.transitions.easing.sharp,
@@ -74,7 +77,9 @@ const Layout = () => {
               minHeight: 'calc(100vh - 200px)',
               p: { xs: 2, sm: 3 },
               ml: { md: open ? 0 : 0 }, // No left margin
-              width: '100%' // Full width
+              width: '100%', // Full width
+              overflow: 'auto', // Add overflow auto to enable scrolling
+              height: 'calc(100vh - 64px - 56px)' // Subtract AppBar and Footer heights
             }}> 
               <Outlet />
             </Box>

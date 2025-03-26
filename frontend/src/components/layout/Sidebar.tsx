@@ -48,7 +48,20 @@ interface SidebarProps {
   width: number;
 }
 
-const menuItems = [
+interface SubMenuItem {
+  text: string;
+  path: string;
+  icon?: React.ReactElement;
+}
+
+interface MenuItem {
+  text: string;
+  icon: React.ReactElement;
+  path: string;
+  subItems?: SubMenuItem[];
+}
+
+const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Brands', icon: <BusinessIcon />, path: '/brands' },
   { 
@@ -87,7 +100,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'flex-end',
 }));
 
-const Sidebar = ({ open, onClose, width }: SidebarProps) => {
+const Sidebar = ({ open, onClose, width }: SidebarProps): JSX.Element => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -124,7 +137,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
     console.log(`Navigating to: ${path}`);
   };
   
-  const toggleExpand = (itemText: string, e: React.MouseEvent) => {
+  const toggleExpand = (itemText: string, e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation();
     setExpandedItem(expandedItem === itemText ? null : itemText);
   };
@@ -195,7 +208,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Avatar
             sx={{ width: 40, height: 40, mr: 2 }}
-            alt={user?.firstName || 'User'}
+            alt={user?.firstName ? user.firstName : 'User'}
             src="/assets/avatar.png"
           />
           <Box>
@@ -211,7 +224,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
       
       <Divider />
       
-      <List component="nav" sx={{ px: 2 }}>
+      <List component="nav" sx={{ px: 2, maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
         {menuItems.map((item) => (
           <React.Fragment key={item.text}>
             <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
@@ -262,7 +275,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
               <Box sx={{ pl: 4 }}>
                 {item.subItems.map((subItem) => {
                   // Only show admin items to users with admin role
-                  if (subItem.text?.includes('Admin') && user?.role !== 'admin') {
+                  if (subItem.text && subItem.text.includes('Admin') && user?.role !== 'admin') {
                     return null;
                   }
                   
@@ -345,6 +358,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
             boxSizing: 'border-box', 
             width: width,
             boxShadow: 3,
+            overflowY: 'auto', // Add vertical scrolling
           },
         }}
       >
@@ -368,6 +382,7 @@ const Sidebar = ({ open, onClose, width }: SidebarProps) => {
                 duration: theme.transitions.duration.enteringScreen,
               }),
             overflowX: 'hidden',
+            overflowY: 'auto', // Add vertical scrolling
           },
         }}
       >
