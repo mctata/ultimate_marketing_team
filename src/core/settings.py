@@ -304,6 +304,31 @@ class Settings:
             logger.warning("Test user should only be used in development")
         return os.getenv("TEST_USER_PASSWORD", "password123")
     
+    # Redis Cache Settings
+    CACHE_MONITORING_ENABLED = os.getenv("CACHE_MONITORING_ENABLED", "true").lower() == "true"
+    CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))  # 1 hour in seconds
+    CACHE_LONG_TTL = int(os.getenv("CACHE_LONG_TTL", "86400"))  # 24 hours in seconds
+    CACHE_SHORT_TTL = int(os.getenv("CACHE_SHORT_TTL", "300"))  # 5 minutes in seconds
+    CACHE_MAX_MEMORY_MB = int(os.getenv("CACHE_MAX_MEMORY_MB", "500"))  # 500MB max cache size
+    CACHE_ENABLE_COMPRESSION = os.getenv("CACHE_ENABLE_COMPRESSION", "true").lower() == "true"
+    CACHE_MAX_CONNECTIONS = int(os.getenv("CACHE_MAX_CONNECTIONS", "20"))
+    CACHE_SOCKET_TIMEOUT = float(os.getenv("CACHE_SOCKET_TIMEOUT", "5.0"))  # seconds
+    CACHE_SOCKET_CONNECT_TIMEOUT = float(os.getenv("CACHE_SOCKET_CONNECT_TIMEOUT", "3.0"))  # seconds
+    CACHE_REDIS_DATABASE = int(os.getenv("CACHE_REDIS_DATABASE", "0"))
+    
+    # Cache TTL for specific data types (in seconds)
+    CACHE_TTL_CONTENT = int(os.getenv("CACHE_TTL_CONTENT", "600"))  # 10 minutes for content
+    CACHE_TTL_BRAND = int(os.getenv("CACHE_TTL_BRAND", "3600"))  # 1 hour for brand data
+    CACHE_TTL_PROJECT = int(os.getenv("CACHE_TTL_PROJECT", "1800"))  # 30 minutes for projects
+    CACHE_TTL_CAMPAIGN = int(os.getenv("CACHE_TTL_CAMPAIGN", "900"))  # 15 minutes for campaigns
+    CACHE_TTL_USER = int(os.getenv("CACHE_TTL_USER", "7200"))  # 2 hours for user data
+    CACHE_TTL_ANALYTICS = int(os.getenv("CACHE_TTL_ANALYTICS", "600"))  # 10 minutes for analytics
+    CACHE_TTL_TEMPLATE = int(os.getenv("CACHE_TTL_TEMPLATE", "3600"))  # 1 hour for templates
+    CACHE_TTL_SYSTEM = int(os.getenv("CACHE_TTL_SYSTEM", "300"))  # 5 minutes for system settings
+    
+    # Cache eviction policy
+    CACHE_EVICTION_POLICY = os.getenv("CACHE_EVICTION_POLICY", "volatile-lru")  # LRU for keys with expiry
+
     # AI settings
     ENABLE_MODEL_CACHING = os.getenv("ENABLE_MODEL_CACHING", "true").lower() == "true"
     MODEL_CACHE_TTL = int(os.getenv("MODEL_CACHE_TTL", "3600"))

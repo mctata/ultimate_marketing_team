@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, exc, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import QueuePool
@@ -7,6 +7,7 @@ import os
 import time
 import logging
 from functools import wraps
+from typing import Dict, Any, Optional
 
 from src.core.settings import settings
 from src.core.logging import log_slow_query
@@ -15,27 +16,91 @@ from src.core.logging import log_slow_query
 SCHEMA_NAME = "umt"
 
 # Override DATABASE_URL for Docker containers
-database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/ultimatemarketing")
+database_url = os.environ.get("DATABASE_URL", settings.DATABASE_URL)
 
 # Get pool size from environment with reasonable defaults
-pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
-pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
-max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
-pool_recycle = int(os.environ.get("DB_POOL_RECYCLE", "300"))  # 5 minutes
+pool_size = settings.DB_POOL_SIZE
+pool_timeout = settings.DB_POOL_TIMEOUT
+max_overflow = settings.DB_MAX_OVERFLOW
+pool_recycle = settings.DB_POOL_RECYCLE
+statement_timeout = settings.DB_STATEMENT_TIMEOUT
+pre_ping = True  # Enable connection testing before use
+
+# Determine if we're in a high-memory environment
+high_memory_env = os.environ.get("HIGH_MEMORY_ENVIRONMENT", "false").lower() == "true"
+
+# Adjust pool size based on environment
+if high_memory_env:
+    # For high-memory environments, we can use larger pools
+    pool_size = max(pool_size, 25)
+    max_overflow = max(max_overflow, 50)
+    logging.info(f"Using enlarged connection pool for high-memory environment: size={pool_size}, overflow={max_overflow}")
+
+# Configure engine kwargs
+engine_kwargs = {
+    "poolclass": QueuePool,
+    "pool_size": pool_size,
+    "pool_timeout": pool_timeout,
+    "pool_recycle": pool_recycle,
+    "max_overflow": max_overflow,
+    "pool_pre_ping": pre_ping,
+    "connect_args": {
+        "options": f"-c statement_timeout={statement_timeout}",  # Query timeout
+        "connect_timeout": min(30, pool_timeout),  # Connection timeout
+        "keepalives": 1,  # Enable TCP keepalives
+        "keepalives_idle": 60,  # Idle time before sending keepalive (seconds)
+        "keepalives_interval": 10,  # Interval between keepalives
+        "keepalives_count": 5,  # Number of keepalives before giving up
+        "application_name": "ultimatemarketing",  # Identify app in pg_stat_activity
+    }
+}
+
+# Set client encoding to UTF-8 
+engine_kwargs["connect_args"]["client_encoding"] = "utf8"
+
+# For statement timeout, check DB settings
+if settings.DB_STATEMENT_TIMEOUT:
+    engine_kwargs["connect_args"]["options"] = f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT}"
 
 # Create SQLAlchemy engine with optimized connection pooling
-engine = create_engine(
-    str(database_url),
-    poolclass=QueuePool,
-    pool_size=pool_size,
-    pool_timeout=pool_timeout,
-    pool_recycle=pool_recycle,
-    max_overflow=max_overflow,
-    connect_args={"options": "-c statement_timeout=30000"}  # 30 second query timeout
-)
+engine = create_engine(str(database_url), **engine_kwargs)
 
-# Create session factory - use scoped_session for thread safety
-session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Add connection pool listeners
+@event.listens_for(engine, "connect")
+def connect(dbapi_connection, connection_record):
+    """Configure new connections with best practices."""
+    # Set session parameters for this connection
+    cursor = dbapi_connection.cursor()
+    cursor.execute("SET TIME ZONE 'UTC';")
+    cursor.execute("SET application_name TO 'ultimatemarketing';")
+    cursor.close()
+
+@event.listens_for(engine, "checkout")
+def checkout(dbapi_connection, connection_record, connection_proxy):
+    """Validate connections on checkout to ensure they're still alive."""
+    connection_record.info.setdefault('checkout_time', time.time())
+    # Check if the connection has been waiting too long in the pool
+    if settings.ENV == "production":
+        checkout_age = time.time() - connection_record.info['checkout_time']
+        if checkout_age > 3600:  # 1 hour
+            # If the connection is too old, replace it
+            connection_record.connection = connection_proxy.connection = None
+            raise exc.DisconnectionError("Connection too old")
+
+# Add listener for connection recycling
+@event.listens_for(engine, "checkin")
+def checkin(dbapi_connection, connection_record):
+    """Update connection record after checkin."""
+    connection_record.info['checkout_time'] = time.time()
+    connection_record.info['checkin_count'] = connection_record.info.get('checkin_count', 0) + 1
+
+# Create session factory - use scoped_session for thread safety with advanced settings
+session_factory = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,  # Don't expire objects when committing (better performance)
+)
 SessionLocal = scoped_session(session_factory)
 
 # Base class for SQLAlchemy models
