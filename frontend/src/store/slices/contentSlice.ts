@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../index';
 import contentCalendarService, { contentCalendarService as calendarService } from '../../services/contentCalendarService';
+import contentService, { ContentPerformance } from '../../services/contentService';
 
 interface ContentItem {
   id: string;
@@ -90,6 +91,8 @@ interface CalendarState {
 interface ContentState {
   items: ContentItem[];
   selectedContent: ContentItem | null;
+  selectedDraft: ContentItem | null;
+  draftsError: string | null;
   isLoading: boolean;
   error: string | null;
   filters: {
@@ -99,11 +102,18 @@ interface ContentState {
     searchQuery?: string;
   };
   calendar: CalendarState;
+  performance: {
+    data: ContentPerformance[];
+    isLoading: boolean;
+    error: string | null;
+  };
 }
 
 const initialState: ContentState = {
   items: [],
   selectedContent: null,
+  selectedDraft: null,
+  draftsError: null,
   isLoading: false,
   error: null,
   filters: {},
@@ -113,6 +123,11 @@ const initialState: ContentState = {
     insights: [],
     bestTimeRecommendations: [],
     lastFetched: {},
+    isLoading: false,
+    error: null
+  },
+  performance: {
+    data: [],
     isLoading: false,
     error: null
   }
@@ -271,6 +286,44 @@ export const publishCalendarItem = createAsyncThunk<CalendarItemApiResponse, str
       return response.data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to publish calendar item');
+    }
+  }
+);
+
+// Content Draft Thunks
+export const fetchDraftById = createAsyncThunk<ContentItem, string, { rejectValue: string }>(
+  'content/fetchDraftById',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getDraftById(id);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch draft content');
+    }
+  }
+);
+
+// Content Performance Thunks
+interface ContentPerformanceParams {
+  contentId: string;
+  timeRange: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+export const fetchContentPerformance = createAsyncThunk<
+  ContentPerformance[],
+  ContentPerformanceParams,
+  { rejectValue: string }
+>(
+  'content/fetchContentPerformance',
+  async ({ contentId, timeRange }, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getContentPerformance(contentId, timeRange);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch content performance data');
     }
   }
 );
@@ -625,6 +678,34 @@ const contentSlice = createSlice({
         if (state.calendar.items[item.id]) {
           state.calendar.items[item.id] = item;
         }
+      })
+      
+      // Handle draft content thunks
+      .addCase(fetchDraftById.pending, (state) => {
+        state.isLoading = true;
+        state.draftsError = null;
+      })
+      .addCase(fetchDraftById.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.selectedDraft = action.payload;
+      })
+      .addCase(fetchDraftById.rejected, (state, action) => {
+        state.isLoading = false;
+        state.draftsError = action.payload as string;
+      })
+      
+      // Handle content performance thunks
+      .addCase(fetchContentPerformance.pending, (state) => {
+        state.performance.isLoading = true;
+        state.performance.error = null;
+      })
+      .addCase(fetchContentPerformance.fulfilled, (state, action) => {
+        state.performance.isLoading = false;
+        state.performance.data = action.payload;
+      })
+      .addCase(fetchContentPerformance.rejected, (state, action) => {
+        state.performance.isLoading = false;
+        state.performance.error = action.payload as string;
       });
   },
 });
@@ -662,6 +743,15 @@ export const selectSelectedContent = (state: RootState) => state.content.selecte
 export const selectContentLoading = (state: RootState) => state.content.isLoading;
 export const selectContentError = (state: RootState) => state.content.error;
 export const selectContentFilters = (state: RootState) => state.content.filters;
+
+// Selectors for drafts
+export const selectSelectedDraft = (state: RootState) => state.content.selectedDraft;
+export const selectDraftsError = (state: RootState) => state.content.draftsError;
+
+// Selectors for content performance
+export const selectContentPerformance = (state: RootState) => state.content.performance.data;
+export const selectPerformanceLoading = (state: RootState) => state.content.performance.isLoading;
+export const selectPerformanceError = (state: RootState) => state.content.performance.error;
 
 // Selectors for calendar items
 export const selectCalendarItems = (state: RootState) => state.content.calendar.items;

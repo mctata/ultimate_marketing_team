@@ -54,7 +54,7 @@ const TemplateVariables = ({
   disabled = false
 }: TemplateVariablesProps) => {
   const { getTemplate } = useTemplates();
-  const [template, setTemplate] = useState<any>(null);
+  const [template, setTemplate] = useState<import('../../services/contentGenerationService').Template | null>(null);
   const [variables, setVariables] = useState<TemplateVariable[]>([]);
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [loading, setLoading] = useState(true);
@@ -80,13 +80,15 @@ const TemplateVariables = ({
       description: apiVar.description || '',
       type: mappedType(),
       required: apiVar.required,
-      defaultValue: apiVar.default_value?.toString() || '',
+      defaultValue: typeof apiVar.default_value !== 'undefined' ? 
+        apiVar.default_value.toString() : 
+        '',
       options: apiVar.type === 'select' && apiVar.options ? 
         apiVar.options.map(opt => opt.label) : 
         apiVar.type === 'boolean' ? ['Yes', 'No'] : undefined,
       validation: {
-        min: apiVar.min,
-        max: apiVar.max,
+        min: typeof apiVar.min !== 'undefined' ? apiVar.min : undefined,
+        max: typeof apiVar.max !== 'undefined' ? apiVar.max : undefined,
         pattern: apiVar.validation,
         message: `Must be between ${apiVar.min || 0} and ${apiVar.max || 'unlimited'} characters`
       }
@@ -106,15 +108,19 @@ const TemplateVariables = ({
     // Fetch template details from API
     getTemplate(templateId)
       .then(templateData => {
+        if (!templateData) {
+          throw new Error('Template data not found');
+        }
+        
         setTemplate(templateData);
         
-        // Map API variables to component variables
-        if (templateData && templateData.variables) {
-          const mappedVariables = templateData.variables.map(mapApiVariableToInternal);
-          setVariables(mappedVariables);
-        } else {
-          setVariables([]);
-        }
+        // Type guard for variables
+        const templateVariables = Array.isArray(templateData.variables) ? 
+          templateData.variables : [];
+        
+        // Map API variables to component variables if they exist
+        const mappedVariables = templateVariables.map(mapApiVariableToInternal);
+        setVariables(mappedVariables);
         
         setLoading(false);
       })

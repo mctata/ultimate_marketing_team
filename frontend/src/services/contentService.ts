@@ -335,6 +335,21 @@ const mockContentByBrand: Record<string, ContentItem[]> = {
   ]
 };
 
+export interface ContentPerformance {
+  date: string;
+  views: number;
+  clicks: number;
+  shares: number;
+  comments: number;
+  engagement_rate: number;
+  platform_data?: Record<string, {
+    views?: number;
+    clicks?: number;
+    shares?: number;
+    comments?: number;
+  }>;
+}
+
 class ContentService {
   /**
    * Get all content items for a specific brand
@@ -376,6 +391,86 @@ class ContentService {
       
       return Promise.resolve({...contentItem});
     }
+  }
+
+  /**
+   * Get content performance metrics for a specific content item
+   */
+  async getContentPerformance(contentId: string, timeRange: { start_date: string, end_date: string }): Promise<ContentPerformance[]> {
+    try {
+      // Try to get from API
+      return await apiMethods.get<ContentPerformance[]>(`/content/${contentId}/performance`, { 
+        params: timeRange 
+      });
+    } catch (error) {
+      console.log(`Using mock performance data for ID: ${contentId}`);
+      
+      // Generate mock performance data
+      const days = this.getDaysBetweenDates(timeRange.start_date, timeRange.end_date);
+      return Promise.resolve(days.map(date => this.generateMockPerformanceData(date)));
+    }
+  }
+
+  /**
+   * Helper method to generate an array of dates between two dates
+   */
+  private getDaysBetweenDates(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    let currentDate = new Date(startDate);
+    const end = new Date(endDate);
+    
+    while (currentDate <= end) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dates;
+  }
+
+  /**
+   * Generate mock performance data for development
+   */
+  private generateMockPerformanceData(date: string): ContentPerformance {
+    // Generate random numbers within reasonable ranges
+    const views = Math.floor(Math.random() * 1000) + 100;
+    const clicks = Math.floor(views * (Math.random() * 0.3 + 0.1)); // 10-40% of views
+    const shares = Math.floor(views * (Math.random() * 0.05 + 0.01)); // 1-6% of views
+    const comments = Math.floor(views * (Math.random() * 0.03 + 0.005)); // 0.5-3.5% of views
+    const engagement_rate = parseFloat((Math.random() * 0.08 + 0.02).toFixed(4)); // 2-10% engagement rate
+    
+    // Platform distribution (simplified for demo)
+    const platforms = ['facebook', 'twitter', 'linkedin', 'instagram'];
+    const platform_data: Record<string, any> = {};
+    
+    platforms.forEach(platform => {
+      // Distribute views among platforms
+      const platformViews = Math.floor(views * (Math.random() * 0.4 + 0.1)); // 10-50% of total views
+      platform_data[platform] = {
+        views: platformViews,
+        clicks: Math.floor(platformViews * (Math.random() * 0.3 + 0.1)),
+        shares: Math.floor(platformViews * (Math.random() * 0.05 + 0.01)),
+        comments: Math.floor(platformViews * (Math.random() * 0.03 + 0.005))
+      };
+    });
+    
+    return {
+      date,
+      views,
+      clicks,
+      shares,
+      comments,
+      engagement_rate,
+      platform_data
+    };
+  }
+
+  /**
+   * Get a draft content item by ID for editing
+   */
+  async getDraftById(id: string): Promise<ContentItem> {
+    // Reuse getContentItemById for now, but in a real implementation,
+    // this would specifically fetch draft content
+    return this.getContentItemById(id);
   }
 }
 

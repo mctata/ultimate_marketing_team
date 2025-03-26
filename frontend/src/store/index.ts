@@ -30,18 +30,67 @@ const rootReducer = combineReducers({
   campaignRules: campaignRulesReducer,
 });
 
+interface AuthPersistState {
+  user?: Record<string, any>;
+}
+
 // Configuration for each persistable slice
 const authPersistConfig = {
   key: 'auth',
   storage,
   whitelist: ['user'], // Only persist user data, not the entire slice
+  transforms: [
+    createTransform<AuthPersistState, AuthPersistState>(
+      // On save
+      (state) => {
+        if (state?.user) {
+          return {
+            user: state.user
+          };
+        }
+        return state;
+      },
+      // On load
+      (state) => state
+    )
+  ]
 };
+
+interface UIPersistState {
+  darkMode?: boolean;
+  currentTheme?: string;
+  sidebarOpen?: boolean;
+}
 
 const uiPersistConfig = {
   key: 'ui',
   storage,
   whitelist: ['darkMode', 'currentTheme', 'sidebarOpen'], // Only persist UI preferences
+  transforms: [
+    createTransform<UIPersistState, UIPersistState>(
+      // On save
+      (state) => {
+        return {
+          darkMode: state.darkMode,
+          currentTheme: state.currentTheme,
+          sidebarOpen: state.sidebarOpen
+        };
+      },
+      // On load
+      (state) => state
+    )
+  ]
 };
+
+interface ContentPersistState {
+  calendar?: {
+    items: Record<string, any>;
+    itemsByDate: Record<string, string[]>;
+    insights: Array<any>;
+    bestTimeRecommendations: Array<any>;
+    lastFetched: Record<string, number>;
+  };
+}
 
 const contentPersistConfig = {
   key: 'content',
@@ -50,23 +99,25 @@ const contentPersistConfig = {
   blacklist: [],
   // Nested persist config for calendar
   transforms: [
-    createTransform(
+    createTransform<ContentPersistState, ContentPersistState>(
       // On save
-      (state: any) => {
+      (state) => {
         // Keep only what we need for caching
         if (state?.calendar) {
           return {
-            items: state.calendar.items,
-            itemsByDate: state.calendar.itemsByDate,
-            insights: state.calendar.insights,
-            bestTimeRecommendations: state.calendar.bestTimeRecommendations,
-            lastFetched: state.calendar.lastFetched,
+            calendar: {
+              items: state.calendar.items,
+              itemsByDate: state.calendar.itemsByDate,
+              insights: state.calendar.insights,
+              bestTimeRecommendations: state.calendar.bestTimeRecommendations,
+              lastFetched: state.calendar.lastFetched,
+            }
           };
         }
         return state;
       },
       // On load
-      (state: any) => state,
+      (state) => state,
       {
         whitelist: ['calendar'],
       }
