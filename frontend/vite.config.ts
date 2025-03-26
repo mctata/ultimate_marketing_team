@@ -43,8 +43,7 @@ export default defineConfig({
           // Enable React automatic runtime
           ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }],
         ],
-        // Enable caching in development for faster rebuilds
-        cacheDirectory: true,
+        // Babel caching is handled by Vite's own cache mechanism
       },
       // Enable Fast Refresh in development
       fastRefresh: true,
@@ -139,8 +138,8 @@ export default defineConfig({
     assetsInlineLimit: 10240,
     // Enable/disable source maps based on mode
     sourcemap: modeConfig.sourcemap,
-    // Enable minification based on mode
-    minify: modeConfig.minify,
+    // Explicitly set minify to use terser
+    minify: 'terser',
     terserOptions: {
       compress: {
         drop_console: isProd,
