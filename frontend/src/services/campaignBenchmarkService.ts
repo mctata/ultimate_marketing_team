@@ -1,4 +1,4 @@
-import { api } from './api';
+import api from './api';
 import { AxiosRequestConfig } from 'axios';
 
 // Types for the benchmark data
