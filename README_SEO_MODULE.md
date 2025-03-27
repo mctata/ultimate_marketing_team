@@ -1,196 +1,146 @@
-# Google Search Optimization Module
+# SEO Module - Google Search Console Integration
 
-## Overview
-
-The Google Search Optimization Module provides comprehensive SEO capabilities for the Ultimate Marketing Team platform, enabling marketers to optimize content for better search engine rankings, analyze search performance, and generate structured data markup.
+This module integrates the Ultimate Marketing Team platform with Google Search Console to provide real-time search performance data for your content.
 
 ## Features
 
-### 1. Content SEO Validation
+- **OAuth2 Authentication**: Secure connection to Google Search Console API
+- **Search Performance Data**: Track clicks, impressions, CTR, and average position
+- **Keyword Opportunities**: Identify high-potential keywords for optimization
+- **Device Breakdown**: Analyze search traffic by device type
+- **Performance Visualizations**: Interactive charts and graphs for search metrics
+- **Content Update Recommendations**: AI-powered suggestions to improve content performance
+- **Structured Data Generator**: Create and validate JSON-LD schema markup
 
-The module can validate content against SEO best practices, including:
+## Setup Instructions
 
-- Title optimization
-- Content structure analysis
-- Keyword usage and density
-- Readability metrics
-- E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) signals
-- URL optimization
+### 1. Create a Google Cloud Project
 
-### 2. Search Performance Analysis
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Navigate to "APIs & Services" > "Library"
+4. Search for "Search Console API" and enable it
 
-Retrieves and analyzes search performance data from Google Search Console:
+### 2. Create OAuth 2.0 Credentials
 
-- Query performance metrics (clicks, impressions, CTR, position)
-- Time-series trend analysis
-- Device and country breakdowns
-- Page-specific performance data
+1. In your Google Cloud Project, go to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" and select "OAuth client ID"
+3. Configure the OAuth consent screen:
+   - User type: External
+   - Application name: "Ultimate Marketing Team"
+   - Support email: your email address
+   - Authorized domains: your domain
+4. Add scopes: `https://www.googleapis.com/auth/webmasters.readonly`
+5. For the OAuth client ID creation:
+   - Application type: Web application
+   - Name: "Ultimate Marketing Team SEO Integration"
+   - Authorized JavaScript origins: `http://localhost:5173` (for development)
+   - Authorized redirect URIs: `http://localhost:8000/api/seo/oauth2callback`
+6. Note the Client ID and Client Secret provided
 
-### 3. Keyword Opportunity Analysis
+### 3. Configure Environment Variables
 
-Identifies keyword opportunities for content:
+Add the following variables to your `.env` file:
 
-- Detects declining keyword rankings
-- Suggests new keywords to target
-- Analyzes keyword competition
-- Assigns opportunity scores
+```
+GOOGLE_OAUTH2_CLIENT_ID=your_client_id
+GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret
+GOOGLE_OAUTH2_REDIRECT_URI=http://localhost:8000/api/seo/oauth2callback
+TOKEN_STORAGE_DIR=.tokens
+SEO_CACHE_TTL=3600
+```
 
-### 4. Structured Data Generation
+### 4. Verify Properties in Google Search Console
 
-Automatically generates Schema.org JSON-LD structured data markup for various content types:
+1. Make sure your website or content properties are verified in Google Search Console
+2. Ensure the Google account you use has access to these properties
 
-- Article
-- BlogPosting
-- FAQPage
-- HowTo
-- Product
+### 5. Connect the Integration in the UI
 
-The system can also automatically detect the most appropriate schema type for a given piece of content.
+1. Navigate to the SEO section for any content item
+2. Click "Connect to Google Search Console"
+3. Follow the OAuth authorization flow
+4. Once authorized, the system will begin retrieving real search data
 
-### 5. Content Update Recommendations
+## Usage
 
-Generates actionable recommendations for updating content based on performance:
+### Search Performance Data
 
-- Structured content recommendations
-- Keyword usage recommendations
-- Format recommendations (images, tables, videos)
-- Prioritized list of changes
+The Search Performance tab displays comprehensive metrics about how your content performs in Google Search, including:
 
-### 6. Update Scheduling
+- Average position in search results
+- Total clicks, impressions, and CTR (Click-Through Rate)
+- Performance trends over time
+- Top performing search queries
+- Device breakdown statistics
 
-Suggests optimal update schedules based on content age and performance:
+### Keyword Opportunities
 
-- Recommends update frequency
-- Assigns update priority
-- Creates detailed update schedules
+This tab helps you identify keywords with potential for rank improvement, including:
 
-## Architecture
+- Keywords that are on page 2-3 of results (positions 11-30)
+- Keywords with high impressions but low CTR
+- Keywords with improving trends
 
-The module consists of four main services:
+### Content Updates
 
-1. **SEO Validation Service**: Analyzes content against SEO best practices and provides optimization recommendations.
-2. **Search Console Service**: Integrates with Google Search Console API to retrieve and analyze search performance data.
-3. **Structured Data Service**: Generates Schema.org JSON-LD markup for various content types.
-4. **Ranking Performance Analyzer**: Analyzes ranking trends and generates content update recommendations.
+Based on search performance data, this section provides:
 
-## Database Schema
-
-The module uses the following database tables (all in the `umt` schema):
-
-- `seo_audit_logs`: Stores SEO validation and audit history
-- `seo_content_metrics`: Stores SEO performance metrics for content
-- `seo_keyword_opportunities`: Stores keyword opportunities for content
-- `seo_content_update_recommendations`: Stores content update recommendations
-- `search_console_properties`: Stores Google Search Console property information
-
-## API Endpoints
-
-### Search Performance
-
-- `GET /api/v1/seo/search-performance`: Get search performance data
-- `GET /api/v1/seo/content/{content_id}/search-data`: Get comprehensive search data for specific content
-- `GET /api/v1/seo/content/{content_id}/keyword-opportunities`: Get keyword opportunities for content
-- `GET /api/v1/seo/indexation-status`: Check URL indexation status
-- `GET /api/v1/seo/mobile-usability`: Check mobile usability for URL
-
-### Content Validation and Analysis
-
-- `POST /api/v1/seo/validate-content`: Validate content against SEO best practices
-- `POST /api/v1/seo/analyze-search-intent`: Analyze search intent for keywords
-- `POST /api/v1/seo/content/analyze-performance`: Analyze content performance
-- `GET /api/v1/seo/content/{content_id}/declining-rankings`: Get declining rankings for content
-- `POST /api/v1/seo/content/update-recommendations`: Get content update recommendations
-- `GET /api/v1/seo/content/{content_id}/update-schedule`: Get content update schedule
+- Specific recommendations to improve rankings
+- Content update schedule based on performance trends
+- Priority updates to focus on
 
 ### Structured Data
 
-- `POST /api/v1/seo/structured-data`: Generate structured data markup
-- `POST /api/v1/seo/detect-schema-type`: Detect best schema type for content
+Generate JSON-LD structured data markup for your content:
 
-## Integration
+- Automatically detect appropriate schema type
+- Generate complete schema code
+- Copy ready-to-use markup to clipboard
 
-### Google Search Console Integration
+## Troubleshooting
 
-To integrate with Google Search Console:
+### Authorization Issues
 
-1. Create a Google Cloud project and enable the Search Console API
-2. Create API credentials (OAuth client ID)
-3. Add your credentials to the platform
-4. Verify your properties in Search Console
-5. Connect your properties to the Ultimate Marketing Team platform
+- **Invalid credentials error**: Verify your client ID and secret are correctly set in `.env`
+- **Access denied error**: Ensure your Google account has access to the Search Console properties
+- **Invalid redirect URI**: Confirm the redirect URI matches exactly in both Google Cloud Console and your configuration
 
-## Usage Examples
+### Data Not Loading
 
-### Validating Content
+- **No data available**: Verify the content URL is registered and verified in Search Console
+- **Empty results**: New content may not have search data yet; data typically takes 2-3 days to appear
+- **API quota errors**: Check if you've exceeded your daily API quota (default: 2,000 queries/day)
 
-```python
-# Example request to validate content
-request_body = {
-    "content_text": "Your content text here...",
-    "content_type": "blog_post",
-    "title": "10 Ways to Improve Your Marketing Strategy",
-    "primary_keyword": "marketing strategy",
-    "secondary_keywords": ["digital marketing", "strategy improvement"],
-    "url": "https://example.com/blog/improve-marketing-strategy"
-}
+## API Documentation
 
-response = requests.post(
-    "https://api.example.com/api/v1/seo/validate-content", 
-    json=request_body
-)
-```
+### Backend Endpoints
 
-### Generating Structured Data
+- `GET /api/seo/auth/google/init`: Initialize OAuth flow
+- `POST /api/seo/auth/google/callback`: Process OAuth callback
+- `GET /api/seo/auth/status`: Check authentication status
+- `GET /api/seo/search-performance`: Get general search performance data
+- `GET /api/seo/content/:content_id/search-data`: Get content-specific search data
+- `GET /api/seo/content/:content_id/keyword-opportunities`: Get keyword opportunities for content
+- `POST /api/seo/content/update-recommendations`: Get content update recommendations
 
-```python
-# Example request to generate BlogPosting schema
-request_body = {
-    "content_text": "Your blog post content here...",
-    "schema_type": "BlogPosting",
-    "metadata": {
-        "title": "10 Ways to Improve Your Marketing Strategy",
-        "description": "Learn how to improve your marketing strategy with these 10 actionable tips.",
-        "author": {
-            "name": "Jane Doe",
-            "url": "https://example.com/authors/jane-doe"
-        },
-        "publisher": {
-            "name": "Example Marketing Blog",
-            "logo": "https://example.com/logo.png"
-        },
-        "datePublished": "2025-03-26T10:00:00Z",
-        "featuredImage": "https://example.com/images/marketing-strategy.jpg",
-        "url": "https://example.com/blog/improve-marketing-strategy",
-        "keywords": ["marketing strategy", "digital marketing", "business growth"]
-    }
-}
+### Frontend Integration
 
-response = requests.post(
-    "https://api.example.com/api/v1/seo/structured-data", 
-    json=request_body
-)
-```
+The SEO module integrates with the content management system through:
 
-## Frontend Integration
+- `seoService.ts`: Service for interacting with SEO API endpoints
+- `ContentSEO.tsx`: Main component for SEO data visualization and management
 
-The module provides a comprehensive SEO interface with tabs for:
+## Development
 
-1. SEO Validation
-2. Search Performance
-3. Keyword Opportunities
-4. Content Updates
-5. Structured Data
+### Adding New Features
 
-## Limitations
+1. Update `search_console.py` to add new data retrieval methods
+2. Add corresponding endpoints in `seo.py` router
+3. Update `seoService.ts` to interact with new endpoints
+4. Add UI components in `ContentSEO.tsx` to display and interact with the data
 
-- The module currently supports English content only
-- Real-time validation may be limited for very large documents (>10,000 words)
-- Some features require Google Search Console integration
+### Testing
 
-## Future Enhancements
-
-- Multi-language support
-- Competitor analysis
-- AI-generated content recommendations
-- Automated A/B testing for SEO improvements
-- Integration with additional search engines
+- Run API tests with `python -m pytest tests/api/test_seo_api.py`
+- Run integration tests with `python -m pytest tests/integration/test_google_integration.py`

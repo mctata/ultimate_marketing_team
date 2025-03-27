@@ -182,9 +182,95 @@ export interface ContentSearchData {
 }
 
 /**
+ * Interface for OAuth authentication response
+ */
+export interface GoogleOAuthResponse {
+  auth_url: string;
+  state: string;
+}
+
+/**
+ * Interface for OAuth callback response
+ */
+export interface GoogleOAuthCallbackResponse {
+  status: string;
+  message: string;
+}
+
+/**
+ * Interface for authorization status response
+ */
+export interface AuthorizationStatusResponse {
+  status: string;
+  is_authorized: boolean;
+  brand_id?: number;
+  site_url?: string;
+  expiration_time?: string;
+}
+
+/**
  * Class for SEO service
  */
 class SEOService {
+  /**
+   * Initialize Google Search Console OAuth flow
+   * @param brand_id Brand ID
+   * @returns OAuth initialization response with authentication URL
+   */
+  async initializeGoogleAuth(brand_id: number): Promise<GoogleOAuthResponse> {
+    try {
+      const response = await api.get(`/seo/auth/google/init`, {
+        params: { brand_id }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error initializing Google Auth:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process OAuth callback from Google
+   * @param code Authorization code from Google
+   * @param state State parameter from the auth flow
+   * @param brand_id Brand ID
+   * @returns OAuth callback processing response
+   */
+  async processOAuthCallback(code: string, state: string, brand_id: number): Promise<GoogleOAuthCallbackResponse> {
+    try {
+      const response = await api.post(`/seo/auth/google/callback`, {
+        code,
+        state,
+        brand_id
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error processing OAuth callback:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if Google Search Console is authorized for a brand
+   * @param brand_id Brand ID
+   * @returns Authorization status
+   */
+  async checkAuthorizationStatus(brand_id: number): Promise<AuthorizationStatusResponse> {
+    try {
+      const response = await api.get(`/seo/auth/status`, {
+        params: { brand_id }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error checking authorization status:', error);
+      return {
+        status: 'error',
+        is_authorized: false,
+        message: 'Failed to check authorization status'
+      };
+    }
+  }
+
   /**
    * Get search performance data from Google Search Console
    * @param params Search performance parameters

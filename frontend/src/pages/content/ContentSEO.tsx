@@ -36,7 +36,13 @@ import {
   Tooltip,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -53,13 +59,36 @@ import SyncIcon from '@mui/icons-material/Sync';
 import HistoryIcon from '@mui/icons-material/History';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import DonutLargeIcon from '@mui/icons-material/DonutLarge';
+import GoogleIcon from '@mui/icons-material/Google';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 import { useSnackbar } from 'notistack';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  Legend, 
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
+
 import seoService, {
   ContentSEOValidationRequest,
   ContentSEOValidationResponse,
   StructuredDataRequest,
-  ContentUpdateRequest
+  ContentUpdateRequest,
+  GoogleOAuthResponse,
+  AuthorizationStatusResponse
 } from '../../services/seoService';
 
 interface TabPanelProps {
@@ -113,9 +142,113 @@ const ContentSEO: React.FC = () => {
   const [updateRecommendations, setUpdateRecommendations] = useState<any>(null);
   const [contentAge, setContentAge] = useState<number>(30);
   const [updateSchedule, setUpdateSchedule] = useState<any>(null);
+  
+  // Google Search Console Authentication
+  const [isGoogleAuthorized, setIsGoogleAuthorized] = useState<boolean>(false);
+  const [authUrl, setAuthUrl] = useState<string>('');
+  const [authState, setAuthState] = useState<string>('');
+  const [authDialogOpen, setAuthDialogOpen] = useState<boolean>(false);
+  const [authCheckLoading, setAuthCheckLoading] = useState<boolean>(false);
+  const [searchDataRange, setSearchDataRange] = useState<{start: string, end: string}>(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 28); // Default to 28 days
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  });
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [deviceData, setDeviceData] = useState<any[]>([]);
 
-  // For development purposes - mock brand ID
+  // Brand ID - in real implementation, this would come from the context or route params
   const brandId = 1;
+
+  // Check if Google Search Console is authorized
+  const checkGoogleAuthStatus = async () => {
+    setAuthCheckLoading(true);
+    try {
+      const authStatus = await seoService.checkAuthorizationStatus(brandId);
+      setIsGoogleAuthorized(authStatus.is_authorized);
+      if (authStatus.is_authorized) {
+        enqueueSnackbar('Google Search Console is authorized', { variant: 'success' });
+      }
+    } catch (error) {
+      console.error('Error checking Google auth status:', error);
+      setIsGoogleAuthorized(false);
+    } finally {
+      setAuthCheckLoading(false);
+    }
+  };
+
+  // Initialize Google OAuth flow
+  const initializeGoogleAuth = async () => {
+    setLoading(true);
+    try {
+      const response = await seoService.initializeGoogleAuth(brandId);
+      setAuthUrl(response.auth_url);
+      setAuthState(response.state);
+      setAuthDialogOpen(true);
+    } catch (error) {
+      console.error('Error initializing Google Auth:', error);
+      enqueueSnackbar('Failed to initialize Google authentication', { variant: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Process OAuth callback (this would normally be handled by a dedicated callback route)
+  const handleAuthCallback = async (code: string) => {
+    setLoading(true);
+    try {
+      await seoService.processOAuthCallback(code, authState, brandId);
+      setIsGoogleAuthorized(true);
+      setAuthDialogOpen(false);
+      enqueueSnackbar('Successfully authenticated with Google Search Console', { variant: 'success' });
+      
+      // Reload data after successful authentication
+      await loadSearchPerformance();
+      await loadKeywordOpportunities();
+    } catch (error) {
+      console.error('Error processing OAuth callback:', error);
+      enqueueSnackbar('Failed to complete Google authentication', { variant: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle dialog close
+  const handleAuthDialogClose = () => {
+    setAuthDialogOpen(false);
+  };
+
+  // Format data for charts
+  const formatChartData = (performance: any) => {
+    if (!performance || !performance.trends) return [];
+    
+    const { trends } = performance;
+    
+    // Format data for time series charts
+    const chartData = trends.dates?.map((date: string, index: number) => ({
+      date,
+      clicks: trends.clicks[index] || 0,
+      impressions: trends.impressions[index] || 0,
+      ctr: (trends.ctr[index] || 0) * 100, // Convert to percentage
+      position: trends.position[index] || 0
+    })) || [];
+    
+    setChartData(chartData);
+    
+    // Format device data for pie chart
+    if (performance.devices) {
+      const deviceData = [
+        { name: 'Mobile', value: performance.devices.MOBILE.clicks || 0 },
+        { name: 'Desktop', value: performance.devices.DESKTOP.clicks || 0 },
+        { name: 'Tablet', value: performance.devices.TABLET.clicks || 0 }
+      ];
+      setDeviceData(deviceData);
+    }
+  };
 
   // Load content data when component mounts
   useEffect(() => {
@@ -136,13 +269,18 @@ const ContentSEO: React.FC = () => {
         setLoading(false);
       }, 1000);
       
-      // Load search performance data
-      loadSearchPerformance();
-      
-      // Load keyword opportunities
-      loadKeywordOpportunities();
+      // Check if Google Search Console is authorized
+      checkGoogleAuthStatus();
     }
   }, [contentId]);
+  
+  // Load search performance data when authorization status changes
+  useEffect(() => {
+    if (contentId && isGoogleAuthorized) {
+      loadSearchPerformance();
+      loadKeywordOpportunities();
+    }
+  }, [contentId, isGoogleAuthorized]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -251,11 +389,21 @@ const ContentSEO: React.FC = () => {
     try {
       // Get content-specific search data
       if (contentId) {
+        setLoading(true);
         const results = await seoService.getContentSearchData(parseInt(contentId), brandId);
-        setSearchPerformance(results.data);
+        
+        if (results.data) {
+          setSearchPerformance(results.data);
+          formatChartData(results.data);
+        } else {
+          enqueueSnackbar('Failed to load search performance data', { variant: 'warning' });
+        }
       }
     } catch (error) {
       console.error('Error loading search performance:', error);
+      enqueueSnackbar('Error loading search performance data', { variant: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -689,14 +837,151 @@ const ContentSEO: React.FC = () => {
     </Box>
   );
 
+  // Create colors for the pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  // Render the authentication dialog
+  const renderAuthDialog = () => (
+    <Dialog open={authDialogOpen} onClose={handleAuthDialogClose} maxWidth="md">
+      <DialogTitle>Connect to Google Search Console</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          To view real search performance data for your content, you need to authenticate with Google Search Console.
+          Click the button below to open Google's authorization page in a new window.
+        </DialogContentText>
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<GoogleIcon />}
+            onClick={() => window.open(authUrl, '_blank')}
+            sx={{ mr: 2 }}
+          >
+            Authorize with Google
+          </Button>
+        </Box>
+        <DialogContentText>
+          After completing authorization, paste the code from Google below:
+        </DialogContentText>
+        <TextField
+          autoFocus
+          margin="dense"
+          id="auth-code"
+          label="Authorization Code"
+          type="text"
+          fullWidth
+          variant="outlined"
+          sx={{ mt: 1 }}
+          onChange={(e) => setAuthState(e.target.value)}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleAuthDialogClose} color="inherit">
+          Cancel
+        </Button>
+        <Button 
+          onClick={() => handleAuthCallback(authState)}
+          color="primary"
+          variant="contained"
+          disabled={!authState}
+        >
+          Submit
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   const renderSearchPerformanceTab = () => (
     <Box>
+      {/* Authentication Status */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Google Search Console Integration</Typography>
+          {authCheckLoading ? (
+            <CircularProgress size={24} />
+          ) : isGoogleAuthorized ? (
+            <Button 
+              variant="outlined"
+              color="primary"
+              startIcon={<RefreshIcon />}
+              onClick={loadSearchPerformance}
+              disabled={loading}
+            >
+              Refresh Data
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<GoogleIcon />}
+              onClick={initializeGoogleAuth}
+              disabled={loading}
+            >
+              Connect to Google Search Console
+            </Button>
+          )}
+        </Box>
+        
+        {!isGoogleAuthorized && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <AlertTitle>Connect to Google Search Console</AlertTitle>
+            To view real search performance data, you need to connect to Google Search Console.
+            This integration provides accurate search metrics for your content including clicks,
+            impressions, and rankings.
+          </Alert>
+        )}
+        
+        {isGoogleAuthorized && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            <AlertTitle>Connected to Google Search Console</AlertTitle>
+            Your Google Search Console integration is active. You're seeing real search performance data.
+          </Alert>
+        )}
+        
+        {/* Date Range Selector */}
+        {isGoogleAuthorized && (
+          <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              label="Start Date"
+              type="date"
+              value={searchDataRange.start}
+              onChange={(e) => setSearchDataRange({...searchDataRange, start: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              value={searchDataRange.end}
+              onChange={(e) => setSearchDataRange({...searchDataRange, end: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+            />
+            <Button 
+              variant="outlined" 
+              size="small"
+              onClick={loadSearchPerformance}
+              disabled={loading}
+            >
+              Apply
+            </Button>
+          </Box>
+        )}
+      </Paper>
+
+      {/* Search Performance Overview */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
           Search Performance Overview
         </Typography>
 
-        {searchPerformance ? (
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        )}
+
+        {!loading && searchPerformance ? (
           <>
             <Grid container spacing={3} sx={{ mb: 3 }}>
               <Grid item xs={12} sm={6} md={3}>
@@ -769,6 +1054,97 @@ const ContentSEO: React.FC = () => {
               </Grid>
             </Grid>
 
+            {/* Performance Trend Charts */}
+            {chartData.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  Performance Trends
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Clicks & Impressions
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="clicks"
+                        stroke="#8884d8"
+                        activeDot={{ r: 8 }}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="impressions"
+                        stroke="#82ca9d"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Paper>
+                
+                <Grid container spacing={2} sx={{ mt: 2 }}>
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Average Position
+                      </Typography>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart
+                          data={chartData}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis reversed domain={[1, 'dataMax']} />
+                          <RechartsTooltip />
+                          <Line
+                            type="monotone"
+                            dataKey="position"
+                            stroke="#ff7300"
+                            activeDot={{ r: 8 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        CTR (%)
+                      </Typography>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart
+                          data={chartData}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Area
+                            type="monotone"
+                            dataKey="ctr"
+                            stroke="#8884d8"
+                            fill="#8884d8"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+
             <Typography variant="h6" gutterBottom>
               Top Performing Queries
             </Typography>
@@ -803,80 +1179,122 @@ const ContentSEO: React.FC = () => {
               Device Breakdown
             </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6">Mobile</Typography>
-                    <Typography variant="h4">
-                      {searchPerformance.devices.MOBILE.clicks} clicks
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {searchPerformance.devices.MOBILE.impressions} impressions
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      CTR:{' '}
-                      {(
-                        (searchPerformance.devices.MOBILE.clicks /
-                          searchPerformance.devices.MOBILE.impressions) *
-                        100
-                      ).toFixed(2)}
-                      %
-                    </Typography>
-                  </CardContent>
-                </Card>
+              <Grid item xs={12} md={8}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="h6">Mobile</Typography>
+                        <Typography variant="h4">
+                          {searchPerformance.devices.MOBILE.clicks} clicks
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {searchPerformance.devices.MOBILE.impressions} impressions
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          CTR:{' '}
+                          {(
+                            (searchPerformance.devices.MOBILE.clicks /
+                              searchPerformance.devices.MOBILE.impressions) *
+                            100
+                          ).toFixed(2)}
+                          %
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="h6">Desktop</Typography>
+                        <Typography variant="h4">
+                          {searchPerformance.devices.DESKTOP.clicks} clicks
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {searchPerformance.devices.DESKTOP.impressions} impressions
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          CTR:{' '}
+                          {(
+                            (searchPerformance.devices.DESKTOP.clicks /
+                              searchPerformance.devices.DESKTOP.impressions) *
+                            100
+                          ).toFixed(2)}
+                          %
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="h6">Tablet</Typography>
+                        <Typography variant="h4">
+                          {searchPerformance.devices.TABLET.clicks} clicks
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {searchPerformance.devices.TABLET.impressions} impressions
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          CTR:{' '}
+                          {(
+                            (searchPerformance.devices.TABLET.clicks /
+                              searchPerformance.devices.TABLET.impressions) *
+                            100
+                          ).toFixed(2)}
+                          %
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
               </Grid>
+              
               <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6">Desktop</Typography>
-                    <Typography variant="h4">
-                      {searchPerformance.devices.DESKTOP.clicks} clicks
+                {deviceData.length > 0 && (
+                  <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Device Distribution (Clicks)
                     </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {searchPerformance.devices.DESKTOP.impressions} impressions
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      CTR:{' '}
-                      {(
-                        (searchPerformance.devices.DESKTOP.clicks /
-                          searchPerformance.devices.DESKTOP.impressions) *
-                        100
-                      ).toFixed(2)}
-                      %
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6">Tablet</Typography>
-                    <Typography variant="h4">
-                      {searchPerformance.devices.TABLET.clicks} clicks
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {searchPerformance.devices.TABLET.impressions} impressions
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      CTR:{' '}
-                      {(
-                        (searchPerformance.devices.TABLET.clicks /
-                          searchPerformance.devices.TABLET.impressions) *
-                        100
-                      ).toFixed(2)}
-                      %
-                    </Typography>
-                  </CardContent>
-                </Card>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={deviceData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {deviceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                )}
               </Grid>
             </Grid>
           </>
         ) : (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
+          !loading && (
+            <Box sx={{ p: 3 }}>
+              <Alert severity="info">
+                {isGoogleAuthorized
+                  ? 'No search performance data available for this content.'
+                  : 'Connect to Google Search Console to view search performance data.'}
+              </Alert>
+            </Box>
+          )
         )}
       </Paper>
+      
+      {/* Render authentication dialog */}
+      {renderAuthDialog()}
     </Box>
   );
 
@@ -1380,6 +1798,9 @@ const ContentSEO: React.FC = () => {
       <TabPanel value={tabValue} index={4}>
         {renderStructuredDataTab()}
       </TabPanel>
+      
+      {/* Authentication Dialog */}
+      {renderAuthDialog()}
     </Box>
   );
 };
