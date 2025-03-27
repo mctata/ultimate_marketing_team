@@ -93,7 +93,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install pytest pytest-asyncio pytest-cov
       
       - name: Set up database schema
         run: |
@@ -113,10 +113,17 @@ jobs:
         run: |
           export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ultimatemarketing
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          pytest -xvs tests/ --cov=src --cov-report=xml --cov-report=term
+          # Create token directory for SEO tests
+          mkdir -p .tokens
+          # Run tests with output capture to file for analysis
+          pytest -xvs tests/ --cov=src --cov-report=xml --cov-report=term | tee test-output.txt
         env:
           REDIS_URL: redis://localhost:6379/0
           RABBITMQ_URL: amqp://guest:guest@localhost:5672/%2F
+          # Mock values for SEO tests to ensure they're skipped when credentials aren't available
+          GOOGLE_OAUTH2_CLIENT_ID: "mock_client_id_for_ci"
+          GOOGLE_OAUTH2_CLIENT_SECRET: "mock_client_secret_for_ci"
+          TOKEN_STORAGE_DIR: ".tokens"
       
       - name: Check test coverage
         run: |
@@ -130,6 +137,25 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+      
+      - name: Analyze test skips
+        if: always()
+        run: |
+          echo "# Test Skip Analysis" > test-skips.md
+          echo "## Date: $(date)" >> test-skips.md
+          echo "### Skipped Tests:" >> test-skips.md
+          if [ -f test-output.txt ]; then
+            grep -A 1 "SKIPPED" test-output.txt >> test-skips.md || echo "No skipped tests found." >> test-skips.md
+          else
+            echo "No test output file found." >> test-skips.md
+          fi
+      
+      - name: Upload test skip analysis
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-skips-report
+          path: test-skips.md
 
   test-js:
     name: Frontend Tests

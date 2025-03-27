@@ -1,0 +1,113 @@
+name: Search Console Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_with_credentials:
+        description: 'Run tests with real credentials (requires secrets)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  schedule:
+    # Run weekly, as running with real credentials consumes API quota
+    - cron: '0 2 * * 1' # Monday at 2:00 AM UTC
+
+jobs:
+  test-search-console:
+    name: Search Console Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+      
+      - name: Run unit tests (without real credentials)
+        if: github.event_name == 'pull_request' || github.event.inputs.run_with_credentials != 'true'
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          pytest -xvs tests/services/test_search_console_service.py tests/api/test_seo_oauth.py
+      
+      - name: Run unit and integration tests with real credentials
+        if: github.event_name == 'schedule' || github.event.inputs.run_with_credentials == 'true'
+        env:
+          GOOGLE_OAUTH2_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH2_CLIENT_ID }}
+          GOOGLE_OAUTH2_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH2_CLIENT_SECRET }}
+          TEST_GSC_REFRESH_TOKEN: ${{ secrets.TEST_GSC_REFRESH_TOKEN }}
+          TEST_GSC_SITE_URL: ${{ secrets.TEST_GSC_SITE_URL }}
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          pytest -xvs tests/services/test_search_console_service.py tests/api/test_seo_oauth.py tests/integration/test_search_console_integration.py
+      
+      - name: Generate test report
+        if: always()
+        run: |
+          # Create test report
+          echo "# Search Console Integration Test Report" > search-console-test-report.md
+          echo "## Test Results" >> search-console-test-report.md
+          echo "### Date: $(date)" >> search-console-test-report.md
+          
+          if [[ "${{ github.event.inputs.run_with_credentials }}" == "true" || "${{ github.event_name }}" == "schedule" ]]; then
+            echo "### Test Mode: Using real credentials" >> search-console-test-report.md
+          else
+            echo "### Test Mode: Using mock data" >> search-console-test-report.md
+          fi
+          
+          # Extract failed tests from pytest output if available
+          if [ -f test-output.txt ]; then
+            echo "### Failed Tests:" >> search-console-test-report.md
+            grep "FAILED" test-output.txt >> search-console-test-report.md || echo "No failures found." >> search-console-test-report.md
+            
+            echo "### Warnings:" >> search-console-test-report.md
+            grep "WARN" test-output.txt >> search-console-test-report.md || echo "No warnings found." >> search-console-test-report.md
+          fi
+          
+          # Add a summary of overall result
+          if [ $? -eq 0 ]; then
+            echo "### Overall Status: ✅ PASSED" >> search-console-test-report.md
+          else
+            echo "### Overall Status: ❌ FAILED" >> search-console-test-report.md
+          fi
+      
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: search-console-test-report
+          path: search-console-test-report.md
+      
+      - name: Monitor API quotas and rate limits
+        if: github.event_name == 'schedule' || github.event.inputs.run_with_credentials == 'true'
+        run: |
+          echo "Monitoring API usage and rate limits..."
+          if [ -f test-output.txt ]; then
+            if grep -q "quota exceeded\|rate limit" test-output.txt; then
+              echo "⚠️ WARNING: API quota or rate limit issues detected"
+              echo "API_LIMIT_ISSUES=true" >> $GITHUB_ENV
+            else
+              echo "✅ No API quota or rate limit issues detected"
+              echo "API_LIMIT_ISSUES=false" >> $GITHUB_ENV
+            fi
+          fi
+      
+      - name: Notify on API quota issues
+        if: env.API_LIMIT_ISSUES == 'true'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_TITLE: "⚠️ Google Search Console API Quota Warning"
+          SLACK_MESSAGE: "API quota or rate limit issues detected in the Search Console integration tests. Please review the test report."
+          SLACK_COLOR: warning

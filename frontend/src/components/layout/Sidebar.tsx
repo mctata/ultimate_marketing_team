@@ -72,6 +72,7 @@ const menuItems: MenuItem[] = [
       { text: 'Content Overview', path: '/content' },
       { text: 'Content Library', path: '/content/library' },
       { text: 'Content Calendar', path: '/content/calendar' },
+      { text: 'SEO Optimization', path: '/content/seo' },
       { text: 'Templates Library', path: '/content/templates' },
       { text: 'Template Diagnostics', path: '/content/templates/diagnostics' },
       { text: 'Template Test Workspace', path: '/content/templates/test-workspace' },

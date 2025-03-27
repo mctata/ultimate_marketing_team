@@ -5,6 +5,7 @@ import ContentLibrary from './ContentLibrary';
 import ContentCalendar from './ContentCalendar';
 import ContentDetail from './ContentDetail';
 import ContentGenerator from './ContentGenerator';
+import ContentSEO from './ContentSEO';
 import { Box } from '@mui/material';
 import Templates from '../templates/Templates';
 import TemplateDetail from '../templates/TemplateDetail';
@@ -30,6 +31,8 @@ const Content = () => {
         <Route path="/library" element={<ContentLibrary />} />
         <Route path="/calendar" element={<ContentCalendar />} />
         <Route path="/generator" element={<ContentGenerator />} />
+        <Route path="/seo" element={<ContentSEO />} />
+        <Route path="/seo/:contentId" element={<ContentSEO />} />
         <Route path="/templates" element={<Templates />} />
         <Route path="/templates/:id/use" element={<TemplateDetail useMode={true} />} />
         <Route path="/templates/:id" element={<TemplateDetail />} />
