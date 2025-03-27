@@ -5,18 +5,21 @@ This module provides endpoints for Google Search Console data, SEO validation,
 and structured data generation.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional, Union
 import logging
 from datetime import datetime, date
+import os
 
 from src.core.security import get_current_user
 from src.services.search_console_service import search_console_service
 from src.services.seo_validation_service import seo_validation_service
 from src.services.structured_data_service import structured_data_service
 from src.services.ranking_performance_analyzer import ranking_performance_analyzer
+from src.agents.integrations.analytics.search_console import GoogleSearchConsoleIntegration
+from src.core import seo_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -49,6 +52,13 @@ class ContentUpdateRequest(BaseModel):
     content_id: int = Field(..., description="Content identifier")
     content_age_days: Optional[int] = Field(None, description="Age of content in days")
     url: Optional[str] = Field(None, description="URL where content is published")
+
+# Define API models for OAuth
+class OAuthCallbackRequest(BaseModel):
+    """Request model for OAuth callback."""
+    code: str = Field(..., description="Authorization code returned by Google")
+    state: str = Field(..., description="State parameter for security verification")
+    brand_id: int = Field(..., description="Brand identifier")
 
 # Define router
 router = APIRouter(
@@ -454,3 +464,132 @@ async def get_content_update_schedule(
     except Exception as e:
         logger.error(f"Error suggesting update schedule: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error suggesting update schedule: {str(e)}")
+
+# OAuth2 Endpoints for Google Search Console Integration
+
+@router.get("/auth/google/init")
+async def initiate_google_auth(
+    brand_id: int = Query(..., description="Brand identifier"),
+    site_url: Optional[str] = Query(None, description="Site URL to authenticate for"),
+    user=Depends(get_current_user)
+):
+    """
+    Initiate the Google OAuth2 authorization flow for Search Console access.
+    
+    Args:
+        brand_id: Brand identifier
+        site_url: Optional site URL to authorize for
+        user: The authenticated user
+        
+    Returns:
+        Authorization URL and state parameter
+    """
+    try:
+        integration = GoogleSearchConsoleIntegration(brand_id=brand_id, site_url=site_url)
+        auth_data = await integration.authenticate()
+        return auth_data
+    except Exception as e:
+        logger.error(f"Error initiating Google OAuth2 flow: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error initiating Google OAuth2 flow: {str(e)}")
+
+@router.post("/auth/google/callback")
+async def process_google_auth_callback(
+    request: OAuthCallbackRequest,
+    user=Depends(get_current_user)
+):
+    """
+    Process the callback from Google OAuth2 authorization.
+    
+    Args:
+        request: Callback request with authorization code, state, and brand_id
+        user: The authenticated user
+        
+    Returns:
+        Authentication result
+    """
+    try:
+        integration = GoogleSearchConsoleIntegration(brand_id=request.brand_id, site_url=None)
+        result = await integration.process_oauth_callback(request.code, request.state)
+        return result
+    except Exception as e:
+        logger.error(f"Error processing OAuth2 callback: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing OAuth2 callback: {str(e)}")
+
+@router.get("/oauth2callback")
+async def oauth2_redirect_callback(
+    request: Request
+):
+    """
+    Redirect endpoint for Google OAuth2 callback.
+    
+    This endpoint is the target of the Google OAuth2 redirect. It extracts the authorization code
+    and state parameter from the request, then redirects to the frontend with these parameters.
+    
+    Args:
+        request: The request object containing query parameters
+        
+    Returns:
+        Redirect to the frontend with authorization parameters
+    """
+    try:
+        # Extract parameters from the request
+        params = dict(request.query_params)
+        code = params.get("code")
+        state = params.get("state")
+        error = params.get("error")
+        
+        if error:
+            logger.error(f"OAuth2 error: {error}")
+            # Redirect to frontend with error
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            return RedirectResponse(
+                url=f"{frontend_url}/seo/auth/callback?error={error}"
+            )
+        
+        if not code or not state:
+            logger.error("Missing code or state in OAuth2 callback")
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "Missing required parameters"}
+            )
+        
+        # Redirect to frontend with parameters
+        # The frontend will then call the /auth/google/callback endpoint with these parameters
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        return RedirectResponse(
+            url=f"{frontend_url}/seo/auth/callback?code={code}&state={state}"
+        )
+    except Exception as e:
+        logger.error(f"Error in OAuth2 callback: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": f"Error in OAuth2 callback: {str(e)}"}
+        )
+
+@router.get("/auth/status")
+async def check_auth_status(
+    brand_id: int = Query(..., description="Brand identifier"),
+    user=Depends(get_current_user)
+):
+    """
+    Check if the brand has an active Google Search Console authorization.
+    
+    Args:
+        brand_id: Brand identifier
+        user: The authenticated user
+        
+    Returns:
+        Authorization status
+    """
+    try:
+        token_path = seo_settings.get_token_path(brand_id)
+        is_authorized = token_path.exists()
+        
+        return {
+            "status": "success",
+            "is_authorized": is_authorized,
+            "brand_id": brand_id
+        }
+    except Exception as e:
+        logger.error(f"Error checking authorization status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error checking authorization status: {str(e)}")

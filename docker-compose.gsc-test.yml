@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # API Gateway for GSC Testing
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/api_gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env.staging
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=DEBUG
+      - GOOGLE_OAUTH2_CLIENT_ID=${GOOGLE_OAUTH2_CLIENT_ID}
+      - GOOGLE_OAUTH2_CLIENT_SECRET=${GOOGLE_OAUTH2_CLIENT_SECRET}
+      - GOOGLE_OAUTH2_REDIRECT_URI=https://staging-api.tangible-studios.com/api/seo/oauth2callback
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - umt-network
+    volumes:
+      - .tokens:/app/.tokens
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    ports:
+      - "3000:80"
+    env_file: ./frontend/.env.staging
+    depends_on:
+      - api-gateway
+    restart: always
+    networks:
+      - umt-network
+
+  # Infrastructure Services
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
+      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
+    networks:
+      - umt-network
+    restart: always
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - umt-network
+    restart: always
+
+  # Database Migrations
+  migrations:
+    build:
+      context: .
+      dockerfile: docker/migrations/Dockerfile
+    env_file: .env.staging
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+    networks:
+      - umt-network
+    command: alembic upgrade head
+
+networks:
+  umt-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
