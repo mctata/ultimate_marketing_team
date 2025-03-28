@@ -33,31 +33,13 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
     --exclude='frontend/.env.production' \
     . $TEMP_DIR/
 
-# Copy environment template files
-echo "Copying environment template files..."
-cp config/env/.env.staging.template $TEMP_DIR/
-cp frontend/.env.staging.template $TEMP_DIR/frontend/
+# Copy environment files
+echo "Copying environment files..."
+cp config/env/.env.staging $TEMP_DIR/.env
+[ -f frontend/.env.staging ] && cp frontend/.env.staging $TEMP_DIR/frontend/.env || cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
 
-# Create real environment files from templates if they don't exist on the server
-echo "Creating environment files from templates if needed..."
-ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
-    set -e
-    
-    # Create .env from template if it doesn't exist
-    if [ ! -f $REMOTE_DIR/.env ]; then
-        echo "Creating .env file from template..."
-        cp $REMOTE_DIR/.env.staging.template $REMOTE_DIR/.env
-        echo "IMPORTANT: Please update $REMOTE_DIR/.env with proper credentials"
-    fi
-    
-    # Create frontend/.env from template if it doesn't exist
-    if [ ! -f $REMOTE_DIR/frontend/.env ]; then
-        echo "Creating frontend/.env file from template..."
-        mkdir -p $REMOTE_DIR/frontend
-        cp $REMOTE_DIR/frontend/.env.staging.template $REMOTE_DIR/frontend/.env
-        echo "IMPORTANT: Please update $REMOTE_DIR/frontend/.env with proper credentials"
-    fi
-EOF
+# Note about credentials
+echo "NOTE: The .env files contain template values. Update credentials after deployment."
 
 # Create deployment package
 echo "Creating deployment archive..."
