@@ -75,8 +75,10 @@ docker-compose up -d
 docker-compose up migrations
 
 # Or manually using the helper script
-python manage_migrations.py upgrade
+python scripts/migrations/manage_migrations.py upgrade
 ```
+
+See [SCRIPTS.md](SCRIPTS.md) for a complete list of available scripts and their locations.
 
 7. Access the application:
    - Frontend: http://localhost:3000
@@ -303,7 +305,7 @@ For development, use the test account:
 You can verify authentication using the test script:
 
 ```bash
-python scripts/create_test_user.py
+python scripts/testing/create_test_user.py
 ```
 
 ## Project Structure
@@ -414,21 +416,21 @@ The project includes a comprehensive migration verification system to prevent co
 
 1. **Pre-migration checks**: Validate migrations before applying them
    ```bash
-   python manage_migrations.py verify
+   python scripts/migrations/manage_migrations.py verify
    ```
 
 2. **Migration pattern scanning**: Check for proper SQLAlchemy patterns
    ```bash
-   python scripts/check_migration_patterns.py
+   python scripts/database/check_migration_patterns.py
    ```
 
 3. **Automatic verification before migrations**: All upgrade operations run verification first
    ```bash
    # Run with checks (default)
-   python manage_migrations.py upgrade
+   python scripts/migrations/manage_migrations.py upgrade
 
    # Skip checks if needed
-   python manage_migrations.py upgrade --skip-checks
+   python scripts/migrations/manage_migrations.py upgrade --skip-checks
    ```
 
 4. **Enhanced logging**: Migrations now log detailed execution information to `migration_validation.log`
@@ -464,10 +466,10 @@ The project includes a comprehensive migration verification system to prevent co
    cat migration_validation.log
 
    # Get detailed pattern check information
-   python scripts/check_migration_patterns.py
+   python scripts/database/check_migration_patterns.py
    
    # Run only verification (no database changes)
-   python manage_migrations.py verify
+   python scripts/migrations/manage_migrations.py verify
    ```
 
 ## License
