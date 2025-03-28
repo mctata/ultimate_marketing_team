@@ -10,6 +10,14 @@ import argparse
 import sys
 import time
 import requests
+import os
+
+# Import the logging utility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger
+
+# Setup logger
+logger = setup_logger('api_health_check')
 
 
 def check_health(url, retries=5, delay=2):
@@ -25,21 +33,22 @@ def check_health(url, retries=5, delay=2):
     """
     for attempt in range(retries):
         try:
-            print(f"Health check attempt {attempt + 1}/{retries}...")
+            logger.info(f"Health check attempt {attempt + 1}/{retries}...")
             response = requests.get(url, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"Health check successful: {data}")
+                logger.info(f"Health check successful: {data}")
                 return True
             else:
-                print(f"Health check failed with status code: {response.status_code}")
+                logger.error(f"Health check failed with status code: {response.status_code}")
+                logger.error(f"Response: {response.text}")
                 
         except requests.exceptions.RequestException as e:
-            print(f"Health check request failed: {e}")
+            logger.error(f"Health check request failed: {e}")
             
         if attempt < retries - 1:
-            print(f"Retrying in {delay} seconds...")
+            logger.info(f"Retrying in {delay} seconds...")
             time.sleep(delay)
             
     return False
@@ -56,13 +65,13 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"Checking API health at {args.url}")
+    logger.info(f"Checking API health at {args.url}")
     
     if check_health(args.url, args.retries, args.delay):
-        print("API is healthy!")
+        logger.info("API is healthy!")
         sys.exit(0)
     else:
-        print("API health check failed after multiple attempts")
+        logger.error("API health check failed after multiple attempts")
         sys.exit(1)
 
 

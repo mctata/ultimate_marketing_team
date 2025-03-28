@@ -12,8 +12,15 @@ import subprocess
 import sys
 from datetime import datetime
 
+# Import the logging utility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution
+
 # S3 bucket for database backups
 DEFAULT_S3_BUCKET = "umt-database-backups"
+
+# Set up logger
+logger = setup_logger("database_backup")
 
 
 def create_backup(db_name, db_user, db_password, db_host, db_port, output_dir, backup_name=None):
@@ -55,23 +62,36 @@ def create_backup(db_name, db_user, db_password, db_host, db_port, output_dir, b
         "-f", backup_path
     ]
     
+    # Convert command array to string for logging (masking password)
+    command_str = " ".join(command)
+    
     try:
-        print(f"Creating database backup: {backup_path}")
+        logger.info(f"Creating database backup: {backup_path}")
         process = subprocess.run(command, env=env, check=True, capture_output=True, text=True)
         
         if os.path.exists(backup_path):
             backup_size = os.path.getsize(backup_path) / (1024 * 1024)  # Size in MB
-            print(f"Backup created successfully: {backup_path} ({backup_size:.2f} MB)")
+            logger.info(f"Backup created successfully: {backup_path} ({backup_size:.2f} MB)")
             return backup_path
         else:
-            print("ERROR: Backup file not created")
-            print(f"Command output: {process.stdout}")
-            print(f"Command error: {process.stderr}")
+            logger.error("Backup file not created")
+            log_command_execution(
+                logger,
+                command_str,
+                process.stdout,
+                1,  # Simulating error code since file doesn't exist
+                process.stderr
+            )
             return None
     except subprocess.CalledProcessError as e:
-        print(f"ERROR: Database backup failed: {e}")
-        print(f"Command output: {e.stdout}")
-        print(f"Command error: {e.stderr}")
+        logger.error(f"Database backup failed: {e}")
+        log_command_execution(
+            logger,
+            command_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return None
 
 
@@ -94,16 +114,29 @@ def upload_to_s3(file_path, bucket_name, s3_key=None):
         file_path,
         f"s3://{bucket_name}/{s3_key}"
     ]
+    command_str = " ".join(command)
     
     try:
-        print(f"Uploading backup to S3: s3://{bucket_name}/{s3_key}")
+        logger.info(f"Uploading backup to S3: s3://{bucket_name}/{s3_key}")
         process = subprocess.run(command, check=True, capture_output=True, text=True)
-        print("Backup uploaded successfully")
+        logger.info("Backup uploaded successfully")
+        log_command_execution(
+            logger,
+            command_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
-        print(f"ERROR: S3 upload failed: {e}")
-        print(f"Command output: {e.stdout}")
-        print(f"Command error: {e.stderr}")
+        logger.error(f"S3 upload failed: {e}")
+        log_command_execution(
+            logger,
+            command_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False
 
 
@@ -130,6 +163,8 @@ def main():
     
     args = parser.parse_args()
     
+    logger.info(f"Starting database backup for {args.db_name} in {args.environment} environment")
+    
     # Create backup filename with environment
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_name = f"{args.db_name}_{args.environment}_{timestamp}.sql"
@@ -146,15 +181,17 @@ def main():
     )
     
     if not backup_path:
+        logger.error("Database backup failed, exiting with error code 1")
         sys.exit(1)
     
     # Upload to S3 if requested
     if args.upload_to_s3:
         s3_key = f"{args.environment}/{backup_name}"
         if not upload_to_s3(backup_path, args.s3_bucket, s3_key):
+            logger.error("S3 upload failed, exiting with error code 1")
             sys.exit(1)
     
-    print("Database backup completed successfully")
+    logger.info("Database backup completed successfully")
     sys.exit(0)
 
 

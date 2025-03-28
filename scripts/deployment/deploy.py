@@ -17,8 +17,11 @@ import sys
 import time
 import json
 import subprocess
-import logging
 from datetime import datetime
+
+# Import the logging utility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution
 
 # Environment constants
 ENV_DEVELOPMENT = "development"
@@ -71,26 +74,8 @@ ENV_CONFIG = {
 }
 
 
-def setup_logging():
-    """Setup logging to both file and console."""
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    
-    log_file = os.path.join(log_dir, f'deployment_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-    
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    return logging.getLogger('deploy')
-
 # Setup logger
-logger = setup_logging()
+logger = setup_logger('deploy')
 
 def log_message(message, level="INFO"):
     """Log a message with timestamp.
@@ -155,22 +140,36 @@ def run_backup(environment, config):
     log_message(f"Starting database backup for {environment} environment")
     
     backup_cmd = [
-        "python", "scripts/backup_database.py",
+        "python", "scripts/database/backup_database.py",
         "--environment", environment,
-        "--output-dir", "./backups"
+        "--output-dir", "./logs/backups"
     ]
     
     if config.get("s3_backup_bucket"):
         backup_cmd.extend(["--upload-to-s3", "--s3-bucket", config["s3_backup_bucket"]])
     
+    command_str = " ".join(backup_cmd)
+    
     try:
         process = subprocess.run(backup_cmd, check=True, capture_output=True, text=True)
         log_message("Database backup completed successfully")
+        log_command_execution(
+            logger,
+            command_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
         log_message(f"Database backup failed: {e}", "ERROR")
-        log_message(f"Command output: {e.stdout}", "ERROR")
-        log_message(f"Command error: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            command_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False
 
 
@@ -188,22 +187,35 @@ def verify_migrations(environment, config):
     
     # Run static verification first
     check_migration_cmd = [
-        "python", "scripts/check_migration_patterns.py"
+        "python", "scripts/database/check_migration_patterns.py"
     ]
+    command_str = " ".join(check_migration_cmd)
     
     try:
         log_message("Running migration pattern verification")
         process = subprocess.run(check_migration_cmd, check=True, capture_output=True, text=True)
         log_message("Migration pattern verification passed")
+        log_command_execution(
+            logger,
+            command_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
     except subprocess.CalledProcessError as e:
         log_message(f"Migration pattern verification failed: {e}", "ERROR")
-        log_message(f"Verification output: {e.stdout}", "ERROR")
-        log_message(f"Verification errors: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            command_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         
         # Send notification about verification failure
         try:
             notify_cmd = [
-                "python", "scripts/notify_migration_status.py",
+                "python", "scripts/notifications/notify_migration_status.py",
                 "--environment", environment,
                 "--status", "failure",
                 "--title", f"Migration Pattern Verification Failed ({environment})",
@@ -219,9 +231,17 @@ def verify_migrations(environment, config):
                 
             if config.get("notification_email"):
                 notify_cmd.extend(["--email-recipients", config["notification_email"]])
-                
-            subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
+            
+            notify_str = " ".join(notify_cmd)
+            notify_process = subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
             log_message("Migration verification failure notification sent")
+            log_command_execution(
+                logger,
+                notify_str,
+                notify_process.stdout,
+                notify_process.returncode,
+                notify_process.stderr
+            )
         except Exception as notify_err:
             log_message(f"Failed to send notification: {notify_err}", "ERROR")
             
@@ -229,24 +249,37 @@ def verify_migrations(environment, config):
     
     # Run pre-migration checks
     pre_check_cmd = [
-        "python", "scripts/pre_migration_check.py",
+        "python", "scripts/database/pre_migration_check.py",
         "--skip-simulation"  # Skip database simulation in production
     ]
+    pre_check_str = " ".join(pre_check_cmd)
     
     try:
         log_message("Running pre-migration checks")
         process = subprocess.run(pre_check_cmd, check=True, capture_output=True, text=True)
         log_message("Pre-migration checks passed")
+        log_command_execution(
+            logger,
+            pre_check_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
         log_message(f"Pre-migration checks failed: {e}", "ERROR")
-        log_message(f"Checks output: {e.stdout}", "ERROR")
-        log_message(f"Checks errors: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            pre_check_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         
         # Send notification about pre-migration check failure
         try:
             notify_cmd = [
-                "python", "scripts/notify_migration_status.py",
+                "python", "scripts/notifications/notify_migration_status.py",
                 "--environment", environment,
                 "--status", "failure",
                 "--title", f"Pre-Migration Checks Failed ({environment})",
@@ -262,9 +295,17 @@ def verify_migrations(environment, config):
                 
             if config.get("notification_email"):
                 notify_cmd.extend(["--email-recipients", config["notification_email"]])
-                
-            subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
+            
+            notify_str = " ".join(notify_cmd)
+            notify_process = subprocess.run(notify_cmd, check=False, capture_output=True, text=True)
             log_message("Pre-migration check failure notification sent")
+            log_command_execution(
+                logger,
+                notify_str,
+                notify_process.stdout,
+                notify_process.returncode,
+                notify_process.stderr
+            )
         except Exception as notify_err:
             log_message(f"Failed to send notification: {notify_err}", "ERROR")
             
@@ -292,16 +333,24 @@ def run_migrations(environment, config):
     
     # Check current version
     monitor_cmd = [
-        "python", "scripts/monitor_migrations.py",
+        "python", "scripts/database/monitor_migrations.py",
         "--output", "json",
         "--database-url", os.environ.get("DATABASE_URL")
     ]
+    monitor_cmd_str = " ".join(monitor_cmd)
     
     try:
         process = subprocess.run(monitor_cmd, check=True, capture_output=True, text=True)
         pre_migration_status = json.loads(process.stdout)
         pre_version = pre_migration_status.get("current_version")
         log_message(f"Current migration version: {pre_version}")
+        log_command_execution(
+            logger,
+            monitor_cmd_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
     except Exception as e:
         log_message(f"Failed to check current migration version: {e}", "ERROR")
         return False, None
@@ -311,10 +360,18 @@ def run_migrations(environment, config):
     migration_cmd = [
         "docker-compose", "-f", docker_compose_file, "up", "-d", "migrations"
     ]
+    migration_cmd_str = " ".join(migration_cmd)
     
     try:
         log_message("Running migrations")
         process = subprocess.run(migration_cmd, check=True, capture_output=True, text=True)
+        log_command_execution(
+            logger,
+            migration_cmd_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         
         # Wait for migrations to complete
         log_message("Waiting for migrations to complete")
@@ -353,8 +410,13 @@ def run_migrations(environment, config):
             return False, None
     except subprocess.CalledProcessError as e:
         log_message(f"Migration command failed: {e}", "ERROR")
-        log_message(f"Command output: {e.stdout}", "ERROR")
-        log_message(f"Command error: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            migration_cmd_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False, None
 
 
@@ -381,15 +443,28 @@ def deploy_services(environment, config, services=None):
     deploy_cmd = [
         "docker-compose", "-f", docker_compose_file, "up", "-d"
     ] + services
+    deploy_cmd_str = " ".join(deploy_cmd)
     
     try:
         process = subprocess.run(deploy_cmd, check=True, capture_output=True, text=True)
         log_message("Services deployed successfully")
+        log_command_execution(
+            logger,
+            deploy_cmd_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
         log_message(f"Service deployment failed: {e}", "ERROR")
-        log_message(f"Command output: {e.stdout}", "ERROR")
-        log_message(f"Command error: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            deploy_cmd_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False
 
 
@@ -413,20 +488,33 @@ def check_health(config):
         return True
     
     health_check_cmd = [
-        "python", "scripts/check_api_health.py",
+        "python", "scripts/monitoring/check_api_health.py",
         "--url", health_check_url,
         "--retries", str(retries),
         "--delay", str(delay)
     ]
+    health_check_str = " ".join(health_check_cmd)
     
     try:
         process = subprocess.run(health_check_cmd, check=True, capture_output=True, text=True)
         log_message("Health check passed")
+        log_command_execution(
+            logger,
+            health_check_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
         log_message(f"Health check failed: {e}", "ERROR")
-        log_message(f"Command output: {e.stdout}", "ERROR")
-        log_message(f"Command error: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            health_check_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False
 
 
@@ -453,15 +541,28 @@ def rollback_migration(environment, config, target_version):
         "run", "--rm", "migrations",
         "alembic", "downgrade", target_version
     ]
+    rollback_cmd_str = " ".join(rollback_cmd)
     
     try:
         process = subprocess.run(rollback_cmd, check=True, capture_output=True, text=True)
         log_message(f"Migration rolled back successfully to version {target_version}")
+        log_command_execution(
+            logger,
+            rollback_cmd_str,
+            process.stdout,
+            process.returncode,
+            ""
+        )
         return True
     except subprocess.CalledProcessError as e:
         log_message(f"Migration rollback failed: {e}", "ERROR")
-        log_message(f"Command output: {e.stdout}", "ERROR")
-        log_message(f"Command error: {e.stderr}", "ERROR")
+        log_command_execution(
+            logger,
+            rollback_cmd_str,
+            e.stdout,
+            e.returncode,
+            e.stderr
+        )
         return False
 
 

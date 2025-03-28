@@ -13,25 +13,15 @@ import sys
 import ast
 from collections import defaultdict
 from pathlib import Path
-import logging
 from typing import Dict, List, Tuple, Set, Optional, Any
 from datetime import datetime
 
-# Setup logging
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
+# Import the logging utility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger
 
-log_file = os.path.join(LOG_DIR, f'migration_check_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger('migration_checker')
+# Setup logger
+logger = setup_logger('migration_checker')
 
 # Pattern to match direct SQL execution
 RAW_SQL_PATTERNS = [
