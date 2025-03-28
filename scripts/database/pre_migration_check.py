@@ -12,7 +12,6 @@ import os
 import sys
 import subprocess
 import argparse
-import logging
 import importlib.util
 import re
 from pathlib import Path
@@ -21,20 +20,16 @@ import tempfile
 import shutil
 import datetime
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('migration_validation.log')
-    ]
-)
-logger = logging.getLogger('pre_migration')
+# Add parent directory to path to import utilities
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution, log_database_operation
+
+# Setup logger
+logger = setup_logger('pre_migration')
 
 # Project directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 MIGRATIONS_DIR = os.path.join(PROJECT_ROOT, 'migrations')
 VERSIONS_DIR = os.path.join(MIGRATIONS_DIR, 'versions')
 
@@ -42,7 +37,9 @@ def run_command(command: List[str], check: bool = True) -> Tuple[int, str, str]:
     """
     Run a shell command and return exit code, stdout, and stderr
     """
-    logger.debug(f"Running command: {' '.join(command)}")
+    cmd_str = ' '.join(command)
+    logger.debug(f"Running command: {cmd_str}")
+    
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -52,11 +49,11 @@ def run_command(command: List[str], check: bool = True) -> Tuple[int, str, str]:
     stdout, stderr = process.communicate()
     exit_code = process.returncode
     
+    # Log the command execution result
+    log_command_execution(logger, cmd_str, stdout, exit_code, stderr if exit_code != 0 else None)
+    
     if check and exit_code != 0:
         logger.error(f"Command failed with exit code {exit_code}")
-        logger.error(f"Command: {' '.join(command)}")
-        logger.error(f"Stdout: {stdout}")
-        logger.error(f"Stderr: {stderr}")
     
     return exit_code, stdout, stderr
 
@@ -189,7 +186,7 @@ def create_test_database() -> bool:
                 db_url = config['alembic']['sqlalchemy.url']
         
         if not db_url:
-            logger.error("Could not determine database URL from env or alembic.ini")
+            log_database_operation(logger, "CONFIG", "migration", "Could not determine database URL from env or alembic.ini", success=False)
             return False
         
         # Create a new database URL for the test database
@@ -205,20 +202,20 @@ def create_test_database() -> bool:
             conn.execute(sqlalchemy.text(f"CREATE DATABASE {test_db_name}"))
             conn.close()
             
-            logger.info(f"Created test database: {test_db_name}")
+            log_database_operation(logger, "CREATE", "database", f"Created test database: {test_db_name}")
             
             # Set environment variable for alembic
             os.environ['SQLALCHEMY_TEST_URL'] = test_db_url
             return True
         else:
-            logger.error(f"Unsupported database type: {db_url}")
+            log_database_operation(logger, "ERROR", "database", f"Unsupported database type: {db_url}", success=False)
             return False
     except ImportError as ie:
-        logger.error(f"Import error: {ie}, skipping database creation test")
+        log_database_operation(logger, "ERROR", "imports", f"Import error: {ie}, skipping database creation test", success=False)
         # Don't fail the entire check for this optional component
         return False
     except Exception as e:
-        logger.error(f"Error creating test database: {e}")
+        log_database_operation(logger, "ERROR", "database", f"Error creating test database: {e}", success=False)
         return False
 
 def cleanup_test_database() -> None:
@@ -247,10 +244,10 @@ def cleanup_test_database() -> None:
             conn.execute(sqlalchemy.text(f"DROP DATABASE IF EXISTS {test_db_name}"))
             conn.close()
             
-            logger.info(f"Cleaned up test database: {test_db_name}")
+            log_database_operation(logger, "DROP", "database", f"Cleaned up test database: {test_db_name}")
         
     except Exception as e:
-        logger.error(f"Error cleaning up test database: {e}")
+        log_database_operation(logger, "ERROR", "database", f"Error cleaning up test database: {e}", success=False)
 
 def simulate_migrations() -> bool:
     """
@@ -343,7 +340,9 @@ def main():
     args = parse_args()
     
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
+        # We can't directly modify the logger level with our setup_logger
+        # Instead, we'll add a debug message
+        logger.debug("Verbose logging enabled")
     
     logger.info("Starting pre-migration validation")
     
@@ -370,12 +369,12 @@ def main():
                 simulation_check = simulate_migrations()
                 validation_steps.append(("Migration simulation", simulation_check))
             else:
-                logger.warning("Skipping database simulation due to database connection issues")
+                log_database_operation(logger, "SKIP", "simulation", "Skipping database simulation due to database connection issues", success=True)
                 # Don't fail validation for this optional step in development environments
                 if os.environ.get("CI") == "true":
                     validation_steps.append(("Create test database", False))
         except Exception as e:
-            logger.error(f"Error during migration simulation: {e}")
+            log_database_operation(logger, "ERROR", "simulation", f"Error during migration simulation: {e}", success=False)
             if os.environ.get("CI") == "true":
                 validation_steps.append(("Migration simulation", False))
         finally:
@@ -397,10 +396,10 @@ def main():
     logger.info("=" * 50)
     
     if all_passed:
-        logger.info("All validation checks passed. Migrations are ready to apply.")
+        log_database_operation(logger, "VALIDATE", "migrations", "All validation checks passed. Migrations are ready to apply.")
         return 0
     else:
-        logger.error("Validation failed. Fix issues before applying migrations.")
+        log_database_operation(logger, "VALIDATE", "migrations", "Validation failed. Fix issues before applying migrations.", success=False)
         return 1
 
 if __name__ == "__main__":
@@ -411,6 +410,6 @@ if __name__ == "__main__":
         cleanup_test_database()
         sys.exit(130)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
+        log_database_operation(logger, "ERROR", "system", f"Unexpected error: {e}", success=False)
         cleanup_test_database()
         sys.exit(1)
