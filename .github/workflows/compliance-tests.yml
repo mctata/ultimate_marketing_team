@@ -239,7 +239,7 @@ jobs:
       - name: Send status notification
         if: ${{ needs.unit-tests.result == 'failure' || needs.api-tests.result == 'failure' || needs.integration-tests.result == 'failure' }}
         run: |
-          python scripts/notify_test_status.py \
+          python scripts/notifications/notify_test_status.py \
             --test-type "Compliance" \
             --unit-test-status "${{ steps.test_results.outputs.unit_tests }}" \
             --api-test-status "${{ steps.test_results.outputs.api_tests }}" \

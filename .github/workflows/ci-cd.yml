@@ -239,7 +239,7 @@ jobs:
       - name: Verify migration patterns
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/check_migration_patterns.py
+          python scripts/database/check_migration_patterns.py
       
       - name: Run migration verification
         run: |
@@ -285,7 +285,7 @@ jobs:
         if: failure()
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/notify_migration_status.py \
+          python scripts/notifications/notify_migration_status.py \
             --environment "${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}" \
             --status failure \
             --title "Migration Verification Failed" \
@@ -340,7 +340,7 @@ jobs:
           export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ultimatemarketing
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           export CI=true
-          python scripts/pre_migration_check.py --skip-simulation
+          python scripts/database/pre_migration_check.py --skip-simulation
       
       - name: Run migration tests
         run: |
@@ -433,7 +433,7 @@ jobs:
           pip install requests
           
           # Run health check
-          python scripts/check_api_health.py --url http://localhost:8000/api/health --retries 5 --delay 3
+          python scripts/monitoring/check_api_health.py --url http://localhost:8000/api/health --retries 5 --delay 3
           
           # Shutdown containers
           docker-compose -f docker-compose.test.yml down
@@ -592,7 +592,7 @@ jobs:
       - name: Backup Database
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/backup_database.py \
+          python scripts/database/backup_database.py \
             --db-name ${{ secrets.STAGING_DB_NAME }} \
             --db-user ${{ secrets.STAGING_DB_USER }} \
             --db-password ${{ secrets.STAGING_DB_PASSWORD }} \
@@ -606,7 +606,7 @@ jobs:
       - name: Run Database Migrations
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/deploy.py \
+          python scripts/deployment/deploy.py \
             --environment staging \
             --db-only
         env:
@@ -620,7 +620,7 @@ jobs:
       - name: Deploy Services
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/deploy.py \
+          python scripts/deployment/deploy.py \
             --environment staging \
             --skip-migrations \
             --skip-backup
@@ -633,7 +633,7 @@ jobs:
       - name: Notify Slack on Success
         if: success()
         run: |
-          python scripts/notify_deploy_status.py \
+          python scripts/notifications/notify_deploy_status.py \
             --environment staging \
             --status success \
             --title "Staging Deployment Successful" \
@@ -643,7 +643,7 @@ jobs:
       - name: Notify Slack on Failure
         if: failure()
         run: |
-          python scripts/notify_deploy_status.py \
+          python scripts/notifications/notify_deploy_status.py \
             --environment staging \
             --status failure \
             --title "Staging Deployment Failed" \
@@ -703,7 +703,7 @@ jobs:
       
       - name: Notify Team of Pending Deployment
         run: |
-          python scripts/notify_deploy_status.py \
+          python scripts/notifications/notify_deploy_status.py \
             --environment production \
             --status info \
             --title "Production Deployment Starting" \
@@ -714,7 +714,7 @@ jobs:
       - name: Backup Database
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/backup_database.py \
+          python scripts/database/backup_database.py \
             --db-name ${{ secrets.PROD_DB_NAME }} \
             --db-user ${{ secrets.PROD_DB_USER }} \
             --db-password ${{ secrets.PROD_DB_PASSWORD }} \
@@ -727,7 +727,7 @@ jobs:
       - name: Run Database Migrations
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/deploy.py \
+          python scripts/deployment/deploy.py \
             --environment production \
             --db-only
         env:
@@ -741,7 +741,7 @@ jobs:
       - name: Deploy Services
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python scripts/deploy.py \
+          python scripts/deployment/deploy.py \
             --environment production \
             --skip-migrations \
             --skip-backup
@@ -753,7 +753,7 @@ jobs:
       - name: Notify Slack on Success
         if: success()
         run: |
-          python scripts/notify_deploy_status.py \
+          python scripts/notifications/notify_deploy_status.py \
             --environment production \
             --status success \
             --title "Production Deployment Successful" \
@@ -764,7 +764,7 @@ jobs:
       - name: Notify Slack on Failure
         if: failure()
         run: |
-          python scripts/notify_deploy_status.py \
+          python scripts/notifications/notify_deploy_status.py \
             --environment production \
             --status failure \
             --title "URGENT: Production Deployment Failed" \
