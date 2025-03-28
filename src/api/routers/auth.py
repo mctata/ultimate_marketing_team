@@ -1,5 +1,7 @@
 # Standard library imports
 import uuid
+import secrets
+import re
 from typing import Dict, Any, List, Optional
 from enum import Enum
 
@@ -68,6 +70,9 @@ class TokenData(BaseModel):
     sub: Optional[str] = None
     device_id: Optional[str] = None
     session_id: Optional[str] = None
+    
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -268,10 +273,17 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     # This would normally verify against a database
     
     access_token = create_access_token(subject=form_data.username)
+    refresh_token = secrets.token_hex(32)  # Simple refresh token for demonstration
+    
+    # Store refresh token in a secure way (Redis or database)
+    # This is just a placeholder
+    # Example: cache.set(f"refresh_token:{refresh_token}", form_data.username, expire=30*24*60*60)
     
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+        "expires_in": settings.JWT_EXPIRY
     }
 
 @router.post("/login", response_model=Token)
@@ -288,10 +300,17 @@ async def login(credentials: UserCredentials):
     # For now, just generate a token for any credentials
     
     access_token = create_access_token(subject=credentials.email)
+    refresh_token = secrets.token_hex(32)  # Simple refresh token for demonstration
+    
+    # Store refresh token in a secure way (Redis or database)
+    # This is just a placeholder
+    # Example: cache.set(f"refresh_token:{refresh_token}", credentials.email, expire=30*24*60*60)
     
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+        "expires_in": settings.JWT_EXPIRY
     }
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
@@ -628,6 +647,59 @@ async def get_user_sessions(
     sessions = get_user_sessions(user_id, db)
     
     return sessions
+
+@router.post("/refresh", response_model=Token)
+async def refresh_access_token(request: RefreshRequest):
+    """
+    Refresh an access token using a refresh token.
+    
+    Args:
+        request: The refresh request containing the refresh token
+        
+    Returns:
+        A new access token and optionally a new refresh token
+    """
+    # In a real implementation, you would:
+    # 1. Validate the refresh token against the stored token
+    # 2. Check if the refresh token is expired or revoked
+    # 3. Get the user ID associated with the refresh token
+    # 4. Generate a new access token and optionally a new refresh token
+    
+    # Mock implementation
+    try:
+        # Validate the refresh token - this is just a placeholder
+        # In a real implementation, you would verify against a database or cache
+        if not request.refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid refresh token"
+            )
+        
+        # In a real implementation, you would extract the user ID from the stored token data
+        # Mock user ID for demonstration
+        user_id = "user@example.com"
+        
+        # Generate a new access token
+        access_token = create_access_token(subject=user_id)
+        
+        # Generate a new refresh token (token rotation for security)
+        new_refresh_token = secrets.token_hex(32)
+        
+        # Store the new refresh token and invalidate the old one
+        # Example: cache.delete(f"refresh_token:{request.refresh_token}")
+        # Example: cache.set(f"refresh_token:{new_refresh_token}", user_id, expire=30*24*60*60)
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "refresh_token": new_refresh_token,
+            "expires_in": settings.JWT_EXPIRY
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate refresh token"
+        )
 
 @router.post("/revoke")
 async def revoke_token(
