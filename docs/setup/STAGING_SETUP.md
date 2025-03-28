@@ -47,7 +47,7 @@ SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploymen
 3. Select "Web application" as the application type
 4. Set the name to "UMT Staging Web Client"
 5. Add the authorized redirect URI:
-   - `https://staging-api.tangible-studios.com/api/seo/oauth2callback`
+   - `https://staging.tangible-studios.com/api/seo/oauth2callback`
 6. Click "Create"
 7. Note the Client ID and Client Secret
 
@@ -68,7 +68,7 @@ SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploymen
    GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker/gsc-test/docker-compose.gsc-test.yml up -d
    ```
 
-2. Visit `https://staging-api.tangible-studios.com/api/seo/auth/google/init?brand_id=1` in your browser
+2. Visit `https://staging.tangible-studios.com/api/seo/auth/google/init?brand_id=1` in your browser
    - This will redirect you to Google's authorization page
 
 3. Complete the OAuth flow by authorizing the application
