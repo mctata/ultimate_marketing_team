@@ -29,7 +29,8 @@ frontend/bundle-stats.html
 .DS_Store
 
 # Logs
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Testing
