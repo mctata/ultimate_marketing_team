@@ -11,23 +11,22 @@ import argparse
 import json
 from datetime import datetime
 
-# Add project root to path to import models
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path to import models and utilities
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution, log_database_operation
 
 try:
     from src.core.security import get_password_hash
     from sqlalchemy import create_engine, text
     from sqlalchemy.exc import SQLAlchemyError
-    import logging
 except ImportError as e:
     print(f"Error importing required modules: {e}")
     print("Please run this script in a virtual environment with required packages installed.")
     print("Run: python -m venv venv && source venv/bin/activate && pip install -r requirements.txt")
     sys.exit(1)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Setup logger
+logger = setup_logger('create_test_users')
 
 # Configuration
 DEFAULT_API_URL = "http://localhost:8000"
@@ -53,11 +52,24 @@ def register_user_api(api_url, email, password, username, full_name):
     }
     
     try:
+        logger.info(f"Registering user {email} via API")
         response = requests.post(url, json=data)
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API POST {url}",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
         logger.error(f"Failed to register user via API: {e}")
+        if hasattr(e, 'response') and e.response:
+            logger.error(f"Response: {e.response.text}")
         return None
 
 def get_token(api_url, email, password):
@@ -69,11 +81,32 @@ def get_token(api_url, email, password):
     }
     
     try:
+        logger.info(f"Requesting authentication token for {email}")
         response = requests.post(url, data=data)
+        
+        # Log API request details without exposing sensitive token data
+        success = response.status_code == 200
+        log_command_execution(
+            logger,
+            f"API POST {url} (OAuth token)",
+            "Token request successful" if success else "",
+            response.status_code,
+            response.text if not success else ""
+        )
+        
         response.raise_for_status()
-        return response.json().get("access_token")
+        token = response.json().get("access_token")
+        
+        if token:
+            # Only log first few characters of token for security
+            masked_token = f"{token[:8]}..." if len(token) > 8 else "[token]"
+            logger.info(f"Successfully obtained token: {masked_token}")
+        
+        return token
     except requests.RequestException as e:
         logger.error(f"Failed to get token: {e}")
+        if hasattr(e, 'response') and e.response:
+            logger.error(f"Response: {e.response.text}")
         return None
 
 def add_user_to_role(api_url, token, user_id, role_name):
@@ -83,47 +116,87 @@ def add_user_to_role(api_url, token, user_id, role_name):
     data = {"role_name": role_name}
     
     try:
+        logger.info(f"Adding user ID {user_id} to role '{role_name}'")
         response = requests.post(url, headers=headers, json=data)
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API POST {url}",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
         logger.error(f"Failed to add user to role {role_name}: {e}")
+        if hasattr(e, 'response') and e.response:
+            logger.error(f"Response: {e.response.text}")
         return None
 
 def create_users_via_db(db_url, admin_email, admin_password, editor_email, editor_password):
     """Create users directly in the database"""
     try:
+        logger.info(f"Connecting to database at {db_url.split('@')[-1]}")  # Only log DB host, not credentials
         engine = create_engine(db_url)
         
         # Hash passwords
+        logger.info("Generating password hashes")
         admin_password_hash = get_password_hash(admin_password)
         editor_password_hash = get_password_hash(editor_password)
         
         with engine.connect() as connection:
             # Check if admin role exists
+            logger.info("Checking if admin role exists")
             role_check = connection.execute(text("SELECT id FROM umt.roles WHERE name = 'admin'"))
             admin_role_id = role_check.fetchone()
+            
+            log_database_operation(
+                logger, 
+                "SELECT", 
+                "roles", 
+                {"name": "admin", "exists": admin_role_id is not None}
+            )
             
             if not admin_role_id:
                 logger.error("Admin role not found in database. Ensure the database is properly initialized.")
                 return False
                 
-            # Check if roles exist
+            # Check if content_creator role exists
+            logger.info("Checking if content_creator role exists")
             role_check = connection.execute(text("SELECT id FROM umt.roles WHERE name = 'content_creator'"))
             content_creator_role_id = role_check.fetchone()
+            
+            log_database_operation(
+                logger, 
+                "SELECT", 
+                "roles", 
+                {"name": "content_creator", "exists": content_creator_role_id is not None}
+            )
             
             if not content_creator_role_id:
                 logger.error("Content creator role not found in database. Ensure the database is properly initialized.")
                 return False
             
             # Create admin user if it doesn't exist
+            logger.info(f"Checking if admin user {admin_email} exists")
             admin_check = connection.execute(text("SELECT id FROM umt.users WHERE email = :email"), {"email": admin_email})
             admin_user = admin_check.fetchone()
+            
+            log_database_operation(
+                logger, 
+                "SELECT", 
+                "users", 
+                {"email": admin_email, "exists": admin_user is not None}
+            )
             
             if admin_user:
                 admin_id = admin_user[0]
                 logger.info(f"Admin user {admin_email} already exists with ID {admin_id}")
             else:
+                logger.info(f"Creating new admin user: {admin_email}")
                 result = connection.execute(
                     text("""
                         INSERT INTO umt.users 
@@ -141,23 +214,45 @@ def create_users_via_db(db_url, admin_email, admin_password, editor_email, edito
                     }
                 )
                 admin_id = result.fetchone()[0]
-                logger.info(f"Created admin user {admin_email} with ID {admin_id}")
+                
+                log_database_operation(
+                    logger, 
+                    "INSERT", 
+                    "users", 
+                    {"email": admin_email, "username": admin_email.split('@')[0], "id": admin_id, "role": "admin"}
+                )
                 
                 # Assign admin role
+                logger.info(f"Assigning admin role to user {admin_email}")
                 connection.execute(
                     text("INSERT INTO umt.user_roles (user_id, role_id) VALUES (:user_id, :role_id)"),
                     {"user_id": admin_id, "role_id": admin_role_id[0]}
                 )
-                logger.info(f"Assigned admin role to user {admin_email}")
+                
+                log_database_operation(
+                    logger, 
+                    "INSERT", 
+                    "user_roles", 
+                    {"user_id": admin_id, "role_id": admin_role_id[0], "role_name": "admin"}
+                )
             
             # Create editor user if it doesn't exist
+            logger.info(f"Checking if editor user {editor_email} exists")
             editor_check = connection.execute(text("SELECT id FROM umt.users WHERE email = :email"), {"email": editor_email})
             editor_user = editor_check.fetchone()
+            
+            log_database_operation(
+                logger, 
+                "SELECT", 
+                "users", 
+                {"email": editor_email, "exists": editor_user is not None}
+            )
             
             if editor_user:
                 editor_id = editor_user[0]
                 logger.info(f"Editor user {editor_email} already exists with ID {editor_id}")
             else:
+                logger.info(f"Creating new editor user: {editor_email}")
                 result = connection.execute(
                     text("""
                         INSERT INTO umt.users 
@@ -175,16 +270,30 @@ def create_users_via_db(db_url, admin_email, admin_password, editor_email, edito
                     }
                 )
                 editor_id = result.fetchone()[0]
-                logger.info(f"Created editor user {editor_email} with ID {editor_id}")
+                
+                log_database_operation(
+                    logger, 
+                    "INSERT", 
+                    "users", 
+                    {"email": editor_email, "username": editor_email.split('@')[0], "id": editor_id, "role": "editor"}
+                )
                 
                 # Assign content creator role
+                logger.info(f"Assigning content_creator role to user {editor_email}")
                 connection.execute(
                     text("INSERT INTO umt.user_roles (user_id, role_id) VALUES (:user_id, :role_id)"),
                     {"user_id": editor_id, "role_id": content_creator_role_id[0]}
                 )
-                logger.info(f"Assigned content creator role to user {editor_email}")
+                
+                log_database_operation(
+                    logger, 
+                    "INSERT", 
+                    "user_roles", 
+                    {"user_id": editor_id, "role_id": content_creator_role_id[0], "role_name": "content_creator"}
+                )
                 
             connection.commit()
+            logger.info("Database changes committed successfully")
             return True
             
     except SQLAlchemyError as e:
