@@ -67,11 +67,16 @@ Check and update the environment variables if needed:
 4. Update Environment Variables with the new credentials
 5. Generate Refresh Token for GitHub Secrets
    ```bash
-   GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker-compose.gsc-test.yml up -d
+   GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker/gsc-test/docker-compose.gsc-test.yml up -d
    ```
    - Visit `https://staging-api.tangible-studios.com/api/seo/auth/google/init?brand_id=1` in your browser
    - Complete the OAuth flow by authorizing the application
-   - Extract the refresh token from `.tokens/gsc_token_1.json`
+   - Extract the refresh token from `.tokens/gsc_token_1.json` (located in the project root directory)
+   - If you can't find it directly, SSH into the container to check:
+     ```bash
+     docker exec -it umt_api-gateway bash
+     cat /app/.tokens/gsc_token_1.json
+     ```
    - Add to GitHub Secrets as `TEST_GSC_REFRESH_TOKEN`
 
 ### 3. Verify the Setup
