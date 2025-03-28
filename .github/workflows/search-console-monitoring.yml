@@ -48,9 +48,9 @@ jobs:
           
           # Run with notification if requested or if scheduled
           if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event.inputs.notify }}" == "true" ]]; then
-            python scripts/monitor_search_console_api.py --notify
+            python scripts/monitoring/monitor_search_console_api.py --notify
           else
-            python scripts/monitor_search_console_api.py
+            python scripts/monitoring/monitor_search_console_api.py
           fi
       
       - name: Upload logs
