@@ -20,7 +20,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.absolute()
 CATEGORIES = [
-    "deployment",
+    "deployment",  # Includes deploy.py, deploy_staging.sh and quick_deploy.sh
     "database", 
     "monitoring",
     "testing",

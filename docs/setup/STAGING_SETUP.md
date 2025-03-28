@@ -8,7 +8,7 @@ This document outlines the steps needed to set up the staging environment at htt
 
 ```bash
 # Fill in your SSH credentials
-SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploy/deploy_staging.sh
+SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deployment/deploy_staging.sh
 ```
 
 2. Configure environment variables on the staging server:

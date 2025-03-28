@@ -454,10 +454,10 @@ The project includes a comprehensive migration verification system to prevent co
 7. **Deployment Integration**: The deployment process includes verification:
    ```bash
    # Deploy with verification (default)
-   python scripts/deploy.py --environment staging
+   python scripts/deployment/deploy.py --environment staging
 
    # Skip verification if needed
-   python scripts/deploy.py --environment staging --skip-verification
+   python scripts/deployment/deploy.py --environment staging --skip-verification
    ```
 
 8. **Troubleshooting**: If migration verification fails, review the logs:

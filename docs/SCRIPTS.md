@@ -11,10 +11,12 @@ Scripts have been reorganized into the `/scripts` directory with the following s
   - Show migration history: `python scripts/migrations/manage_migrations.py history`
 
 ### Deployment Scripts
-- **Deploy to Staging:** `scripts/deploy/deploy_staging.sh`
-  - Usage: `./scripts/deploy/deploy_staging.sh`
-- **Quick Deploy:** `scripts/deploy/quick_deploy.sh`
-  - Usage: `./scripts/deploy/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz`
+- **Deploy to Staging:** `scripts/deployment/deploy_staging.sh`
+  - Usage: `./scripts/deployment/deploy_staging.sh`
+- **Quick Deploy:** `scripts/deployment/quick_deploy.sh`
+  - Usage: `./scripts/deployment/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz`
+- **Deploy Python Script:** `scripts/deployment/deploy.py`
+  - Usage: `python scripts/deployment/deploy.py --environment staging`
 
 ### Compliance Scripts
 - **Run Compliance Tests:** `scripts/compliance/run_compliance_tests.py`

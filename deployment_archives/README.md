@@ -27,7 +27,7 @@ To deploy using an archive from this directory, use the quick_deploy.sh script:
 
 ```bash
 cd /Users/tanialopes/Desktop/Projects/_ultimate_marketing_team
-scripts/deploy/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz
+scripts/deployment/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz
 ```
 
 ## Clean-up Policy
