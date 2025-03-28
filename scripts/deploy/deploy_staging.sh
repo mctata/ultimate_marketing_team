@@ -33,10 +33,31 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
     --exclude='frontend/.env.production' \
     . $TEMP_DIR/
 
-# Copy environment files with the correct names
-echo "Copying environment files..."
-cp .env.staging $TEMP_DIR/.env
-cp frontend/.env.staging $TEMP_DIR/frontend/.env
+# Copy environment template files
+echo "Copying environment template files..."
+cp config/env/.env.staging.template $TEMP_DIR/
+cp frontend/.env.staging.template $TEMP_DIR/frontend/
+
+# Create real environment files from templates if they don't exist on the server
+echo "Creating environment files from templates if needed..."
+ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
+    set -e
+    
+    # Create .env from template if it doesn't exist
+    if [ ! -f $REMOTE_DIR/.env ]; then
+        echo "Creating .env file from template..."
+        cp $REMOTE_DIR/.env.staging.template $REMOTE_DIR/.env
+        echo "IMPORTANT: Please update $REMOTE_DIR/.env with proper credentials"
+    fi
+    
+    # Create frontend/.env from template if it doesn't exist
+    if [ ! -f $REMOTE_DIR/frontend/.env ]; then
+        echo "Creating frontend/.env file from template..."
+        mkdir -p $REMOTE_DIR/frontend
+        cp $REMOTE_DIR/frontend/.env.staging.template $REMOTE_DIR/frontend/.env
+        echo "IMPORTANT: Please update $REMOTE_DIR/frontend/.env with proper credentials"
+    fi
+EOF
 
 # Create deployment package
 echo "Creating deployment archive..."
