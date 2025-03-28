@@ -84,6 +84,22 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     # Make scripts executable (recursive through all subdirectories)
     find scripts -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
     
+    # Check if Docker is installed
+    echo "Checking if Docker is installed..."
+    if ! command -v docker &> /dev/null; then
+        echo "Docker is not installed. Please install Docker before deploying."
+        echo "See the installation instructions in docs/setup/STAGING_SETUP.md"
+        exit 1
+    fi
+    
+    # Check if Docker Compose is installed
+    echo "Checking if Docker Compose is installed..."
+    if ! command -v docker-compose &> /dev/null; then
+        echo "Docker Compose is not installed. Please install Docker Compose before deploying."
+        echo "See the installation instructions in docs/setup/STAGING_SETUP.md"
+        exit 1
+    fi
+    
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
     docker-compose -f docker-compose.staging.yml down
