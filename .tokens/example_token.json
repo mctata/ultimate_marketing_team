@@ -1,0 +1,9 @@
+{
+  "token": "ya29.a0example-token-value-redacted",
+  "refresh_token": "1//03example-refresh-token-redacted",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "client_id": "195746621463-example-client-id.apps.googleusercontent.com",
+  "client_secret": "GOCSPX-example-client-secret-redacted",
+  "scopes": ["https://www.googleapis.com/auth/webmasters.readonly"],
+  "expiry": "2025-03-28T14:23:01.234567"
+}
