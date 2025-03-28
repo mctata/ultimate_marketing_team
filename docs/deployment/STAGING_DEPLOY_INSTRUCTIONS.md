@@ -10,13 +10,13 @@
 ### 1. Create the Deployment Archive
 The deployment archive has already been created:
 ```
-staging_deploy_20250328_112844.tar.gz
+staging_deploy_20250328_122113.tar.gz
 ```
 
 ### 2. Upload to Staging Server
 Use SCP to upload the archive to the staging server:
 ```bash
-scp staging_deploy_20250328_112844.tar.gz tangible-studios.com@ssh.tangible-studios.com:/tmp/
+scp deployment_archives/staging_deploy_20250328_122113.tar.gz tangible-studios.com@ssh.tangible-studios.com:/tmp/
 ```
 
 ### 3. Connect to Staging Server
@@ -33,13 +33,13 @@ mkdir -p /customers/8/2/5/tangible-studios.com/httpd.www/staging
 
 # Extract files
 echo "Extracting deployment archive..."
-tar -xzf /tmp/staging_deploy_20250328_112844.tar.gz -C /customers/8/2/5/tangible-studios.com/httpd.www/staging
+tar -xzf /tmp/staging_deploy_20250328_122113.tar.gz -C /customers/8/2/5/tangible-studios.com/httpd.www/staging
 
 # Navigate to the project directory
 cd /customers/8/2/5/tangible-studios.com/httpd.www/staging
 
-# Make scripts executable
-chmod +x scripts/*.sh scripts/*.py
+# Make scripts executable (including in subdirectories)
+find scripts -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
 
 # Run docker-compose for staging environment
 echo "Starting Docker containers..."
@@ -48,7 +48,7 @@ docker-compose -f docker-compose.staging.yml up -d
 
 # Clean up
 echo "Cleaning up..."
-rm /tmp/staging_deploy_20250328_112844.tar.gz
+rm /tmp/staging_deploy_20250328_122113.tar.gz
 ```
 
 ## Post-Deployment Setup
@@ -89,3 +89,8 @@ Check and update the environment variables if needed:
 - **Permission Issues**: Make sure your Google account has access to the Search Console property you're testing with
 - **Token Storage**: Check that the token file is being created and stored correctly in the `.tokens` directory
 - **Refresh Token Expiry**: If tests start failing unexpectedly, you may need to regenerate the refresh token
+- **Script Permissions**: If you get "permission denied" errors on scripts, note that scripts are now in subdirectories. Run:
+  ```bash
+  find scripts -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
+  ```
+- **Script Locations**: Scripts are now organized into subdirectories. See `docs/SCRIPTS.md` for the new locations.

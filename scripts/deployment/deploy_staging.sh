@@ -81,8 +81,8 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     # Navigate to the project directory
     cd $REMOTE_DIR
     
-    # Make scripts executable
-    find scripts -type f -name "*.sh" -o -name "*.py" | xargs chmod +x
+    # Make scripts executable (recursive through all subdirectories)
+    find scripts -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
     
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
