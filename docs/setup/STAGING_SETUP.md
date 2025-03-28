@@ -8,7 +8,7 @@ This document outlines the steps needed to set up the staging environment at htt
 
 ```bash
 # Fill in your SSH credentials
-SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploy_staging.sh
+SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploy/deploy_staging.sh
 ```
 
 2. Configure environment variables on the staging server:
@@ -65,7 +65,7 @@ SSH_USER=your_username SSH_HOST=staging.tangible-studios.com ./scripts/deploy_st
 
 1. Start the minimal testing environment:
    ```bash
-   GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker-compose.gsc-test.yml up -d
+   GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker/gsc-test/docker-compose.gsc-test.yml up -d
    ```
 
 2. Visit `https://staging-api.tangible-studios.com/api/seo/auth/google/init?brand_id=1` in your browser
