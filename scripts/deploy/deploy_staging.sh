@@ -33,10 +33,27 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
     --exclude='frontend/.env.production' \
     . $TEMP_DIR/
 
-# Copy environment files with the correct names
+# Copy environment files
 echo "Copying environment files..."
-cp .env.staging $TEMP_DIR/.env
-cp frontend/.env.staging $TEMP_DIR/frontend/.env
+if [ -f deployment_secrets/.env.staging.real ]; then
+    echo "Using real credentials from deployment_secrets folder..."
+    cp deployment_secrets/.env.staging.real $TEMP_DIR/.env
+else
+    echo "Using template credentials from config/env folder (WILL NEED TO BE UPDATED)..."
+    cp config/env/.env.staging $TEMP_DIR/.env
+fi
+
+# Copy frontend env
+if [ -f frontend/.env.staging ]; then
+    cp frontend/.env.staging $TEMP_DIR/frontend/.env
+elif [ -f deployment_secrets/frontend.env.staging.real ]; then
+    cp deployment_secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
+else
+    cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
+fi
+
+# Note about credentials
+echo "NOTE: The .env files contain template values. Update credentials after deployment."
 
 # Create deployment package
 echo "Creating deployment archive..."

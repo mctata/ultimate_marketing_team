@@ -89,18 +89,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('auth_token');
+      const refreshToken = localStorage.getItem('refresh_token');
       
       if (validateToken(token)) {
         try {
-          const userProfile = await authService.getUserProfile();
-          const user = mapUserProfileToUser(userProfile);
-          dispatch(loginSuccess({ user, token: token! }));
-          setIsAuthenticated(true);
+          // Check if token needs refreshing
+          if (authService.isTokenExpired() && refreshToken) {
+            try {
+              // Attempt to refresh the token
+              await authService.refreshToken();
+              // Get the new token
+              const newToken = localStorage.getItem('auth_token');
+              const userProfile = await authService.getUserProfile();
+              const user = mapUserProfileToUser(userProfile);
+              dispatch(loginSuccess({ user, token: newToken! }));
+              setIsAuthenticated(true);
+            } catch (refreshError) {
+              console.error('Token refresh failed during initialization', refreshError);
+              // Clear tokens on refresh error
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('refresh_token');
+              localStorage.removeItem('token_expiry');
+            }
+          } else {
+            // Token is valid and not expired, just use it
+            const userProfile = await authService.getUserProfile();
+            const user = mapUserProfileToUser(userProfile);
+            dispatch(loginSuccess({ user, token: token! }));
+            setIsAuthenticated(true);
+          }
         } catch (error) {
+          console.error('Error initializing auth state:', error);
           localStorage.removeItem('auth_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('token_expiry');
         }
       } else {
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token_expiry');
       }
       
       setIsLoading(false);

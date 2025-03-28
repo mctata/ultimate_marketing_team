@@ -16,6 +16,8 @@ export interface RegisterData {
 export interface AuthResponse {
   access_token: string;
   token_type: string;
+  refresh_token?: string;
+  expires_in?: number;
 }
 
 export interface UserProfile {
@@ -28,6 +30,8 @@ export interface UserProfile {
 
 // Constants
 const tokenKey = 'auth_token';
+const refreshTokenKey = 'refresh_token';
+const tokenExpiryKey = 'token_expiry';
 
 // Service methods
 /**
@@ -44,8 +48,17 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
         password: credentials.password
       });
       
-      // Store token in localStorage
+      // Store tokens in localStorage
       localStorage.setItem(tokenKey, response.data.access_token);
+      
+      if (response.data.refresh_token) {
+        localStorage.setItem(refreshTokenKey, response.data.refresh_token);
+      }
+      
+      if (response.data.expires_in) {
+        const expiryTime = Date.now() + (response.data.expires_in * 1000);
+        localStorage.setItem(tokenExpiryKey, expiryTime.toString());
+      }
       
       // Set the token in the API client for future requests
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
@@ -59,16 +72,24 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
         console.log('Using mock admin login');
         // Create a mock JWT token
         const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTE2MjM5MDIyfQ.L7CziLawtRYCPzUFNWRxvmACGYpYJwGcMbo6IS9bUQc';
+        const mockRefreshToken = 'mock_refresh_token';
         
-        // Store token in localStorage
+        // Store tokens in localStorage
         localStorage.setItem(tokenKey, mockToken);
+        localStorage.setItem(refreshTokenKey, mockRefreshToken);
+        
+        // Set expiry time (24 hours from now)
+        const expiryTime = Date.now() + (24 * 60 * 60 * 1000);
+        localStorage.setItem(tokenExpiryKey, expiryTime.toString());
         
         // Set the token in the API client for future requests
         api.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
         
         return {
           access_token: mockToken,
-          token_type: 'bearer'
+          token_type: 'bearer',
+          refresh_token: mockRefreshToken,
+          expires_in: 86400 // 24 hours
         };
       }
       
@@ -138,11 +159,53 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 };
 
 /**
+ * Refreshes the access token using the refresh token
+ * @returns New authentication response with updated tokens
+ */
+export const refreshToken = async (): Promise<AuthResponse> => {
+  try {
+    const currentRefreshToken = localStorage.getItem(refreshTokenKey);
+    
+    if (!currentRefreshToken) {
+      throw new Error('No refresh token available');
+    }
+    
+    const response = await api.post<AuthResponse>('/auth/refresh', {
+      refresh_token: currentRefreshToken
+    });
+    
+    // Update tokens in localStorage
+    localStorage.setItem(tokenKey, response.data.access_token);
+    
+    if (response.data.refresh_token) {
+      localStorage.setItem(refreshTokenKey, response.data.refresh_token);
+    }
+    
+    if (response.data.expires_in) {
+      const expiryTime = Date.now() + (response.data.expires_in * 1000);
+      localStorage.setItem(tokenExpiryKey, expiryTime.toString());
+    }
+    
+    // Update the token in the API client
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+    
+    return response.data;
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    // Force logout on refresh error
+    logout();
+    throw error;
+  }
+};
+
+/**
  * Logs out the current user by removing the authentication token
  */
 export const logout = (): void => {
-  // Clear token from localStorage
+  // Clear tokens from localStorage
   localStorage.removeItem(tokenKey);
+  localStorage.removeItem(refreshTokenKey);
+  localStorage.removeItem(tokenExpiryKey);
   
   // Remove Authorization header
   delete api.defaults.headers.common['Authorization'];
@@ -158,6 +221,25 @@ export const isAuthenticated = (): boolean => {
 
 export const getToken = (): string | null => {
   return localStorage.getItem(tokenKey);
+};
+
+/**
+ * Checks if the current token is expired and needs refreshing
+ * @returns True if token needs refreshing, false otherwise
+ */
+export const isTokenExpired = (): boolean => {
+  const expiryTimeStr = localStorage.getItem(tokenExpiryKey);
+  
+  if (!expiryTimeStr) {
+    return false; // No expiry time stored, assume not expired
+  }
+  
+  const expiryTime = parseInt(expiryTimeStr, 10);
+  const currentTime = Date.now();
+  
+  // Consider the token expired if it's within 5 minutes of expiration
+  const refreshThreshold = 5 * 60 * 1000; // 5 minutes in milliseconds
+  return currentTime >= (expiryTime - refreshThreshold);
 };
 
 /**
@@ -206,18 +288,48 @@ export const handleOAuthCallback = async (
       state
     });
     
-    // Store token in localStorage
+    // Store tokens in localStorage
     localStorage.setItem(tokenKey, response.data.access_token);
+    
+    if (response.data.refresh_token) {
+      localStorage.setItem(refreshTokenKey, response.data.refresh_token);
+    }
+    
+    if (response.data.expires_in) {
+      const expiryTime = Date.now() + (response.data.expires_in * 1000);
+      localStorage.setItem(tokenExpiryKey, expiryTime.toString());
+    }
     
     // Set the token in the API client for future requests
     api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
     
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error handling ${provider} OAuth callback:`, error);
-    throw error;
+    
+    // Provide more detailed error information
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      
+      if (status === 401) {
+        throw new Error(`Authentication failed: ${data.detail || 'Invalid credentials'}`);
+      } else if (status === 400) {
+        throw new Error(`Invalid request: ${data.detail || 'Bad request'}`);
+      } else {
+        throw new Error(`Server error (${status}): ${data.detail || 'Unknown error'}`);
+      }
+    } else if (error.request) {
+      throw new Error('No response received from server. Please check your connection.');
+    } else {
+      throw new Error(`Error: ${error.message || 'Unknown error'}`);
+    }
   }
 };
+
+// Initialize the refresh token function in the API
+import { setupRefreshToken } from './api';
+setupRefreshToken(refreshToken);
 
 const authService = {
   login,
@@ -228,7 +340,9 @@ const authService = {
   getToken,
   setupTokenFromStorage,
   getOAuthUrl,
-  handleOAuthCallback
+  handleOAuthCallback,
+  refreshToken,
+  isTokenExpired
 };
 
 export default authService;
