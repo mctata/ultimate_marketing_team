@@ -13,6 +13,8 @@ This directory contains utility scripts for various project operations, now orga
   - `direct_db_users.py`: Database user management script
   - `monitor_migrations.py`: Migration monitoring script
   - `pre_migration_check.py`: Pre-migration verification script
+- `/migrations/`: Database migration scripts
+  - `manage_migrations.py`: Helper script for managing Alembic migrations
 - `/monitoring/`: Monitoring and health check scripts
   - `check_api_health.py`: API health check script
   - `get_docker_metrics.sh`: Docker metrics collection script
@@ -25,6 +27,7 @@ This directory contains utility scripts for various project operations, now orga
   - `export_user_data.py`: User data export script
   - `retention.sh`: Data retention shell script
   - `run_data_retention.py`: Data retention Python script
+  - `run_compliance_tests.py`: Compliance testing script
   - `seed_compliance_data.sql`: Seed data for compliance testing
 - `/seeding/`: Seeding scripts
   - `seed_database.py`: Database seeding script
@@ -34,6 +37,12 @@ This directory contains utility scripts for various project operations, now orga
   - `create_test_users.py`: Multiple test user creation script
   - `test_calendar_websocket.py`: Calendar websocket testing script
   - `run_tests.py`: Test runner script
+  - `/api/`: API testing scripts
+    - `test_api.py`: General API testing script
+    - `test_templates_api.py`: Templates API testing script
+- `/utils/`: Utility scripts
+  - `fix_imports.py`: Import fixer utility
+  - `update_models.py`: Model update utility
 - `/utilities/`: Misc utility scripts
   - `docker_create_users.sh`: Docker user creation script
   - `exporters.sh`: Data export utilities
