@@ -25,33 +25,27 @@ import os
 import sys
 import time
 import argparse
-import logging
 import json
 import asyncio
 import statistics
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# Add project root to path to import utilities and project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution
 
+# Set up project paths
+project_root = Path(__file__).parent.parent.parent
+
+# Import project modules
 from src.core import seo_settings
 from src.agents.integrations.analytics.search_console import GoogleSearchConsoleIntegration
 from src.services.search_console_service import search_console_service
 import requests
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(project_root / "logs" / "search_console_monitoring.log"),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger("search_console_monitor")
+# Setup logger
+logger = setup_logger("search_console_monitor")
 
 class SearchConsoleMonitor:
     """Monitor the Google Search Console API for issues and changes."""
@@ -104,7 +98,7 @@ class SearchConsoleMonitor:
         with open(token_path, "w") as f:
             json.dump(token_data, f)
             
-        logger.info(f"Token file created at {token_path}")
+        log_command_execution(logger, "Setup Token", f"Token file created at {token_path}", 0)
     
     async def test_token_refresh(self):
         """Test token refresh functionality."""
@@ -127,21 +121,21 @@ class SearchConsoleMonitor:
                 if token_data and "expiry" in token_data:
                     expiry = datetime.fromisoformat(token_data["expiry"])
                     if expiry > datetime.now():
-                        logger.info("Token refresh successful")
+                        log_command_execution(logger, "Token Refresh", "Token refresh successful", 0)
                         self.token_refreshes += 1
                         return True
             
-            logger.error("Token refresh failed: Invalid headers or expiry")
+            log_command_execution(logger, "Token Refresh", "Token refresh failed: Invalid headers or expiry", 1)
             return False
         except Exception as e:
             self.failed_calls += 1
-            logger.error(f"Token refresh failed: {str(e)}")
+            log_command_execution(logger, "Token Refresh", f"Token refresh failed: {str(e)}", 1)
             return False
         finally:
             elapsed = time.time() - start_time
             self.response_times.append(elapsed)
             self.api_calls += 1
-            logger.info(f"Token refresh completed in {elapsed:.2f} seconds")
+            log_command_execution(logger, "API Call", f"Token refresh completed in {elapsed:.2f} seconds", 0)
     
     async def test_search_performance(self):
         """Test search performance API."""
