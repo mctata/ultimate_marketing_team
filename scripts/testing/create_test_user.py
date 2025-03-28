@@ -5,13 +5,15 @@ Create a test user in the database for testing authentication
 
 import sys
 import os
-import logging
 import requests
 import json
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Add parent directory to path to import utilities
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_command_execution
+
+# Setup logger
+logger = setup_logger('create_test_user')
 
 # API Base URL
 API_BASE = "http://localhost:8000/api/v1"
@@ -26,7 +28,18 @@ def register_user(email, password, full_name=None):
     }
     
     try:
+        logger.info(f"Sending registration request for {email}")
         response = requests.post(url, json=data)
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API POST {url}",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -44,7 +57,18 @@ def login_user(email, password):
     }
     
     try:
+        logger.info(f"Sending login request for {email}")
         response = requests.post(url, json=data)
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API POST {url}",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -62,7 +86,18 @@ def get_token_with_form(email, password):
     }
     
     try:
+        logger.info(f"Requesting OAuth token for {email}")
         response = requests.post(url, data=data)
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API POST {url} (OAuth token)",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -79,10 +114,22 @@ def get_current_user(token):
     }
     
     try:
-        logger.debug(f"Calling {url} with token: {token}")
+        logger.info(f"Getting current user profile with token")
+        # Only log first 10 characters of token for security
+        masked_token = f"{token[:10]}..." if len(token) > 10 else "[token]"
+        logger.info(f"Using Authorization: Bearer {masked_token}")
+        
         response = requests.get(url, headers=headers)
-        logger.debug(f"Response status: {response.status_code}")
-        logger.debug(f"Response headers: {response.headers}")
+        
+        # Log API request details
+        log_command_execution(
+            logger,
+            f"API GET {url}",
+            response.text if response.status_code == 200 else "",
+            response.status_code,
+            response.text if response.status_code != 200 else ""
+        )
+        
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
