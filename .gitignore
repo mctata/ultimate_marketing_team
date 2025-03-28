@@ -52,3 +52,7 @@ deployment_archives/*.tar.gz
 *.bak
 *.backup
 *~
+
+# Authentication tokens
+.tokens/
+*.tokens/
