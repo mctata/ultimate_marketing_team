@@ -44,5 +44,11 @@ docker-compose.override.yml
 ai_models/  
 uploaded_content/
 CLAUDE.md
-CLAUDE.md
 deployment_secrets/
+*.tar.gz
+deployment_archives/*.tar.gz
+
+# Backup files
+*.bak
+*.backup
+*~
