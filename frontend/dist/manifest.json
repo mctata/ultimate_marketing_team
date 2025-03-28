@@ -1,0 +1,229 @@
+{
+  "_page-analytics.7c777a5d.js": {
+    "file": "assets/page-analytics.7c777a5d.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-charts.6105f747.js",
+      "_vendor-utils.787fabe2.js",
+      "_vendor.def2142b.js"
+    ]
+  },
+  "_page-auth.0bd7ec1c.js": {
+    "file": "assets/page-auth.0bd7ec1c.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-forms.a7b90226.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_page-analytics.7c777a5d.js",
+      "_vendor.def2142b.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_page-brands.b39b5443.js": {
+    "file": "assets/page-brands.b39b5443.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_page-analytics.7c777a5d.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_page-campaigns.ff068042.js": {
+    "file": "assets/page-campaigns.ff068042.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_page-brands.b39b5443.js",
+      "_page-analytics.7c777a5d.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-charts.6105f747.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_page-content.fe951bb6.js": {
+    "file": "assets/page-content.fe951bb6.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_page-brands.b39b5443.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_page-analytics.7c777a5d.js",
+      "_vendor-utils.787fabe2.js",
+      "_vendor.def2142b.js",
+      "_page-auth.0bd7ec1c.js",
+      "_vendor-charts.6105f747.js",
+      "_page-templates.9409aed2.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_page-templates.9409aed2.js": {
+    "file": "assets/page-templates.9409aed2.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_page-content.fe951bb6.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_vendor-charts.6105f747.js": {
+    "file": "assets/vendor-charts.6105f747.js",
+    "imports": [
+      "_vendor.def2142b.js",
+      "_vendor-react.862bc4d9.js",
+      "_vendor-utils.787fabe2.js"
+    ]
+  },
+  "_vendor-forms.a7b90226.js": {
+    "file": "assets/vendor-forms.a7b90226.js",
+    "imports": [
+      "_vendor-utils.787fabe2.js",
+      "_vendor-react.862bc4d9.js",
+      "_vendor.def2142b.js"
+    ]
+  },
+  "_vendor-mui.1e5c58eb.js": {
+    "file": "assets/vendor-mui.1e5c58eb.js",
+    "imports": [
+      "_vendor.def2142b.js",
+      "_vendor-react.862bc4d9.js",
+      "_vendor-charts.6105f747.js"
+    ]
+  },
+  "_vendor-react.862bc4d9.js": {
+    "file": "assets/vendor-react.862bc4d9.js",
+    "imports": [
+      "_vendor.def2142b.js"
+    ]
+  },
+  "_vendor-utils.787fabe2.js": {
+    "file": "assets/vendor-utils.787fabe2.js",
+    "imports": [
+      "_vendor.def2142b.js"
+    ]
+  },
+  "_vendor.def2142b.js": {
+    "dynamicImports": [
+      "node_modules/dompurify/dist/purify.es.mjs",
+      "node_modules/canvg/lib/index.es.js"
+    ],
+    "file": "assets/vendor.def2142b.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-charts.6105f747.js"
+    ]
+  },
+  "index.css": {
+    "file": "assets/index.e51e9672.css",
+    "src": "index.css"
+  },
+  "index.html": {
+    "css": [
+      "assets/index.e51e9672.css"
+    ],
+    "dynamicImports": [
+      "_page-brands.b39b5443.js",
+      "src/pages/Dashboard.tsx",
+      "_page-auth.0bd7ec1c.js",
+      "_page-auth.0bd7ec1c.js",
+      "_page-brands.b39b5443.js",
+      "_page-brands.b39b5443.js",
+      "_page-brands.b39b5443.js",
+      "_page-content.fe951bb6.js",
+      "_page-content.fe951bb6.js",
+      "_page-content.fe951bb6.js",
+      "_page-content.fe951bb6.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "_page-campaigns.ff068042.js",
+      "src/pages/settings/Settings.tsx",
+      "_page-templates.9409aed2.js",
+      "_page-templates.9409aed2.js",
+      "_page-templates.9409aed2.js",
+      "_page-templates.9409aed2.js",
+      "_page-templates.9409aed2.js",
+      "src/pages/NotFound.tsx",
+      "node_modules/web-vitals/dist/web-vitals.js"
+    ],
+    "file": "assets/index.b6b6ac46.js",
+    "imports": [
+      "_vendor.def2142b.js",
+      "_vendor-react.862bc4d9.js",
+      "_page-content.fe951bb6.js",
+      "_page-auth.0bd7ec1c.js",
+      "_page-brands.b39b5443.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-utils.787fabe2.js",
+      "_page-analytics.7c777a5d.js",
+      "_vendor-charts.6105f747.js",
+      "_page-templates.9409aed2.js",
+      "_vendor-forms.a7b90226.js"
+    ],
+    "isEntry": true,
+    "src": "index.html"
+  },
+  "node_modules/canvg/lib/index.es.js": {
+    "file": "assets/index.es.96225c9c.js",
+    "imports": [
+      "_vendor.def2142b.js",
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-charts.6105f747.js",
+      "_vendor-utils.787fabe2.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/canvg/lib/index.es.js"
+  },
+  "node_modules/dompurify/dist/purify.es.mjs": {
+    "file": "assets/purify.es.eeadc7ac.js",
+    "isDynamicEntry": true,
+    "src": "node_modules/dompurify/dist/purify.es.mjs"
+  },
+  "node_modules/web-vitals/dist/web-vitals.js": {
+    "file": "assets/web-vitals.b2c48265.js",
+    "isDynamicEntry": true,
+    "src": "node_modules/web-vitals/dist/web-vitals.js"
+  },
+  "src/pages/Dashboard.tsx": {
+    "file": "assets/Dashboard.dcc54b4c.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_page-brands.b39b5443.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor-charts.6105f747.js",
+      "_vendor.def2142b.js",
+      "_page-analytics.7c777a5d.js",
+      "_vendor-utils.787fabe2.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/pages/Dashboard.tsx"
+  },
+  "src/pages/NotFound.tsx": {
+    "file": "assets/NotFound.e0957543.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor.def2142b.js",
+      "_vendor-charts.6105f747.js",
+      "_vendor-utils.787fabe2.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/pages/NotFound.tsx"
+  },
+  "src/pages/settings/Settings.tsx": {
+    "file": "assets/Settings.c341f433.js",
+    "imports": [
+      "_vendor-react.862bc4d9.js",
+      "_vendor-mui.1e5c58eb.js",
+      "_vendor.def2142b.js",
+      "_vendor-charts.6105f747.js",
+      "_vendor-utils.787fabe2.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/pages/settings/Settings.tsx"
+  }
+}
