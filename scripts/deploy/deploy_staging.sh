@@ -8,7 +8,7 @@ echo "Starting deployment to staging.tangible-studios.com"
 # Configuration
 SSH_USER=${SSH_USER:-"tangible-studios.com"}
 SSH_HOST=${SSH_HOST:-"ssh.tangible-studios.com"}
-SSH_PORT=${SSH_PORT:-"2222"}
+SSH_PORT=${SSH_PORT:-"22"}
 REMOTE_DIR=${REMOTE_DIR:-"/customers/8/2/5/tangible-studios.com/httpd.www/staging"}
 SSH_KEY=${SSH_KEY:-"~/.ssh/id_rsa"}
 
