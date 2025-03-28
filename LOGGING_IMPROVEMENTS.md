@@ -102,6 +102,6 @@ Detailed documentation for the logging system is available in:
 1. ✓ ~~Update the remaining scripts to use the central logging utility~~
 2. ✓ ~~Implement log rotation for log files~~
 3. ✓ ~~Add a utility to clean up old log files~~
-4. Add monitoring for log directory size
-5. Update CI/CD pipeline to archive logs as artifacts
+4. ✓ ~~Add monitoring for log directory size~~
+5. ✓ ~~Update CI/CD pipeline to archive logs as artifacts~~
 6. Add automated testing for logging utilities

@@ -8,9 +8,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  cleanup-logs:
+    name: Initialize Log Directory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Initialize logs directory
+        run: |
+          mkdir -p logs
+          echo "# CI/CD Log Directory" > logs/README.md
+          echo "Created $(date)" >> logs/README.md
+          echo "This directory contains logs from the CI/CD pipeline." >> logs/README.md
+          
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
+    needs: [cleanup-logs]
     steps:
       - uses: actions/checkout@v3
       
@@ -156,11 +175,31 @@ jobs:
         with:
           name: test-skips-report
           path: test-skips.md
+      
+      - name: Collect log files
+        if: always()
+        run: |
+          mkdir -p collected-logs/python-tests
+          if [ -d "logs" ]; then
+            cp logs/*.log* collected-logs/python-tests/ 2>/dev/null || true
+          fi
+          echo "## Python Test Logs - $(date)" > collected-logs/python-tests/README.md
+          echo "These logs were collected from the Python Tests job." >> collected-logs/python-tests/README.md
+          ls -la collected-logs/python-tests/ >> collected-logs/python-tests/README.md
+      
+      - name: Upload log files
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-test-logs
+          path: collected-logs/python-tests/
+          if-no-files-found: ignore
+          retention-days: 7
 
   test-js:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [cleanup-logs, lint]
     
     steps:
       - uses: actions/checkout@v3
@@ -181,7 +220,7 @@ jobs:
   verify-migrations:
     name: Verify Migration Files
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [cleanup-logs, lint]
     steps:
       - uses: actions/checkout@v3
       
@@ -221,6 +260,26 @@ jobs:
             migration_validation.log
             verification-test-results.xml
           if-no-files-found: ignore
+          
+      - name: Collect migration verification logs
+        if: always()
+        run: |
+          mkdir -p collected-logs/migration-verification
+          if [ -d "logs" ]; then
+            cp logs/*.log* collected-logs/migration-verification/ 2>/dev/null || true
+          fi
+          echo "## Migration Verification Logs - $(date)" > collected-logs/migration-verification/README.md
+          echo "These logs were collected from the Migration Verification job." >> collected-logs/migration-verification/README.md
+          ls -la collected-logs/migration-verification/ >> collected-logs/migration-verification/README.md
+      
+      - name: Upload migration verification logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: migration-verification-logs
+          path: collected-logs/migration-verification/
+          if-no-files-found: ignore
+          retention-days: 7
       
       - name: Notify on verification failure
         if: failure()
@@ -294,6 +353,26 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: ultimatemarketing
+          
+      - name: Collect migration test logs
+        if: always()
+        run: |
+          mkdir -p collected-logs/migration-tests
+          if [ -d "logs" ]; then
+            cp logs/*.log* collected-logs/migration-tests/ 2>/dev/null || true
+          fi
+          echo "## Migration Test Logs - $(date)" > collected-logs/migration-tests/README.md
+          echo "These logs were collected from the Migration Tests job." >> collected-logs/migration-tests/README.md
+          ls -la collected-logs/migration-tests/ >> collected-logs/migration-tests/README.md
+      
+      - name: Upload migration test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: migration-test-logs
+          path: collected-logs/migration-tests/
+          if-no-files-found: ignore
+          retention-days: 7
 
   docker-build-test:
     name: Docker Build Test
