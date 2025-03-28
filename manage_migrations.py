@@ -1,1 +1,0 @@
-scripts/migrations/manage_migrations.py

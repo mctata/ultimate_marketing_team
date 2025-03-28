@@ -1,1 +1,0 @@
-scripts/compliance/run_compliance_tests.py
