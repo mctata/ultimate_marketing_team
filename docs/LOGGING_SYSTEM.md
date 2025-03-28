@@ -35,14 +35,21 @@ The `scripts/utilities/logging_utils.py` module provides simplified utilities fo
 ### Key Functions
 
 #### `setup_logger(component_name, log_level=logging.INFO, ...)`
-Creates a configured logger with file and console handlers.
+Creates a configured logger with file and console handlers, with automatic log rotation.
 
 ```python
 from scripts.utilities.logging_utils import setup_logger
 
-# Create a logger for your script
+# Create a logger for your script with default rotation settings (10MB max size, 5 backup files)
 logger = setup_logger("my_script")
 logger.info("Script started")
+
+# Create a logger with custom rotation settings
+logger = setup_logger(
+    "my_script",
+    max_size_mb=5,      # 5MB max file size
+    backup_count=3      # Keep 3 backup files
+)
 ```
 
 #### `log_command_execution(logger, command, output, return_code, error_output=None)`
@@ -107,6 +114,9 @@ Logs are stored in the `logs/` directory at the project root:
 - **API Server Logs**: JSON-formatted logs from the main application
 - **Script Logs**: Individual log files for each script, named as `<script_name>_<timestamp>.log`
 - **Specialized Logs**: Separate files for slow queries, API usage, errors, and health checks
+- **Rotated Logs**: Backup log files with extensions like `.log.1`, `.log.2`, etc.
+
+For detailed information about log rotation and retention, see [LOG_ROTATION.md](LOG_ROTATION.md).
 
 ## Security Considerations
 

@@ -10,8 +10,11 @@ patterns and output formats.
 import os
 import sys
 import logging
-from datetime import datetime
-from typing import Optional, Union, Dict, Any
+import glob
+import re
+from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
+from typing import Optional, Union, Dict, Any, List
 
 
 def get_logs_dir() -> str:
@@ -32,7 +35,9 @@ def setup_logger(
     log_level: int = logging.INFO,
     include_timestamp: bool = True,
     log_to_console: bool = True,
-    log_format: str = '%(asctime)s - %(levelname)s - %(message)s'
+    log_format: str = '%(asctime)s - %(levelname)s - %(message)s',
+    max_size_mb: int = 10,
+    backup_count: int = 5
 ) -> logging.Logger:
     """
     Set up a logger with both file and console handlers.
@@ -43,6 +48,8 @@ def setup_logger(
         include_timestamp: Whether to include timestamp in log filename (default: True)
         log_to_console: Whether to log to console as well as file (default: True)
         log_format: Format string for log messages
+        max_size_mb: Maximum size of log file in MB before rotation (default: 10MB)
+        backup_count: Number of backup log files to keep (default: 5)
         
     Returns:
         logging.Logger: Configured logger object
@@ -66,8 +73,13 @@ def setup_logger(
     if logger.handlers:
         logger.handlers.clear()
     
-    # Create file handler
-    file_handler = logging.FileHandler(log_file)
+    # Create rotating file handler (max_size_mb in bytes)
+    max_bytes = max_size_mb * 1024 * 1024
+    file_handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=max_bytes, 
+        backupCount=backup_count
+    )
     file_handler.setLevel(log_level)
     file_handler.setFormatter(logging.Formatter(log_format))
     logger.addHandler(file_handler)
@@ -82,13 +94,20 @@ def setup_logger(
     return logger
 
 
-def setup_subprocess_logger(component_name: str, log_level: int = logging.INFO) -> logging.Logger:
+def setup_subprocess_logger(
+    component_name: str, 
+    log_level: int = logging.INFO,
+    max_size_mb: int = 10,
+    backup_count: int = 3
+) -> logging.Logger:
     """
     Set up a logger specifically formatted for capturing subprocess output.
     
     Args:
         component_name: Name of the component
         log_level: Logging level
+        max_size_mb: Maximum size of log file in MB before rotation (default: 10MB)
+        backup_count: Number of backup log files to keep (default: 3)
         
     Returns:
         logging.Logger: Configured logger for subprocess output
@@ -96,7 +115,9 @@ def setup_subprocess_logger(component_name: str, log_level: int = logging.INFO) 
     logger = setup_logger(
         component_name=f"{component_name}_subprocess",
         log_level=log_level,
-        log_format='%(message)s'  # Simpler format for subprocess output
+        log_format='%(message)s',  # Simpler format for subprocess output
+        max_size_mb=max_size_mb,
+        backup_count=backup_count
     )
     return logger
 
@@ -179,10 +200,87 @@ def get_component_logger(component_path: str, log_level: int = logging.INFO) -> 
     return setup_logger(component_name, log_level)
 
 
+def find_log_files(pattern: str = "*") -> List[str]:
+    """
+    Find log files matching the specified pattern.
+    
+    Args:
+        pattern: Glob pattern to match log files (default: "*" for all files)
+        
+    Returns:
+        List[str]: List of matching log file paths
+    """
+    logs_dir = get_logs_dir()
+    if pattern == "*":
+        pattern = "*.log*"  # Include rotated logs with extensions like .log.1, .log.2, etc.
+    elif not pattern.endswith(".log*"):
+        pattern = f"{pattern}.log*"
+        
+    log_files = glob.glob(os.path.join(logs_dir, pattern))
+    return log_files
+
+
+def parse_log_timestamp(filename: str) -> Optional[datetime]:
+    """
+    Parse timestamp from log filename.
+    
+    Args:
+        filename: Log filename to parse
+        
+    Returns:
+        Optional[datetime]: Parsed timestamp or None if not found
+    """
+    # Extract timestamp from filenames like component_20230101_120000.log
+    match = re.search(r'_(\d{8}_\d{6})\.log', filename)
+    if match:
+        try:
+            timestamp_str = match.group(1)
+            return datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+        except ValueError:
+            return None
+    return None
+
+
+def cleanup_old_logs(max_age_days: int = 30, component_pattern: str = "*") -> int:
+    """
+    Clean up log files older than the specified age.
+    
+    Args:
+        max_age_days: Maximum age of log files in days (default: 30)
+        component_pattern: Pattern to match component names (default: "*" for all)
+        
+    Returns:
+        int: Number of files deleted
+    """
+    log_files = find_log_files(component_pattern)
+    cutoff_date = datetime.now() - timedelta(days=max_age_days)
+    deleted_count = 0
+    
+    for log_file in log_files:
+        # Skip log files that have no timestamp in their name
+        if "_" not in os.path.basename(log_file):
+            continue
+            
+        # Try to parse timestamp from filename
+        timestamp = parse_log_timestamp(log_file)
+        if timestamp and timestamp < cutoff_date:
+            try:
+                os.remove(log_file)
+                deleted_count += 1
+            except OSError as e:
+                print(f"Error deleting {log_file}: {e}")
+                
+    return deleted_count
+
+
 # Example usage in docstring
 if __name__ == "__main__":
-    # Example 1: Basic logger setup
-    logger = setup_logger("example")
+    # Example 1: Basic logger setup with rotation
+    logger = setup_logger(
+        "example",
+        max_size_mb=5,  # 5MB max file size
+        backup_count=3  # Keep 3 backup files
+    )
     logger.info("This is an info message")
     logger.error("This is an error message")
     
@@ -199,5 +297,13 @@ if __name__ == "__main__":
         {"user_id": 123, "username": "example_user"},
         True
     )
+    
+    # Example 4: Clean up old logs
+    deleted_files = cleanup_old_logs(max_age_days=7)
+    print(f"Cleaned up {deleted_files} log files older than 7 days")
+    
+    # Example 5: Find all logs for a specific component
+    component_logs = find_log_files("database_operations")
+    print(f"Found {len(component_logs)} log files for database_operations")
     
     print("Examples completed. Check the logs directory for output files.")
