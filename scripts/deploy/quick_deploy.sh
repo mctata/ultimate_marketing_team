@@ -32,7 +32,7 @@ ssh $SSH_USER@$SSH_HOST << EOF
     cd $REMOTE_DIR
     
     # Make scripts executable
-    chmod +x scripts/*.sh scripts/*.py
+    find scripts -type f -name "*.sh" -o -name "*.py" | xargs chmod +x
     
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
