@@ -11,23 +11,13 @@ import base64
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-import logging
 
-# Configure logging
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
+# Add parent directory to path to import utilities
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from scripts.utilities.logging_utils import setup_logger, log_database_operation
 
-log_file = os.path.join(LOG_DIR, f'direct_db_users_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    level=logging.INFO, 
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Setup logger
+logger = setup_logger('direct_db_users')
 
 def get_password_hash(password: str) -> str:
     """Create password hash using simple bcrypt-like format"""
@@ -56,6 +46,7 @@ def create_test_users(db_url):
         with engine.connect() as connection:
             # First make sure the schema exists
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS umt"))
+            log_database_operation(logger, "CREATE", "schema", "Ensured umt schema exists")
             
             # Make sure roles table exists
             connection.execute(text("""
@@ -67,6 +58,7 @@ def create_test_users(db_url):
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
             """))
+            log_database_operation(logger, "CREATE", "roles", "Ensured roles table exists")
             
             # Make sure users table exists
             connection.execute(text("""
@@ -82,6 +74,7 @@ def create_test_users(db_url):
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
             """))
+            log_database_operation(logger, "CREATE", "users", "Ensured users table exists")
             
             # Make sure user_roles table exists
             connection.execute(text("""
@@ -91,6 +84,7 @@ def create_test_users(db_url):
                     PRIMARY KEY (user_id, role_id)
                 )
             """))
+            log_database_operation(logger, "CREATE", "user_roles", "Ensured user_roles table exists")
             
             # Insert roles if they don't exist
             connection.execute(text("""
@@ -102,6 +96,7 @@ def create_test_users(db_url):
                     ('viewer', 'Can view brands, projects, and content but not modify them')
                 ON CONFLICT (name) DO NOTHING
             """))
+            log_database_operation(logger, "INSERT", "roles", "Inserted default roles if not already present")
             
             # Get admin role id
             result = connection.execute(text("SELECT id FROM umt.roles WHERE name = 'admin'"))
@@ -117,7 +112,7 @@ def create_test_users(db_url):
             
             if admin_user:
                 admin_id = admin_user[0]
-                logger.info(f"Admin user {admin_email} already exists with ID {admin_id}")
+                log_database_operation(logger, "SELECT", "users", f"Admin user {admin_email} already exists with ID {admin_id}")
             else:
                 result = connection.execute(
                     text("""
@@ -136,14 +131,14 @@ def create_test_users(db_url):
                     }
                 )
                 admin_id = result.fetchone()[0]
-                logger.info(f"Created admin user {admin_email} with ID {admin_id}")
+                log_database_operation(logger, "INSERT", "users", f"Created admin user {admin_email} with ID {admin_id}")
                 
                 # Assign admin role
                 connection.execute(
                     text("INSERT INTO umt.user_roles (user_id, role_id) VALUES (:user_id, :role_id)"),
                     {"user_id": admin_id, "role_id": admin_role_id}
                 )
-                logger.info(f"Assigned admin role to user {admin_email}")
+                log_database_operation(logger, "INSERT", "user_roles", f"Assigned admin role to user {admin_email}")
             
             # Create editor user if not exists
             editor_check = connection.execute(text("SELECT id FROM umt.users WHERE email = :email"), {"email": editor_email})
@@ -151,7 +146,7 @@ def create_test_users(db_url):
             
             if editor_user:
                 editor_id = editor_user[0]
-                logger.info(f"Editor user {editor_email} already exists with ID {editor_id}")
+                log_database_operation(logger, "SELECT", "users", f"Editor user {editor_email} already exists with ID {editor_id}")
             else:
                 result = connection.execute(
                     text("""
@@ -170,14 +165,14 @@ def create_test_users(db_url):
                     }
                 )
                 editor_id = result.fetchone()[0]
-                logger.info(f"Created editor user {editor_email} with ID {editor_id}")
+                log_database_operation(logger, "INSERT", "users", f"Created editor user {editor_email} with ID {editor_id}")
                 
                 # Assign content creator role
                 connection.execute(
                     text("INSERT INTO umt.user_roles (user_id, role_id) VALUES (:user_id, :role_id)"),
                     {"user_id": editor_id, "role_id": content_creator_role_id}
                 )
-                logger.info(f"Assigned content creator role to user {editor_email}")
+                log_database_operation(logger, "INSERT", "user_roles", f"Assigned content creator role to user {editor_email}")
             
             connection.commit()
             
@@ -188,10 +183,10 @@ def create_test_users(db_url):
             }
             
     except SQLAlchemyError as e:
-        logger.error(f"Database error: {e}")
+        log_database_operation(logger, "ERROR", "all", f"Database error: {e}", success=False)
         return None
     except Exception as e:
-        logger.error(f"Error: {e}")
+        log_database_operation(logger, "ERROR", "all", f"Unexpected error: {e}", success=False)
         return None
 
 def main():
@@ -204,13 +199,13 @@ def main():
     users = create_test_users(args.db_url)
     
     if users:
-        logger.info("Successfully created test users!")
+        log_database_operation(logger, "CREATE", "users", "Successfully created test users!")
         print("\n==== TEST USER CREDENTIALS ====")
         print(f"Admin: {users['admin']['email']} / {users['admin']['password']}")
         print(f"Editor: {users['editor']['email']} / {users['editor']['password']}")
         print("==============================\n")
     else:
-        logger.error("Failed to create test users")
+        log_database_operation(logger, "CREATE", "users", "Failed to create test users", success=False)
 
 if __name__ == "__main__":
     main()
