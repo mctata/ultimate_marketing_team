@@ -7,6 +7,7 @@ This guide explains how to deploy the Ultimate Marketing Team application to an 
 1. Access to the EC2 instance
 2. The PEM key file for SSH access
 3. Docker and Docker Compose installed locally
+4. SSL certificates (either self-signed or from Let's Encrypt)
 
 ## DNS Configuration
 
@@ -32,7 +33,7 @@ This script will:
 3. Upload the archive to the EC2 instance
 4. Install Docker and Docker Compose if not already installed
 5. Extract the files on the EC2 instance
-6. Start the Docker containers using docker-compose
+6. Start the Docker containers using the EC2-specific docker-compose configuration
 7. Save a copy of the deployment archive to `deployment_archives/`
 
 ### Customizing the Deployment
@@ -81,8 +82,49 @@ If you encounter issues:
    - Ensure environment variables are correctly set
    - Check that the application can access databases and external services
 
+## SSL Certificate Setup
+
+Before deploying, you should set up SSL certificates for secure HTTPS connections:
+
+### Option 1: Self-Signed Certificates (Development Only)
+
+```bash
+# Generate self-signed certificates
+./scripts/deployment/simple_ssl_setup.sh staging.tangible-studios.com
+```
+
+### Option 2: Let's Encrypt Certificates (Recommended)
+
+After deploying the application, SSH into the EC2 instance and run:
+
+```bash
+# Stop the running containers
+sudo docker-compose -f docker-compose.ec2.yml down
+
+# Install certbot
+sudo apt-get update
+sudo apt-get install -y certbot
+
+# Get certificates
+sudo certbot certonly --standalone -d staging.tangible-studios.com
+
+# Copy certificates to the correct location
+sudo mkdir -p ~/ultimate_marketing_team/docker/nginx/ssl
+sudo cp /etc/letsencrypt/live/staging.tangible-studios.com/fullchain.pem ~/ultimate_marketing_team/docker/nginx/ssl/staging.tangible-studios.com.crt
+sudo cp /etc/letsencrypt/live/staging.tangible-studios.com/privkey.pem ~/ultimate_marketing_team/docker/nginx/ssl/staging.tangible-studios.com.key
+sudo chown -R ubuntu:ubuntu ~/ultimate_marketing_team/docker/nginx/ssl
+
+# Restart containers
+cd ~/ultimate_marketing_team
+sudo docker-compose -f docker-compose.ec2.yml up -d
+```
+
+For more detailed instructions, see `scripts/deployment/ssl_workflow.md`.
+
 ## Security Considerations
 
 - The PEM key file should be kept secure and not committed to the repository
 - Consider updating security groups to limit access to the EC2 instance
 - Regularly update the EC2 instance with security patches
+- Use strong passwords for all services
+- Set up regular backups of your data
