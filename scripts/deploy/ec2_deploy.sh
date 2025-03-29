@@ -131,10 +131,10 @@ ssh -i $SSH_KEY -p $EC2_PORT $EC2_USER@$EC2_HOST << EOF
     # Make scripts executable
     find scripts -type f -name "*.sh" -o -name "*.py" | xargs chmod +x 2>/dev/null || echo "No scripts found to make executable"
     
-    # Run docker-compose for staging environment
+    # Run docker-compose for EC2 environment
     echo "Starting Docker containers..."
-    docker-compose -f docker-compose.staging.yml down 2>/dev/null || echo "No existing containers to stop"
-    docker-compose -f docker-compose.staging.yml up -d
+    docker-compose -f docker-compose.ec2.yml down 2>/dev/null || echo "No existing containers to stop"
+    docker-compose -f docker-compose.ec2.yml up -d
     
     # Clean up
     echo "Cleaning up..."
