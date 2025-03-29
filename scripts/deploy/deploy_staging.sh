@@ -5,6 +5,18 @@ set -e
 
 echo "Starting deployment to staging.tangible-studios.com"
 
+# Check if docker is installed
+if ! command -v docker &> /dev/null; then
+    echo "Docker is not installed. Please install Docker first."
+    exit 1
+fi
+
+# Check if docker-compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "Docker Compose is not installed. Please install Docker Compose first."
+    exit 1
+fi
+
 # Configuration
 SSH_USER=${SSH_USER:-"tangible-studios.com"}
 SSH_HOST=${SSH_HOST:-"ssh.tangible-studios.com"}
@@ -70,6 +82,18 @@ echo "Executing deployment commands on the server..."
 ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     set -e
     echo "Connected to the server..."
+    
+    # Check if docker is installed on the remote server
+    if ! command -v docker &> /dev/null; then
+        echo "Docker is not installed on the remote server. Please install Docker first."
+        exit 1
+    fi
+
+    # Check if docker-compose is installed on the remote server
+    if ! command -v docker-compose &> /dev/null; then
+        echo "Docker Compose is not installed on the remote server. Please install Docker Compose first."
+        exit 1
+    fi
     
     # Create directory if it doesn't exist
     mkdir -p $REMOTE_DIR
