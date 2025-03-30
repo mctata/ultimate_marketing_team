@@ -46,27 +46,40 @@ else
     exit 1
 fi
 
-# Test PostgreSQL Vector Extension compatibility 
-echo "Testing if ankane/pgvector image is available..."
-if docker pull ankane/pgvector:latest >/dev/null 2>&1; then
-    echo "✅ ankane/pgvector image available"
+# Test PostgreSQL 17 compatibility
+echo "Testing if postgres:17-alpine image is available..."
+if docker pull postgres:17-alpine >/dev/null 2>&1; then
+    echo "✅ postgres:17-alpine image available"
 else
-    echo "❌ Failed to pull ankane/pgvector image. Check Docker Hub or your internet connection."
+    echo "❌ Failed to pull postgres:17-alpine image. Check Docker Hub or your internet connection."
     exit 1
 fi
 
 # Test if we can start a temporary PostgreSQL container
 echo "Testing PostgreSQL vector extension initialization..."
-docker run --name pg_vector_test -e POSTGRES_PASSWORD=postgres -d ankane/pgvector:latest >/dev/null 2>&1
+docker run --name pg_vector_test -e POSTGRES_PASSWORD=postgres -d postgres:17-alpine >/dev/null 2>&1
 sleep 5  # Give the container time to start
 
-# Test if vector extension is available
+# Copy vector extension installation script to container
+docker cp ./docker/postgres/install_pgvector.sql pg_vector_test:/tmp/install_pgvector.sql
+
+# Test if vector extension is available and can be installed
 if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
     echo "✅ PostgreSQL vector extension installation successful"
 else
     echo "❌ Failed to create vector extension in PostgreSQL container"
-    docker rm -f pg_vector_test >/dev/null 2>&1
-    exit 1
+    echo "   Attempting to install vector extension package..."
+    
+    # Try to install vector extension
+    docker exec pg_vector_test apk add --no-cache postgresql-contrib
+    
+    if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
+        echo "✅ PostgreSQL vector extension installation successful after installing postgresql-contrib"
+    else
+        echo "❌ Failed to create vector extension in PostgreSQL container"
+        docker rm -f pg_vector_test >/dev/null 2>&1
+        exit 1
+    fi
 fi
 
 # Clean up test container

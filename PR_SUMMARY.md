@@ -9,11 +9,11 @@ This PR enhances the deployment process through three major improvements:
 ## Changes
 This PR introduces:
 
-1. **PostgreSQL Vector Extension**
-   - Switched from standard postgres to `ankane/pgvector` image across all environments
-   - Added verification script for the vector extension
-   - Ensured consistent volume mounts for initialization scripts
-   - Updated all Docker Compose files to use the same configuration
+1. **PostgreSQL 17 Configuration**
+   - Using `postgres:17-alpine` image across all environments to match AWS RDS
+   - Added vector extension support through initialization scripts
+   - Created verification scripts to ensure proper extension installation
+   - Updated all Docker Compose files to use consistent configuration
 
 2. **Deployment Directory Consolidation**
    - Created a unified directory structure under `deployments/`
@@ -29,8 +29,8 @@ This PR introduces:
    - Updated all documentation to reflect the new script organization
 
 4. **Documentation Updates**
-   - Updated DEPLOYMENT_SUMMARY.md with the new structure
-   - Updated SIMPLIFIED_STAGING_DEPLOY.md with correct paths
+   - Created DEPLOYMENT_GUIDE.md with comprehensive deployment instructions
+   - Created POSTGRES_CONFIG.md with PostgreSQL 17 configuration details
    - Updated SCRIPTS.md with new script references
    - Updated scripts/README.md with detailed script descriptions
 

@@ -88,8 +88,8 @@ done
 # Check documentation
 echo "Checking documentation..."
 REQUIRED_DOCS=(
-  "docs/deployment/DEPLOYMENT_SUMMARY.md"
-  "docs/deployment/SIMPLIFIED_STAGING_DEPLOY.md"
+  "docs/deployment/DEPLOYMENT_GUIDE.md"
+  "docs/deployment/POSTGRES_CONFIG.md"
 )
 
 for doc in "${REQUIRED_DOCS[@]}"; do
@@ -117,9 +117,9 @@ for compose_file in "${REQUIRED_COMPOSE_FILES[@]}"; do
   else
     echo "✅ Docker Compose file found: $compose_file"
     
-    # Check if the Docker Compose file uses the ankane/pgvector image
-    if ! grep -q "ankane/pgvector" "$compose_file"; then
-      echo "⚠️ Warning: $compose_file might not be using the ankane/pgvector image"
+    # Check if the Docker Compose file uses the postgres:17-alpine image
+    if ! grep -q "postgres:17-alpine" "$compose_file"; then
+      echo "⚠️ Warning: $compose_file might not be using the postgres:17-alpine image"
     fi
   fi
 done
