@@ -157,7 +157,9 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: postgres:17-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
     ports:
       - "5432:5432"
     environment:
@@ -167,12 +169,15 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
-      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
-      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/3_install_pgvector.sql
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -215,7 +220,9 @@ services:
           memory: 1G
 
   vector-db:
-    image: postgres:17-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
     ports:
       - "5433:5432"
     environment:
@@ -224,10 +231,15 @@ services:
       - POSTGRES_DB=${VECTOR_DB_NAME}
     volumes:
       - vector-db-data:/var/lib/postgresql/data
-      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/install_pgvector.sql
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
