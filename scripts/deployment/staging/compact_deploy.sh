@@ -136,7 +136,16 @@ ENVEOF
     export VECTOR_DB_PASSWORD=postgres
     export VECTOR_DB_NAME=umt_vectors
     
-    docker-compose -f docker-compose.staging.yml down
+    # Remove existing containers but don't force network removal
+    echo "Stopping existing containers..."
+    docker-compose -f docker-compose.staging.yml down --remove-orphans || true
+    
+    # Make sure the network exists
+    echo "Creating network if not exists..."
+    docker network create umt-network 2>/dev/null || true
+    
+    # Start containers
+    echo "Starting containers..."
     docker-compose -f docker-compose.staging.yml up -d
     
     # Fix pgvector extension
