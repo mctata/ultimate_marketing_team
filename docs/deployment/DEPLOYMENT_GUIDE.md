@@ -108,19 +108,58 @@ postgres:
 
 All deployment scripts now support multiple environments by passing the environment name as a parameter, with credentials securely fetched from Bitwarden.
 
+### Prerequisites
+
+Before deploying, ensure you have the following prerequisites installed:
+
+1. **Bitwarden CLI**:
+   ```bash
+   npm install -g @bitwarden/cli
+   ```
+
+2. **jq (JSON processor)**:
+   ```bash
+   # On macOS with Homebrew
+   brew install jq
+   
+   # On Ubuntu/Debian
+   sudo apt-get install jq
+   
+   # On CentOS/RHEL
+   sudo yum install jq
+   ```
+
+3. **Login to Bitwarden**:
+   ```bash
+   bw login
+   ```
+
+4. **Verify your Bitwarden has the correct items**:
+   - An item named "deployment-{environment}" (e.g., "deployment-staging") with fields:
+     - SSH_USER
+     - SSH_HOST
+     - SSH_PORT
+     - REMOTE_DIR
+     - SSH_KEY
+     - COMPOSE_FILE
+   - An item named "env-{environment}" (e.g., "env-staging") with your application environment variables
+
 ### Setting Up Credentials
 
 Before deploying, fetch the secure credentials from Bitwarden:
 
 ```bash
-# Install Bitwarden CLI if not already installed
-npm install -g @bitwarden/cli
-
-# Login to Bitwarden
-bw login
+# Unlock your Bitwarden vault first if needed
+bw unlock
 
 # Fetch credentials for the target environment
 ./scripts/utilities/fetch_secrets.sh staging
+```
+
+After running this command, verify that the configuration files were created:
+```bash
+ls -la config/env/deployment.env.staging
+ls -la config/env/.env.staging
 ```
 
 ### Testing Connection
@@ -219,21 +258,39 @@ curl http://localhost:8000/api/health
 
 ### Common Issues
 
-1. **Configuration Issues**
+1. **Bitwarden and Secret Management Issues**
+   - Check that Bitwarden CLI is installed: `which bw`
+   - Install jq if missing: `brew install jq` (macOS) or `apt-get install jq` (Ubuntu)
+   - Verify Bitwarden status: `bw status` (should show "unlocked")
+   - Unlock Bitwarden if needed: `bw unlock`
+   - Check that your items exist in Bitwarden:
+     ```bash
+     # List all items
+     bw list items
+     
+     # Find specific item
+     bw list items --search "deployment-staging"
+     ```
+   - Ensure script permissions: `chmod +x scripts/utilities/fetch_secrets.sh`
+   - Check for proper item structure in your Bitwarden vault
+
+2. **Configuration Issues**
    - Check if your environment file exists: `config/env/deployment.env.<environment>`
    - Verify SSH connection details in the environment file
+   - Make sure you've run the fetch_secrets.sh script before deploying
    
-2. **SSH Issues**
+3. **SSH Issues**
    - Ensure your SSH key has correct permissions: `chmod 400 your_key.pem`
    - Test SSH connection: `ssh -i your_key.pem user@host`
    - For staging: `ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com`
+   - Verify key path in Bitwarden matches actual location on your system
 
-3. **Docker Issues**
+4. **Docker Issues**
    - Verify Docker is running: `docker ps`
    - Check Docker Compose is installed: `docker-compose --version`
    - Ensure the correct Docker Compose file is specified in the environment config
 
-4. **EC2 Server Issues**
+5. **EC2 Server Issues**
    - Check security groups allow necessary ports (22, 80, 443)
    - Verify Docker service is running: `systemctl status docker`
    - Check system logs: `sudo journalctl -u docker`
