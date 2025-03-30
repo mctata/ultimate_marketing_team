@@ -85,7 +85,8 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     
     # Extract files
     echo "Extracting minimal deployment archive..."
-    tar -xzf /tmp/$DEPLOY_ARCHIVE -C /home/ubuntu/ultimate-marketing-team
+    ARCHIVE_FILENAME=$(basename $DEPLOY_ARCHIVE)
+    tar -xzf /tmp/$ARCHIVE_FILENAME -C /home/ubuntu/ultimate-marketing-team
     
     # Navigate to the project directory
     cd /home/ubuntu/ultimate-marketing-team
@@ -101,9 +102,21 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     # Fix pgvector extension
     echo "Fixing pgvector extension..."
     # Source environment variables
-    set -a
-    source .env
-    set +a
+    if [ -f ".env" ]; then
+        echo "Using existing .env file"
+        set -a
+        source .env
+        set +a
+    else
+        echo "WARNING: .env file not found!"
+        # Set default environment variables if needed
+        export POSTGRES_USER=${POSTGRES_USER:-postgres}
+        export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+        export POSTGRES_DB=${POSTGRES_DB:-umt_db}
+        export VECTOR_DB_USER=${VECTOR_DB_USER:-postgres}
+        export VECTOR_DB_PASSWORD=${VECTOR_DB_PASSWORD:-postgres}
+        export VECTOR_DB_NAME=${VECTOR_DB_NAME:-umt_vectors}
+    fi
     
     echo "Installing pgvector in PostgreSQL containers..."
     # Get container IDs
@@ -170,7 +183,7 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     
     # Clean up
     echo "Cleaning up..."
-    rm /tmp/$DEPLOY_ARCHIVE
+    rm /tmp/$ARCHIVE_FILENAME
     
     echo "Deployment completed successfully!"
 EOF
