@@ -3,13 +3,14 @@ version: '3.8'
 services:
   # Minimal Development Services
   postgres:
-    image: ankane/pgvector:latest
+    image: postgres:17-alpine
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=ultimatemarketing
+      - POSTGRES_HOST=postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
