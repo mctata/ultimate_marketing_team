@@ -146,7 +146,11 @@ Before deploying, ensure you have the following prerequisites installed:
 
 ### Setting Up Credentials
 
-Before deploying, fetch the secure credentials from Bitwarden:
+You have two options for managing deployment credentials:
+
+#### Option 1: Using Bitwarden (Recommended)
+
+Fetch the secure credentials from Bitwarden:
 
 ```bash
 # Unlock your Bitwarden vault first if needed
@@ -161,6 +165,21 @@ After running this command, verify that the configuration files were created:
 ls -la config/env/deployment.env.staging
 ls -la config/env/.env.staging
 ```
+
+#### Option 2: Manual Setup (Alternative)
+
+If you're having issues with Bitwarden, you can use the manual setup script:
+
+```bash
+# Generate configuration files with placeholders
+./scripts/utilities/manual_setup.sh staging
+
+# Edit the files to add actual credentials
+nano config/env/deployment.env.staging
+nano config/env/.env.staging
+```
+
+This will create the necessary configuration files with placeholder values that you must edit to add the actual credentials before deploying.
 
 ### Testing Connection
 
