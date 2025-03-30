@@ -24,7 +24,7 @@ The EC2 deployment script handles all deployment steps in a single command:
 
 ```bash
 # Make sure your PEM key file is in the current directory or provide the full path
-./scripts/deploy/ec2_deploy.sh
+./scripts/deployment/ec2/deploy.sh
 ```
 
 This script will:
@@ -41,7 +41,7 @@ This script will:
 You can customize the deployment by setting these environment variables:
 
 ```bash
-EC2_USER="ubuntu" EC2_HOST="ec2-44-202-29-233.compute-1.amazonaws.com" SSH_KEY="path/to/ultimate-marketing-staging.pem" ./scripts/deploy/ec2_deploy.sh
+EC2_USER="ubuntu" EC2_HOST="ec2-44-202-29-233.compute-1.amazonaws.com" SSH_KEY="path/to/ultimate-marketing-staging.pem" ./scripts/deployment/ec2/deploy.sh
 ```
 
 Available variables:
@@ -119,7 +119,7 @@ cd ~/ultimate_marketing_team
 sudo docker-compose -f docker-compose.ec2.yml up -d
 ```
 
-For more detailed instructions, see `scripts/deployment/ssl_workflow.md`.
+For more detailed instructions, see [SSL Workflow](./SSL_WORKFLOW.md).
 
 ## Security Considerations
 

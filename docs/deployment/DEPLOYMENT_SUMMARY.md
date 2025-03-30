@@ -1,67 +1,80 @@
 # Deployment Summary
 
-This document provides a summary of the deployment options for the Ultimate Marketing Team platform.
+This project supports multiple deployment environments. Below is a summary of available deployment methods.
 
-## EC2 Deployment (Recommended)
+## 1. EC2 Deployment
 
-The Ultimate Marketing Team application can now be deployed to an Amazon EC2 instance at staging.tangible-studios.com.
+**Description**: Deploy the application to an Amazon EC2 instance using Docker and Docker Compose.
 
-### Deployment Process
-
-1. Build and package the application:
-   ```bash
-   ./scripts/deploy/ec2_deploy.sh
-   ```
-
-2. The script handles:
-   - Building the frontend
-   - Creating a deployment package
-   - Uploading to the EC2 instance
-   - Installing Docker if needed
-   - Setting up all containers with docker-compose
-
-### SSL Setup
-
-For secure HTTPS access, set up SSL certificates:
-
-1. For development: Generate self-signed certificates
-   ```bash
-   ./scripts/deployment/simple_ssl_setup.sh staging.tangible-studios.com
-   ```
-
-2. For production: Use Let's Encrypt certificates after deploying
-   (See EC2_DEPLOYMENT_GUIDE.md for detailed instructions)
-
-### Access the Application
-
-After deployment, the application will be available at:
-- https://staging.tangible-studios.com
-
-## Legacy Shared Hosting Deployment
-
-For legacy purposes, the original shared hosting deployment is still supported:
-
+**Command**:
 ```bash
-./scripts/deploy/deploy_staging.sh
+./scripts/deployment/ec2/deploy.sh
 ```
 
-Or for a simplified deployment:
-
+**Customization**:
 ```bash
-./scripts/deploy/simplified_staging_deploy.sh
+EC2_USER="ubuntu" EC2_HOST="ec2-44-202-29-233.compute-1.amazonaws.com" SSH_KEY="path/to/key.pem" ./scripts/deployment/ec2/deploy.sh
 ```
 
-## Deployment Updates
+**Documentation**: [EC2 Deployment Guide](./EC2_DEPLOYMENT_GUIDE.md)
 
-All deployment scripts have been updated with:
-- Docker installation checks
-- Better error handling
-- Improved security measures
+## 2. Shared Hosting Deployment
 
-## Documentation
+**Description**: Deploy the application to a shared hosting environment (tangible-studios.com).
 
-Comprehensive deployment documentation is available in:
-- [EC2 Deployment Guide](EC2_DEPLOYMENT_GUIDE.md)
-- [Simplified Staging Deployment Guide](SIMPLIFIED_STAGING_DEPLOY.md)
-- [SSL Setup Workflow](../../scripts/deployment/ssl_workflow.md)
-- [Staging Deployment Troubleshooting](STAGING_DEPLOYMENT_TROUBLESHOOTING.md)
+**Command**:
+```bash
+./scripts/deployment/shared/deploy_staging.sh
+```
+
+**Customization**:
+```bash
+SSH_USER="username" SSH_HOST="ssh.tangible-studios.com" SSH_KEY="~/.ssh/id_rsa" ./scripts/deployment/shared/deploy_staging.sh
+```
+
+**Documentation**: [Staging Deploy Instructions](./STAGING_DEPLOY_INSTRUCTIONS.md)
+
+## 3. Quick Deployment
+
+**Description**: Fast deployment for development or small updates.
+
+**Command**:
+```bash
+./scripts/deployment/shared/quick_deploy.sh
+```
+
+**Documentation**: [Simplified Staging Deploy](./SIMPLIFIED_STAGING_DEPLOY.md)
+
+## Docker Compose Configurations
+
+Multiple Docker Compose configurations are available for different environments:
+
+- `docker-compose.yml` - Base configuration
+- `docker-compose.dev.yml` - Development environment
+- `docker-compose.test.yml` - Testing environment
+- `docker-compose.staging.yml` - Staging environment (shared hosting)
+- `docker-compose.ec2.yml` - EC2 deployment
+- `docker-compose.production.yml` - Production environment
+- `docker-compose.monitoring.yml` - Monitoring setup
+
+## SSL Configuration
+
+SSL certificates are required for secure HTTPS connections:
+
+- For development: Use self-signed certificates with `./scripts/deployment/simple_ssl_setup.sh`
+- For production: Follow the Let's Encrypt setup in the [EC2 Deployment Guide](./EC2_DEPLOYMENT_GUIDE.md)
+
+## Deployment Archives
+
+All deployments create an archive in the `deployment_archives/` directory for backup and rollback purposes.
+
+## Setting Up a New Environment
+
+To set up a new environment:
+
+1. Create appropriate environment files (.env, frontend/.env)
+2. Select the appropriate Docker Compose configuration
+3. Run the deployment script for your target environment
+4. Verify the deployment and check for any errors
+
+For detailed setup instructions, see [Staging Setup](../setup/STAGING_SETUP.md).
