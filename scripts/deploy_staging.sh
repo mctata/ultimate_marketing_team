@@ -101,6 +101,12 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
         exit 1
     fi
     
+    # Ensure environment variables are loaded
+    echo "Loading environment variables from .env file..."
+    set -a
+    source .env
+    set +a
+    
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
     docker-compose -f docker-compose.staging.yml down

@@ -57,3 +57,18 @@ If deployment fails:
 2. Verify Docker and Docker Compose are installed on the staging server
 3. Ensure all required environment variables are set
 4. Check service logs using `./scripts/check_staging_services.sh`
+
+## Important Notes
+
+### PostgreSQL Version
+
+The staging environment uses PostgreSQL 17. Make sure any local development is compatible with PostgreSQL 17 features and syntax.
+
+### Database Connection
+
+The staging database is hosted at:
+```
+ultimatemarketing-staging.c0dcu2ywapx7.us-east-1.rds.amazonaws.com
+```
+
+The `POSTGRES_HOST` environment variable must be set correctly in your .env file.
