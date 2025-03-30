@@ -91,13 +91,17 @@ if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXIST
     echo "✅ PostgreSQL vector extension installation successful"
 else
     echo "❌ Failed to create vector extension in PostgreSQL container"
-    echo "   Attempting to install vector extension package..."
+    echo "   Attempting to install pgvector manually..."
     
-    # Try to install vector extension
-    docker exec pg_vector_test apk add --no-cache postgresql-contrib
+    # Try to install vector extension from source
+    docker exec pg_vector_test bash -c "
+        apk add --no-cache git build-base postgresql-dev
+        git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
+        cd /tmp/pgvector && make && make install
+    "
     
     if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
-        echo "✅ PostgreSQL vector extension installation successful after installing postgresql-contrib"
+        echo "✅ PostgreSQL vector extension installation successful after manual build"
     else
         echo "❌ Failed to create vector extension in PostgreSQL container"
         docker rm -f pg_vector_test >/dev/null 2>&1
