@@ -25,24 +25,27 @@ All environments use Docker and Docker Compose for containerization, ensuring co
 
 ## Environment Configuration
 
-The deployment system now uses environment-specific configuration files located in `config/env/`:
+The deployment system now uses environment-specific configuration templates and Bitwarden for secure credential storage:
 
 ```
 config/env/
-├── deployment.env.local    # Local deployment configuration
-├── deployment.env.staging  # Staging deployment configuration
-└── .env.staging           # Application environment variables
+├── deployment.env.local.template    # Local deployment template
+├── deployment.env.staging.template  # Staging deployment template
+└── README.md                        # Instructions for configuration management
 ```
+
+> ⚠️ **SECURITY ALERT**: Never store actual credentials in the repository.
+> See [Deployment Security Best Practices](./DEPLOYMENT_SECURITY.md) for details.
 
 ### Setting Up a New Environment
 
 To add a new deployment environment:
 
-1. Create a new configuration file: `config/env/deployment.env.<environment_name>`
-2. Add the following parameters:
+1. Create a template file: `config/env/deployment.env.<environment_name>.template`
+2. Add the following parameters with placeholder values:
 
 ```bash
-# Deployment SSH configuration
+# Deployment SSH configuration - TEMPLATE
 SSH_USER=<username>
 SSH_HOST=<hostname>
 SSH_PORT=22
@@ -103,7 +106,22 @@ postgres:
 
 ## Deployment Steps
 
-All deployment scripts now support multiple environments by passing the environment name as a parameter.
+All deployment scripts now support multiple environments by passing the environment name as a parameter, with credentials securely fetched from Bitwarden.
+
+### Setting Up Credentials
+
+Before deploying, fetch the secure credentials from Bitwarden:
+
+```bash
+# Install Bitwarden CLI if not already installed
+npm install -g @bitwarden/cli
+
+# Login to Bitwarden
+bw login
+
+# Fetch credentials for the target environment
+./scripts/utilities/fetch_secrets.sh staging
+```
 
 ### Testing Connection
 
@@ -130,10 +148,11 @@ For a fresh deployment to any environment:
 ```
 
 This script will:
-1. Load environment-specific configuration
-2. Create a deployment archive
-3. Deploy to the specified environment
-4. Start Docker containers using the environment's compose file
+1. Check if credentials need to be fetched from Bitwarden
+2. Load environment-specific configuration
+3. Create a deployment archive
+4. Deploy to the specified environment
+5. Start Docker containers using the environment's compose file
 
 ### Quick Deployment
 

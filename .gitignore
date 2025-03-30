@@ -4,6 +4,12 @@
 !.env.example
 !.env.*.template
 
+# Deployment configuration
+config/env/deployment.env.*
+!config/env/deployment.env.*.template
+config/env/frontend.env.*
+!config/env/frontend.env.*.template
+
 # Node.js
 node_modules/
 npm-debug.log

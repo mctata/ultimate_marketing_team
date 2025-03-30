@@ -1,48 +1,66 @@
-# PR Summary: Deployment Improvements
+# Pull Request: Security Improvements for Deployment Configuration
 
 ## Summary
-This PR enhances the deployment process through three major improvements:
-1. Standard PostgreSQL configuration with vector extension support across all environments
-2. Consolidated deployment directory structure for better organization
-3. Improved deployment scripts with environment-specific organization
+
+This PR addresses critical security concerns by removing hardcoded credentials and implementing a secure deployment configuration system using Bitwarden as a credential vault. It adds templates instead of actual configuration files and creates a secure workflow for fetching credentials during deployment.
 
 ## Changes
-This PR introduces:
 
-1. **PostgreSQL 17 Configuration**
-   - Using `postgres:17-alpine` image across all environments to match AWS RDS
-   - Added vector extension support through initialization scripts
-   - Created verification scripts to ensure proper extension installation
-   - Updated all Docker Compose files to use consistent configuration
+1. **Removed Sensitive Files**
+   - Removed all deployment configuration files with real credentials
+   - Removed `.env.staging` file containing database passwords and API keys
+   - Replaced them with template files containing placeholders
 
-2. **Deployment Directory Consolidation**
-   - Created a unified directory structure under `deployments/`
-   - Added subdirectories for different environments (staging, production)
-   - Created README files for all directories with naming conventions
-   - Updated script references to use the new directory structure
+2. **Enhanced Security Measures**
+   - Added `.gitignore` rules to prevent committing sensitive files
+   - Created template files with placeholder values
+   - Implemented Bitwarden integration for secure credential storage
 
-3. **Deployment Script Organization**
-   - Created environment-specific deployment scripts in `scripts/deployment/staging/`
-   - Added a versatile `quick_deploy.sh` script for deploying existing archives
-   - Added a staging-specific `quick_deploy.sh` script with simplified interface
-   - Added a verification script to check deployment setup
-   - Updated all documentation to reflect the new script organization
+3. **New Secure Deployment Workflow**
+   - Added `fetch_secrets.sh` script to securely retrieve credentials from Bitwarden
+   - Updated deployment script to automatically fetch credentials when needed
+   - Added support for both deployment configuration and application environment variables
 
 4. **Documentation Updates**
-   - Created DEPLOYMENT_GUIDE.md with comprehensive deployment instructions
-   - Created POSTGRES_CONFIG.md with PostgreSQL 17 configuration details
-   - Updated SCRIPTS.md with new script references
-   - Updated scripts/README.md with detailed script descriptions
+   - Created comprehensive `DEPLOYMENT_SECURITY.md` guide
+   - Updated main deployment guide to reference the new security measures
+   - Added README for the config/env directory with security guidelines
 
 ## Testing
-- Tested PostgreSQL configuration in development environment
-- Verified vector extension functionality with test queries
-- Ran the deployment setup verification script
-- Validated all script paths in the documentation
-- Tested archive creation and storage
+
+The following tests should be performed:
+
+1. Verify Bitwarden integration works:
+   ```
+   ./scripts/utilities/fetch_secrets.sh staging
+   ```
+
+2. Verify deployment using fetched credentials:
+   ```
+   ./scripts/deployment/deploy.sh staging
+   ```
+
+3. Verify files don't get committed:
+   ```
+   git add .
+   git status  # Should not show the actual credential files
+   ```
+
+## Security Considerations
+
+- Credentials are now stored in Bitwarden's secure vault
+- Only template files with placeholders are committed to Git
+- Multiple levels of security checks in the deployment process
+- Clear documentation for the security workflow
 
 ## Future Work
-- Create similar scripts for production environment
-- Update CI/CD configuration to use the new deployment structure
-- Implement automatic cleanup of old deployment archives
-- Add automated archive testing before deployment
+
+- Implement automated credential rotation
+- Add support for production environment secrets
+- Add validation checks for credential strength
+- Consider integrating with AWS Secrets Manager or HashiCorp Vault for production
+
+## References
+
+- [Bitwarden CLI Documentation](https://bitwarden.com/help/cli/)
+- [Git Security Best Practices](https://git-scm.com/docs/gitignore)

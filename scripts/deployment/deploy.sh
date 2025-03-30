@@ -9,13 +9,34 @@ set -e
 DEPLOY_ENV=${1:-"staging"}
 echo "Starting deployment to $DEPLOY_ENV environment..."
 
-# Load environment-specific configuration
-ENV_FILE="config/env/deployment.env.$DEPLOY_ENV"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "Error: Environment file $ENV_FILE not found."
-    echo "Available environments:"
-    ls -1 config/env/deployment.env.* | sed 's/.*deployment.env.//'
+# Fetch secrets from Bitwarden
+FETCH_SCRIPT="scripts/utilities/fetch_secrets.sh"
+if [ ! -f "$FETCH_SCRIPT" ]; then
+    echo "Error: Fetch secrets script $FETCH_SCRIPT not found."
     exit 1
+fi
+
+# Check if the environment file needs to be regenerated
+ENV_FILE="config/env/deployment.env.$DEPLOY_ENV"
+TEMPLATE_FILE="config/env/deployment.env.$DEPLOY_ENV.template"
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Environment file doesn't exist. Fetching from Bitwarden..."
+    
+    # Make sure the template exists
+    if [ ! -f "$TEMPLATE_FILE" ]; then
+        echo "Error: Template file $TEMPLATE_FILE not found."
+        echo "Please create a template file first."
+        exit 1
+    fi
+    
+    # Fetch secrets
+    $FETCH_SCRIPT $DEPLOY_ENV
+    
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "Error: Failed to fetch secrets from Bitwarden."
+        exit 1
+    fi
 fi
 
 # Source the configuration file
@@ -34,7 +55,7 @@ echo "SSH User: $SSH_USER"
 echo "SSH Host: $SSH_HOST"
 echo "SSH Port: $SSH_PORT"
 echo "Remote Directory: $REMOTE_DIR"
-echo "SSH Key: $SSH_KEY"
+echo "SSH Key: $SSH_KEY (sensitive)"
 echo "Docker Compose File: $COMPOSE_FILE"
 
 # Test connection first
@@ -62,6 +83,7 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
     --exclude='frontend/.env.local' --exclude='frontend/.env.development' \
     --exclude='frontend/.env.production' \
     --exclude='frontend/node_modules' --exclude='logs' \
+    --exclude='config/env/deployment.env.*' \
     . $TEMP_DIR/
 
 # Copy environment files
@@ -177,5 +199,5 @@ echo "Deployment script completed successfully!"
 if [ "$SSH_HOST" == "localhost" ]; then
     echo "You can now access the local environment at http://localhost:3000/"
 else
-    echo "You can now access the $DEPLOY_ENV environment at https://$DEPLOY_ENV.tangible-studios.com/"
+    echo "You can now access the $DEPLOY_ENV environment at https://$DEPLOY_ENV.example.com/"
 fi
