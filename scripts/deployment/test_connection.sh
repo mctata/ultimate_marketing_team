@@ -91,21 +91,32 @@ if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXIST
     echo "✅ PostgreSQL vector extension installation successful"
 else
     echo "❌ Failed to create vector extension in PostgreSQL container"
-    echo "   Attempting to install pgvector manually..."
+    echo "   Attempting to install pgvector via contrib package first..."
     
-    # Try to install vector extension from source
+    # Try to install vector extension from contrib package
     docker exec pg_vector_test bash -c "
-        apk add --no-cache git build-base postgresql-dev
-        git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
-        cd /tmp/pgvector && make && make install
+        apk add --no-cache postgresql-contrib
     "
     
     if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
-        echo "✅ PostgreSQL vector extension installation successful after manual build"
+        echo "✅ PostgreSQL vector extension installation successful after installing contrib package"
     else
-        echo "❌ Failed to create vector extension in PostgreSQL container"
-        docker rm -f pg_vector_test >/dev/null 2>&1
-        exit 1
+        echo "   Attempting to install pgvector from source with specific version..."
+        
+        # Try to install vector extension from source with specific version
+        docker exec pg_vector_test bash -c "
+            apk add --no-cache git build-base postgresql-dev
+            git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector
+            cd /tmp/pgvector && make USE_PGXS=1 && make USE_PGXS=1 install
+        "
+        
+        if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
+            echo "✅ PostgreSQL vector extension installation successful after manual build"
+        else
+            echo "❌ Failed to create vector extension in PostgreSQL container"
+            docker rm -f pg_vector_test >/dev/null 2>&1
+            exit 1
+        fi
     fi
 fi
 

@@ -11,17 +11,27 @@ DATABASE=${2:-"umt_db"}
 echo "Installing pgvector extension in container $CONTAINER for database $DATABASE..."
 
 docker exec -i $CONTAINER bash -c "
-    echo 'Installing build dependencies...'
-    apk add --no-cache git build-base postgresql-dev
-
-    echo 'Cloning pgvector repository...'
-    git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
-
-    echo 'Building and installing pgvector...'
-    cd /tmp/pgvector && make && make install
-
-    echo 'Creating vector extension...'
-    psql -U postgres -d $DATABASE -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+    echo 'Adding PostgreSQL contrib packages...'
+    apk add --no-cache postgresql-contrib
+    
+    # Check if the vector extension is available from contrib
+    if psql -U postgres -d $DATABASE -c 'CREATE EXTENSION IF NOT EXISTS vector;' 2>/dev/null; then
+        echo 'Successfully installed pgvector from contrib packages'
+    else
+        echo 'pgvector not available from contrib, installing from source...'
+        
+        # Install build dependencies
+        apk add --no-cache git build-base postgresql-dev
+        
+        # Clone a specific version of pgvector known to work with PostgreSQL 17
+        git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector
+        
+        # Build and install pgvector
+        cd /tmp/pgvector && make USE_PGXS=1 && make USE_PGXS=1 install
+        
+        # Create the extension
+        psql -U postgres -d $DATABASE -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+    fi
     
     echo 'Testing vector extension...'
     psql -U postgres -d $DATABASE -c \"
