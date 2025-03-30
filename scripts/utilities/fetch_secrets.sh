@@ -38,14 +38,28 @@ fi
 # Export session key
 export BW_SESSION="$SESSION_KEY"
 
+# Check what items are in the vault
+echo "Items in your Bitwarden vault that might match:"
+BW_ITEMS=$(bw list items | jq -r '.[] | select(.name | contains("deployment") or contains("env")) | .name')
+if [ ! -z "$BW_ITEMS" ]; then
+    echo "$BW_ITEMS"
+else
+    echo "No relevant items found. You need to create the required items first."
+fi
+echo ""
+
 # Get deployment item from Bitwarden vault
 ITEM_NAME="deployment-${ENV}"
 echo "Fetching deployment secrets for $ENV environment..."
 
 # Get the item
-BW_ITEM=$(bw get item "$ITEM_NAME")
+echo "Looking for Bitwarden item: $ITEM_NAME..."
+BW_ITEM=$(bw get item "$ITEM_NAME" 2>/dev/null)
 if [ -z "$BW_ITEM" ]; then
     echo "No item found with name: $ITEM_NAME"
+    echo "Let's see what items exist in your vault:"
+    bw list items --search "deployment" | jq -r '.[].name'
+    echo ""
     echo "Please create a secure note in Bitwarden with the name: $ITEM_NAME"
     echo "and add the required fields from the template file: $DEPLOYMENT_TEMPLATE"
     exit 1
