@@ -157,7 +157,7 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: ankane/pgvector:latest
+    image: postgres:17-alpine
     ports:
       - "5432:5432"
     environment:
@@ -215,7 +215,7 @@ services:
           memory: 1G
 
   vector-db:
-    image: ankane/pgvector:latest
+    image: postgres:17-alpine
     ports:
       - "5433:5432"
     environment:
@@ -224,6 +224,7 @@ services:
       - POSTGRES_DB=${VECTOR_DB_NAME}
     volumes:
       - vector-db-data:/var/lib/postgresql/data
+      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/install_pgvector.sql
     networks:
       - umt-network
     restart: always
