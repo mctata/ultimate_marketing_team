@@ -1,9 +1,9 @@
 #!/bin/bash
-# Deployment script for the staging environment at staging.tangible-studios.com
+# Simplified staging deployment script that handles all steps in one command
 
 set -e
 
-echo "Starting deployment to staging.tangible-studios.com"
+echo "Starting simplified staging deployment"
 
 # Check if docker is installed
 if ! command -v docker &> /dev/null; then
@@ -24,13 +24,22 @@ SSH_PORT=${SSH_PORT:-"22"}
 REMOTE_DIR=${REMOTE_DIR:-"/customers/8/2/5/tangible-studios.com/httpd.www/staging"}
 SSH_KEY=${SSH_KEY:-"~/.ssh/id_rsa"}
 
-# Check if SSH credentials are provided
-if [[ "$SSH_USER" == "your_ssh_user" ]]; then
-    echo "Error: SSH_USER not set. Run with SSH_USER=username SSH_HOST=hostname ./scripts/deploy_staging.sh"
-    exit 1
-fi
+# Create a timestamp for the archive
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+DEPLOY_ARCHIVE="staging_deploy_${TIMESTAMP}.tar.gz"
 
-echo "Deploying to $SSH_USER@$SSH_HOST:$REMOTE_DIR"
+echo "Deploying to $SSH_USER@$SSH_HOST:$REMOTE_DIR using archive $DEPLOY_ARCHIVE"
+
+# Build the frontend if it exists
+if [ -d "frontend" ]; then
+    echo "Building frontend..."
+    cd frontend
+    if [ -f "package.json" ]; then
+        npm install
+        npm run build
+    fi
+    cd ..
+fi
 
 # Create a temporary directory for deployment files
 TEMP_DIR=$(mktemp -d)
@@ -52,7 +61,7 @@ if [ -f deployment_secrets/.env.staging.real ]; then
     cp deployment_secrets/.env.staging.real $TEMP_DIR/.env
 else
     echo "Using template credentials from config/env folder (WILL NEED TO BE UPDATED)..."
-    cp config/env/.env.staging $TEMP_DIR/.env
+    cp config/env/.env.staging $TEMP_DIR/.env 2>/dev/null || echo "Warning: No staging environment template found."
 fi
 
 # Copy frontend env
@@ -60,18 +69,20 @@ if [ -f frontend/.env.staging ]; then
     cp frontend/.env.staging $TEMP_DIR/frontend/.env
 elif [ -f deployment_secrets/frontend.env.staging.real ]; then
     cp deployment_secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
-else
+elif [ -f frontend/.env.staging.template ]; then
     cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
+else
+    echo "Warning: No frontend environment file found."
 fi
-
-# Note about credentials
-echo "NOTE: The .env files contain template values. Update credentials after deployment."
 
 # Create deployment package
 echo "Creating deployment archive..."
-DEPLOY_ARCHIVE="staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
 echo "Created deployment archive: $DEPLOY_ARCHIVE"
+
+# Create deployment archive directory if it doesn't exist
+mkdir -p deployment_archives
+cp $DEPLOY_ARCHIVE deployment_archives/
 
 # Upload the archive to the server
 echo "Uploading deployment archive to server..."
@@ -106,11 +117,11 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     cd $REMOTE_DIR
     
     # Make scripts executable
-    find scripts -type f -name "*.sh" -o -name "*.py" | xargs chmod +x
+    find scripts -type f -name "*.sh" -o -name "*.py" | xargs chmod +x 2>/dev/null || echo "No scripts found to make executable"
     
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
-    docker-compose -f docker-compose.staging.yml down
+    docker-compose -f docker-compose.staging.yml down || echo "No existing containers to stop"
     docker-compose -f docker-compose.staging.yml up -d
     
     # Clean up
@@ -123,6 +134,8 @@ EOF
 # Clean up local temporary files
 echo "Cleaning up local temporary files..."
 rm -rf $TEMP_DIR
-rm $DEPLOY_ARCHIVE
+# Keep the archive file in deployment_archives but remove from root
+[ -f $DEPLOY_ARCHIVE ] && rm $DEPLOY_ARCHIVE
 
 echo "Deployment script completed successfully!"
+echo "Archive saved to: deployment_archives/$DEPLOY_ARCHIVE"
