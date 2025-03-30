@@ -40,6 +40,13 @@ cp -r docker/postgres $TEMP_DIR/docker/
 
 # Copy env files
 cp config/env/.env.staging $TEMP_DIR/.env
+mkdir -p $TEMP_DIR/frontend
+if [ -f "frontend/.env.staging" ]; then
+    cp frontend/.env.staging $TEMP_DIR/frontend/.env.staging
+else
+    echo "Warning: frontend/.env.staging not found, creating empty file..."
+    touch $TEMP_DIR/frontend/.env.staging
+fi
 cp -r config/env $TEMP_DIR/config/
 
 # Copy source code
@@ -93,21 +100,64 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     source .env
     set +a
     
-    echo "Fixing main postgres container..."
-    docker exec -i \$(docker ps -q -f name=postgres) bash -c "apk add --no-cache git build-base postgresql-dev && \\
-    git clone https://github.com/pgvector/pgvector.git && \\
-    cd pgvector && \\
-    make && \\
-    make install && \\
-    psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;'"
+    echo "Installing pgvector in PostgreSQL containers..."
+    # Get container IDs
+    POSTGRES_CONTAINER=$(docker ps -q -f name=postgres | head -n 1)
+    VECTOR_DB_CONTAINER=$(docker ps -q -f name=vector-db | head -n 1)
     
-    echo "Fixing vector-db container..."
-    docker exec -i \$(docker ps -q -f name=vector-db) bash -c "apk add --no-cache git build-base postgresql-dev && \\
-    git clone https://github.com/pgvector/pgvector.git && \\
-    cd pgvector && \\
-    make && \\
-    make install && \\
-    psql -U \$VECTOR_DB_USER -d \$VECTOR_DB_NAME -c 'CREATE EXTENSION IF NOT EXISTS vector;'"
+    if [ ! -z "$POSTGRES_CONTAINER" ]; then
+        echo "Fixing main postgres container..."
+        docker exec -i $POSTGRES_CONTAINER bash -c "
+            echo 'Installing build dependencies...'
+            apk add --no-cache git build-base postgresql-dev
+        
+            echo 'Cloning pgvector repository...'
+            git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
+        
+            echo 'Building and installing pgvector...'
+            cd /tmp/pgvector && make && make install
+        
+            echo 'Creating vector extension...'
+            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
+            
+            echo 'Testing vector extension...'
+            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"
+                CREATE TABLE IF NOT EXISTS vector_test (id SERIAL PRIMARY KEY, embedding vector(3));
+                INSERT INTO vector_test (embedding) VALUES ('[1,2,3]');
+                SELECT * FROM vector_test;
+                DROP TABLE vector_test;
+            \" || echo 'Vector extension test failed'
+        "
+    else
+        echo "Warning: Main postgres container not found"
+    fi
+    
+    if [ ! -z "$VECTOR_DB_CONTAINER" ]; then
+        echo "Fixing vector-db container..."
+        docker exec -i $VECTOR_DB_CONTAINER bash -c "
+            echo 'Installing build dependencies...'
+            apk add --no-cache git build-base postgresql-dev
+        
+            echo 'Cloning pgvector repository...'
+            git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
+        
+            echo 'Building and installing pgvector...'
+            cd /tmp/pgvector && make && make install
+        
+            echo 'Creating vector extension...'
+            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
+            
+            echo 'Testing vector extension...'
+            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"
+                CREATE TABLE IF NOT EXISTS vector_test (id SERIAL PRIMARY KEY, embedding vector(3));
+                INSERT INTO vector_test (embedding) VALUES ('[1,2,3]');
+                SELECT * FROM vector_test;
+                DROP TABLE vector_test;
+            \" || echo 'Vector extension test failed'
+        "
+    else
+        echo "Warning: Vector DB container not found, skipping..."
+    fi
     
     # Restart to apply changes
     echo "Restarting services..."
