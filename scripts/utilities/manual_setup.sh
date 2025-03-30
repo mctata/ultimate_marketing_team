@@ -20,7 +20,7 @@ SSH_USER=ubuntu
 SSH_HOST=ec2-44-202-29-233.compute-1.amazonaws.com
 SSH_PORT=22
 REMOTE_DIR=/home/ubuntu/ultimate-marketing-team
-SSH_KEY=ultimate-marketing-staging.pem
+SSH_KEY=/Users/tanialopes/Desktop/Projects/_ultimate_marketing_team/ultimate-marketing-staging.pem
 ENVIRONMENT=staging
 COMPOSE_FILE=docker-compose.staging.yml
 EOL
