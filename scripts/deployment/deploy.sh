@@ -63,9 +63,34 @@ if [ "$SSH_HOST" == "localhost" ]; then
     echo "✅ Local deployment - SSH connection test skipped"
 else
     echo "Testing SSH connection to $SSH_USER@$SSH_HOST:$SSH_PORT..."
-    ssh -q -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST exit
+    echo "Using SSH key: $SSH_KEY"
+    
+    # Check if the SSH key file exists
+    if [ ! -f "$SSH_KEY" ]; then
+        echo "ERROR: SSH key file not found: $SSH_KEY"
+        echo "Current directory: $(pwd)"
+        echo "Available key files:"
+        ls -la *.pem || echo "No .pem files found in current directory"
+        exit 1
+    fi
+    
+    # Check the permissions of the SSH key
+    echo "SSH key file permissions:"
+    ls -la $SSH_KEY
+    
+    # Make sure the SSH key has the right permissions
+    chmod 400 $SSH_KEY
+    
+    # Try to connect with verbose output
+    echo "Attempting SSH connection with verbose output..."
+    ssh -v -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "echo 'SSH connection successful' && exit"
     if [ $? -ne 0 ]; then
         echo "SSH connection failed. Please check your SSH credentials and try again."
+        echo "Common issues:"
+        echo "1. SSH key has incorrect permissions"
+        echo "2. EC2 security group doesn't allow SSH from your IP"
+        echo "3. Instance is not running or reachable"
+        echo "4. SSH key doesn't match the one associated with the instance"
         exit 1
     fi
     echo "SSH connection successful."
