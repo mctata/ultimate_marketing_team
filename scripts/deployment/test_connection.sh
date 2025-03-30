@@ -6,11 +6,11 @@ set -e
 echo "Testing SSH connection to staging server..."
 
 # Configuration
-SSH_USER=${SSH_USER:-"tangible-studios.com"}
-SSH_HOST=${SSH_HOST:-"ssh.tangible-studios.com"}
+SSH_USER=${SSH_USER:-"ubuntu"}
+SSH_HOST=${SSH_HOST:-"ec2-44-202-29-233.compute-1.amazonaws.com"}
 SSH_PORT=${SSH_PORT:-"22"}
-REMOTE_DIR=${REMOTE_DIR:-"/customers/8/2/5/tangible-studios.com/httpd.www/staging"}
-SSH_KEY=${SSH_KEY:-"~/.ssh/id_rsa"}
+REMOTE_DIR=${REMOTE_DIR:-"/home/ubuntu/ultimate-marketing-team"}
+SSH_KEY=${SSH_KEY:-"ultimate-marketing-staging.pem"}
 
 # Check if SSH credentials are provided
 if [[ "$SSH_USER" == "your_ssh_user" ]]; then
