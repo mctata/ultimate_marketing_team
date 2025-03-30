@@ -72,7 +72,8 @@ echo "Created deployment archive: $DEPLOY_ARCHIVE ($(du -h $DEPLOY_ARCHIVE | cut
 
 # Upload
 echo "Uploading minimal archive to server..."
-scp -i ultimate-marketing-staging.pem $DEPLOY_ARCHIVE ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com:/tmp/
+ARCHIVE_FILENAME=$(basename $DEPLOY_ARCHIVE)
+scp -i ultimate-marketing-staging.pem $DEPLOY_ARCHIVE ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com:/tmp/$ARCHIVE_FILENAME
 
 # Remote deploy
 echo "Deploying on server..."
@@ -86,6 +87,12 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     # Extract files
     echo "Extracting minimal deployment archive..."
     ARCHIVE_FILENAME=$(basename $DEPLOY_ARCHIVE)
+    echo "Checking archive exists..."
+    ls -la /tmp/$ARCHIVE_FILENAME
+    echo "Creating fresh directory..."
+    rm -rf /home/ubuntu/ultimate-marketing-team
+    mkdir -p /home/ubuntu/ultimate-marketing-team
+    echo "Extracting archive to directory..."
     tar -xzf /tmp/$ARCHIVE_FILENAME -C /home/ubuntu/ultimate-marketing-team
     
     # Navigate to the project directory
