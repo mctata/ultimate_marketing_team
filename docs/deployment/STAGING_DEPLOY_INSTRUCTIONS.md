@@ -12,7 +12,7 @@ This document provides simple instructions for deploying to the staging environm
 To deploy to staging, simply run:
 
 ```bash
-./scripts/deploy_staging.sh
+./scripts/deployment/deploy_staging.sh
 ```
 
 This script will:
@@ -27,7 +27,7 @@ This script will:
 You can customize the deployment with environment variables:
 
 ```bash
-SSH_USER=username SSH_HOST=hostname SSH_KEY=~/.ssh/keyfile ./scripts/deploy_staging.sh
+SSH_USER=username SSH_HOST=hostname SSH_KEY=~/.ssh/keyfile ./scripts/deployment/deploy_staging.sh
 ```
 
 Available environment variables:
@@ -42,7 +42,7 @@ Available environment variables:
 To check the status of all services:
 
 ```bash
-./scripts/check_staging_services.sh
+./scripts/deployment/check_staging_services.sh
 ```
 
 This will:
@@ -56,7 +56,7 @@ If deployment fails:
 1. Check if you have the correct SSH credentials
 2. Verify Docker and Docker Compose are installed on the staging server
 3. Ensure all required environment variables are set
-4. Check service logs using `./scripts/check_staging_services.sh`
+4. Check service logs using `./scripts/deployment/check_staging_services.sh`
 
 ## Important Notes
 
