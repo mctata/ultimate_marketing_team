@@ -9,9 +9,16 @@ echo "Starting deployment process..."
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../" && pwd)
 cd "$PROJECT_ROOT"
 
-# 1. Setup configuration
-echo "Setting up configuration..."
-./scripts/utilities/manual_setup.sh staging
+# 1. Setup configuration if env files don't exist
+CONFIG_ENV_FILE="config/env/.env.staging"
+DEPLOY_ENV_FILE="config/env/deployment.env.staging"
+
+if [ -f "$CONFIG_ENV_FILE" ] && [ -f "$DEPLOY_ENV_FILE" ]; then
+    echo "Configuration files already exist. Skipping setup..."
+else
+    echo "Setting up configuration..."
+    ./scripts/utilities/manual_setup.sh staging
+fi
 
 # 2. Run deployment
 echo "Deploying to staging server..."

@@ -7,9 +7,16 @@ cd "$PROJECT_ROOT"
 
 echo "======== CREATING MINIMAL DEPLOYMENT PACKAGE ========"
 
-# Setup configuration
-echo "Setting up configuration..."
-./scripts/utilities/manual_setup.sh staging
+# Setup configuration if env files don't exist
+CONFIG_ENV_FILE="config/env/.env.staging"
+DEPLOY_ENV_FILE="config/env/deployment.env.staging"
+
+if [ -f "$CONFIG_ENV_FILE" ] && [ -f "$DEPLOY_ENV_FILE" ]; then
+    echo "Configuration files already exist. Skipping setup..."
+else
+    echo "Setting up configuration..."
+    ./scripts/utilities/manual_setup.sh staging
+fi
 
 # Create a reduced deployment archive with essential files only
 TEMP_DIR=$(mktemp -d)
