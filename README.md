@@ -205,6 +205,22 @@ The migration verification is integrated into the CI/CD pipeline as follows:
    - Automatically performs database backups prior to migrations
    - Provides detailed logs of migration execution
 
+### Deployment
+
+The project includes simple deployment scripts for staging environment:
+
+To deploy to staging:
+```bash
+./scripts/deployment/deploy_staging.sh
+```
+
+To check services status on staging:
+```bash
+./scripts/deployment/check_staging_services.sh
+```
+
+For detailed deployment instructions, see the [Staging Deployment Instructions](docs/deployment/STAGING_DEPLOY_INSTRUCTIONS.md).
+
 ### Troubleshooting
 
 If you encounter issues:

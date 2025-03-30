@@ -1,40 +1,48 @@
-# PR Summary: EC2 Staging Deployment
+# PR Summary: Deployment Improvements
 
 ## Summary
-- Add comprehensive EC2 deployment support for the Ultimate Marketing Team application
-- Create documentation and scripts for easier, more reliable deployments
-- Implement SSL security for the staging environment
+This PR enhances the deployment process through three major improvements:
+1. Standard PostgreSQL configuration with vector extension support across all environments
+2. Consolidated deployment directory structure for better organization
+3. Improved deployment scripts with environment-specific organization
 
 ## Changes
 This PR introduces:
 
-1. **EC2 Deployment Support**
-   - New `docker-compose.ec2.yml` for EC2-specific configuration
-   - New `ec2_deploy.sh` script for automated EC2 deployment
-   - Docker installation checks and improved error handling
+1. **PostgreSQL Vector Extension**
+   - Switched from standard postgres to `ankane/pgvector` image across all environments
+   - Added verification script for the vector extension
+   - Ensured consistent volume mounts for initialization scripts
+   - Updated all Docker Compose files to use the same configuration
 
-2. **SSL Configuration**
-   - Added Nginx as a reverse proxy for HTTPS support
-   - Self-signed certificate generation script for development
-   - Let's Encrypt certificate setup guide for production
+2. **Deployment Directory Consolidation**
+   - Created a unified directory structure under `deployments/`
+   - Added subdirectories for different environments (staging, production)
+   - Created README files for all directories with naming conventions
+   - Updated script references to use the new directory structure
 
-3. **Improved Documentation**
-   - Comprehensive EC2 deployment guide
-   - Simplified staging deployment guide
-   - Deployment summary document
-   - SSL setup workflow documentation
+3. **Deployment Script Organization**
+   - Created environment-specific deployment scripts in `scripts/deployment/staging/`
+   - Added a versatile `quick_deploy.sh` script for deploying existing archives
+   - Added a staging-specific `quick_deploy.sh` script with simplified interface
+   - Added a verification script to check deployment setup
+   - Updated all documentation to reflect the new script organization
 
-4. **Deployment Archives Organization**
-   - Updated archive naming and organization
-   - Added EC2 deployment archive support
-   - Improved documentation of archive usage
+4. **Documentation Updates**
+   - Updated DEPLOYMENT_SUMMARY.md with the new structure
+   - Updated SIMPLIFIED_STAGING_DEPLOY.md with correct paths
+   - Updated SCRIPTS.md with new script references
+   - Updated scripts/README.md with detailed script descriptions
 
 ## Testing
-- Verified script functionality with local testing
-- Generated self-signed certificates for testing
-- Successfully built deployment packages
+- Tested PostgreSQL configuration in development environment
+- Verified vector extension functionality with test queries
+- Ran the deployment setup verification script
+- Validated all script paths in the documentation
+- Tested archive creation and storage
 
 ## Future Work
-- Set up CI/CD pipeline for automatic deployments
-- Add monitoring and alerts for the EC2 instance
-- Implement automatic database backups
+- Create similar scripts for production environment
+- Update CI/CD configuration to use the new deployment structure
+- Implement automatic cleanup of old deployment archives
+- Add automated archive testing before deployment

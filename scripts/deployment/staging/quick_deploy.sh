@@ -1,20 +1,22 @@
 #!/bin/bash
-# Quick deployment script using existing archives
-# Usage: ./scripts/deployment/quick_deploy.sh <archive_path>
-# Example: ./scripts/deployment/quick_deploy.sh deployments/archives/staging/staging_deploy_20250328_112844.tar.gz
+# Quick deployment script for staging using existing archives
+# Usage: ./scripts/deployment/staging/quick_deploy.sh <archive_filename>
+# Example: ./scripts/deployment/staging/quick_deploy.sh staging_deploy_20250328_112844.tar.gz
 
 set -e
 
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <archive_path>"
-    echo "Example: $0 deployments/archives/staging/staging_deploy_20250328_112844.tar.gz"
+    echo "Usage: $0 <archive_filename>"
+    echo "Example: $0 staging_deploy_20250328_112844.tar.gz"
     exit 1
 fi
 
-ARCHIVE_PATH=$1
+ARCHIVE_FILENAME=$1
+ARCHIVE_PATH="deployments/archives/staging/$ARCHIVE_FILENAME"
 
 if [ ! -f "$ARCHIVE_PATH" ]; then
     echo "Archive not found: $ARCHIVE_PATH"
+    echo "Please specify a valid archive filename from deployments/archives/staging/"
     exit 1
 fi
 

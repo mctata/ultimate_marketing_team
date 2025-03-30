@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment script for the staging environment at staging.tangible-studios.com
+# Simplified deployment script for staging environment
 
 set -e
 
@@ -14,7 +14,7 @@ SSH_KEY=${SSH_KEY:-"~/.ssh/id_rsa"}
 
 # Check if SSH credentials are provided
 if [[ "$SSH_USER" == "your_ssh_user" ]]; then
-    echo "Error: SSH_USER not set. Run with SSH_USER=username SSH_HOST=hostname ./scripts/deploy_staging.sh"
+    echo "Error: SSH_USER not set. Run with SSH_USER=username SSH_HOST=hostname ./scripts/deployment/deploy_staging.sh"
     exit 1
 fi
 
@@ -31,13 +31,14 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
     --exclude='.env.development' --exclude='.env.production' \
     --exclude='frontend/.env.local' --exclude='frontend/.env.development' \
     --exclude='frontend/.env.production' \
+    --exclude='frontend/node_modules' --exclude='logs' \
     . $TEMP_DIR/
 
 # Copy environment files
 echo "Copying environment files..."
-if [ -f deployment_secrets/.env.staging.real ]; then
-    echo "Using real credentials from deployment_secrets folder..."
-    cp deployment_secrets/.env.staging.real $TEMP_DIR/.env
+if [ -f deployments/secrets/.env.staging.real ]; then
+    echo "Using real credentials from deployments/secrets folder..."
+    cp deployments/secrets/.env.staging.real $TEMP_DIR/.env
 else
     echo "Using template credentials from config/env folder (WILL NEED TO BE UPDATED)..."
     cp config/env/.env.staging $TEMP_DIR/.env
@@ -46,20 +47,22 @@ fi
 # Copy frontend env
 if [ -f frontend/.env.staging ]; then
     cp frontend/.env.staging $TEMP_DIR/frontend/.env
-elif [ -f deployment_secrets/frontend.env.staging.real ]; then
-    cp deployment_secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
+elif [ -f deployments/secrets/frontend.env.staging.real ]; then
+    cp deployments/secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
 else
     cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
 fi
-
-# Note about credentials
-echo "NOTE: The .env files contain template values. Update credentials after deployment."
 
 # Create deployment package
 echo "Creating deployment archive..."
 DEPLOY_ARCHIVE="staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
 echo "Created deployment archive: $DEPLOY_ARCHIVE"
+
+# Save a copy to deployments archives directory for future reference
+mkdir -p deployments/archives
+cp $DEPLOY_ARCHIVE deployments/archives/
+echo "Saved a copy of the archive to deployments/archives/"
 
 # Upload the archive to the server
 echo "Uploading deployment archive to server..."
@@ -88,7 +91,6 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     echo "Checking if Docker is installed..."
     if ! command -v docker &> /dev/null; then
         echo "Docker is not installed. Please install Docker before deploying."
-        echo "See the installation instructions in docs/setup/STAGING_SETUP.md"
         exit 1
     fi
     
@@ -96,9 +98,14 @@ ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
     echo "Checking if Docker Compose is installed..."
     if ! command -v docker-compose &> /dev/null; then
         echo "Docker Compose is not installed. Please install Docker Compose before deploying."
-        echo "See the installation instructions in docs/setup/STAGING_SETUP.md"
         exit 1
     fi
+    
+    # Ensure environment variables are loaded
+    echo "Loading environment variables from .env file..."
+    set -a
+    source .env
+    set +a
     
     # Run docker-compose for staging environment
     echo "Starting Docker containers..."
@@ -118,3 +125,4 @@ rm -rf $TEMP_DIR
 rm $DEPLOY_ARCHIVE
 
 echo "Deployment script completed successfully!"
+echo "You can now access the staging environment at https://staging.tangible-studios.com/"

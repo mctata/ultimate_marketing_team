@@ -2,6 +2,11 @@
 
 This directory contains utility scripts and modules that are used across the Ultimate Marketing Team project.
 
+## Directory Structure
+
+- **codebase/**: Scripts for codebase management and modification
+- **log_management/**: Utilities for log rotation, cleanup, and monitoring
+
 ## Logging Utils
 
 The `logging_utils.py` module provides standardized logging functions that can be imported and used by all scripts in the project to ensure consistent logging patterns and output formats.

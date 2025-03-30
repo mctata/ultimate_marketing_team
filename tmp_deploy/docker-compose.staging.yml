@@ -157,19 +157,17 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: ankane/pgvector:latest
+    image: postgres:14-alpine
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
       - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
-      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/3_install_pgvector.sql
     networks:
       - umt-network
     restart: always
@@ -240,7 +238,7 @@ services:
       dockerfile: docker/migrations/Dockerfile
     env_file: .env.staging
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - PYTHONPATH=/app
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO

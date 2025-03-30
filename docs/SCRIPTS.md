@@ -14,9 +14,11 @@ Scripts have been reorganized into the `/scripts` directory with the following s
 - **Deploy to Staging:** `scripts/deployment/deploy_staging.sh`
   - Usage: `./scripts/deployment/deploy_staging.sh`
 - **Quick Deploy:** `scripts/deployment/quick_deploy.sh`
-  - Usage: `./scripts/deployment/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz`
-- **Deploy Python Script:** `scripts/deployment/deploy.py`
-  - Usage: `python scripts/deployment/deploy.py --environment staging`
+  - Usage: `./scripts/deployment/quick_deploy.sh deployments/archives/staging/staging_deploy_20250328_112844.tar.gz`
+- **Test Connection:** `scripts/deployment/test_connection.sh`
+  - Usage: `./scripts/deployment/test_connection.sh`
+- **Test Local DB:** `scripts/deployment/test_local_db.sh`
+  - Usage: `./scripts/deployment/test_local_db.sh`
 
 ### Compliance Scripts
 - **Run Compliance Tests:** `scripts/compliance/run_compliance_tests.py`

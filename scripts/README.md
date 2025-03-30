@@ -4,9 +4,15 @@ This directory contains utility scripts for various project operations, now orga
 
 ## Directory Structure
 
-- `/deploy/`: Deployment scripts
-  - `deploy_staging.sh`: Script for deploying to staging environment
-  - `quick_deploy.sh`: Simplified deployment script for manual deployment
+- `/deployment/`: Deployment scripts
+  - `/staging/`: Staging-specific deployment scripts
+    - `deploy.sh`: Script for deploying to staging environment
+    - `quick_deploy.sh`: Simplified deployment script using existing archives
+    - `check_services.sh`: Script to check status of deployed services
+  - `quick_deploy.sh`: General script for quick deployment using existing archives
+  - `test_connection.sh`: Test SSH connection and deployment prerequisites
+  - `test_local_db.sh`: Test local PostgreSQL setup
+  - `verify_deployment_setup.sh`: Verify that deployment scripts and directories are set up correctly
 - `/database/`: Database-related scripts
   - `backup_database.py`: Database backup script
   - `check_migration_patterns.py`: Migration pattern verification script

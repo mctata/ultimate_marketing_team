@@ -2,6 +2,11 @@
 
 This directory contains deployment archives created for staging and production environments.
 
+## Directory Structure
+
+- `staging/` - Archives for the staging environment
+- `production/` - Archives for the production environment
+
 ## Naming Convention
 
 Archives follow the pattern:
@@ -21,7 +26,7 @@ Each archive contains:
 
 ## Latest Stable Archives
 
-- Latest EC2 archive: Created when running `scripts/deploy/ec2_deploy.sh`
+- Latest EC2 archive: Created when running `scripts/deployment/ec2_deploy.sh`
 - Latest shared hosting archive: `staging_deploy_20250328_112844.tar.gz`
 
 ## Usage
@@ -30,10 +35,10 @@ Each archive contains:
 
 ```bash
 # Using the deployment script
-./scripts/deploy/ec2_deploy.sh
+./scripts/deployment/ec2_deploy.sh
 
 # Manual deployment with an existing archive
-scp -i "ultimate-marketing-staging.pem" deployment_archives/ec2_deploy_YYYYMMDD_HHMMSS.tar.gz ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com:/tmp/
+scp -i "ultimate-marketing-staging.pem" deployments/archives/production/ec2_deploy_YYYYMMDD_HHMMSS.tar.gz ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com:/tmp/
 ssh -i "ultimate-marketing-staging.pem" ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com
 
 # On the EC2 server
@@ -47,7 +52,7 @@ docker-compose -f docker-compose.ec2.yml up -d
 
 ```bash
 # Using the quick deploy script
-./scripts/deploy/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz
+./scripts/deployment/quick_deploy.sh deployments/archives/staging/staging_deploy_20250328_112844.tar.gz
 ```
 
 ## Clean-up Policy

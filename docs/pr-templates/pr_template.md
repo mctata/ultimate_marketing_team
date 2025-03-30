@@ -28,5 +28,5 @@
 
 ## Deployment Instructions
 1. Clone the repository
-2. Add real credentials to deployment_secrets/.env.staging.real
+2. Add real credentials to deployments/secrets/.env.staging.real
 3. Run `SSH_USER=tangible-studios.com SSH_HOST=ssh.tangible-studios.com ./scripts/deployment/deploy_staging.sh`

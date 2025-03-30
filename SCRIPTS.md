@@ -11,10 +11,20 @@ Scripts have been reorganized into the `/scripts` directory with the following s
   - Show migration history: `python scripts/migrations/manage_migrations.py history`
 
 ### Deployment Scripts
-- **Deploy to Staging:** `scripts/deploy/deploy_staging.sh`
-  - Usage: `./scripts/deploy/deploy_staging.sh`
-- **Quick Deploy:** `scripts/deploy/quick_deploy.sh`
-  - Usage: `./scripts/deploy/quick_deploy.sh deployment_archives/staging_deploy_20250328_112844.tar.gz`
+- **Deploy to Staging:** `scripts/deployment/staging/deploy.sh`
+  - Usage: `./scripts/deployment/staging/deploy.sh`
+- **Quick Deploy (Staging):** `scripts/deployment/staging/quick_deploy.sh`
+  - Usage: `./scripts/deployment/staging/quick_deploy.sh staging_deploy_20250328_112844.tar.gz`
+- **Check Services (Staging):** `scripts/deployment/staging/check_services.sh`
+  - Usage: `./scripts/deployment/staging/check_services.sh`
+- **General Quick Deploy:** `scripts/deployment/quick_deploy.sh`
+  - Usage: `./scripts/deployment/quick_deploy.sh deployments/archives/staging/staging_deploy_20250328_112844.tar.gz`
+- **Test Connection:** `scripts/deployment/test_connection.sh`
+  - Usage: `./scripts/deployment/test_connection.sh`
+- **Test Local Database:** `scripts/deployment/test_local_db.sh`
+  - Usage: `./scripts/deployment/test_local_db.sh`
+- **Verify Deployment Setup:** `scripts/deployment/verify_deployment_setup.sh`
+  - Usage: `./scripts/deployment/verify_deployment_setup.sh`
 
 ### Compliance Scripts
 - **Run Compliance Tests:** `scripts/compliance/run_compliance_tests.py`
@@ -25,8 +35,10 @@ Scripts have been reorganized into the `/scripts` directory with the following s
 - **Test Runner:** `scripts/testing/run_tests.py`
 
 ### Utility Scripts
-- **Fix Imports:** `scripts/utils/fix_imports.py`
-- **Update Models:** `scripts/utils/update_models.py`
+- **Fix Imports:** `scripts/utilities/codebase/fix_imports.py`
+- **Update Models:** `scripts/utilities/codebase/update_models.py`
+- **Logging Utils:** `scripts/utilities/logging_utils.py`
+- **Verify Actions:** `scripts/utilities/verify_actions.py`
 
 ## Makefile Shortcuts
 
