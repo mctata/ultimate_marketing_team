@@ -1,7 +1,7 @@
 FROM nginx:stable-alpine
 
 # Copy pre-built assets
-COPY dist /usr/share/nginx/html
+COPY frontend/dist /usr/share/nginx/html
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

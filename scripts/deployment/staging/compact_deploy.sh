@@ -18,6 +18,17 @@ else
     ./scripts/utilities/manual_setup.sh staging
 fi
 
+# Build frontend before deployment
+echo "Building frontend..."
+cd frontend && npm install && npm run build && cd ..
+
+# Verify frontend and schemas before deployment
+echo "Verifying frontend and schemas..."
+chmod +x scripts/deployment/verify_frontend.sh
+chmod +x scripts/deployment/verify_schemas.sh
+./scripts/deployment/verify_frontend.sh
+./scripts/deployment/verify_schemas.sh
+
 # Create a reduced deployment archive with essential files only
 TEMP_DIR=$(mktemp -d)
 echo "Created temporary directory: $TEMP_DIR"

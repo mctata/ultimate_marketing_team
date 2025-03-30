@@ -39,6 +39,7 @@ ENV PATH="/venv/bin:$PATH"
 COPY src/api /app/src/api
 COPY src/models /app/src/models
 COPY src/core /app/src/core
+COPY src/schemas /app/src/schemas
 COPY alembic.ini /app/
 
 # Create empty agents directory to fix imports

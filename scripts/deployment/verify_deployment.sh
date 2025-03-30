@@ -67,6 +67,25 @@ else
     exit 1
 fi
 
+# Check for src/schemas in the API container
+echo "Verifying schemas directory in API container..."
+SCHEMAS_STATUS=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
+    cd $REMOTE_DIR && 
+    API_CONTAINER=\$(docker ps -q -f name=api-gateway | head -n 1) &&
+    if [ ! -z \"\$API_CONTAINER\" ]; then
+        docker exec \$API_CONTAINER ls -la /app/src/schemas || echo 'Schemas directory not found'
+    else
+        echo 'API container not found'
+    fi
+")
+
+if echo "$SCHEMAS_STATUS" | grep -q "template.py"; then
+    echo "✅ Schemas directory exists in API container"
+else
+    echo "❌ Schemas directory is missing in API container"
+    exit 1
+fi
+
 # Check API health endpoint
 echo "Checking API health endpoint..."
 API_HEALTH=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
@@ -92,6 +111,44 @@ if [ -n "$FRONTEND_STATUS" ]; then
     echo "✅ Frontend service is running"
 else
     echo "❌ Frontend service is not running properly"
+    exit 1
+fi
+
+# Check frontend files in container
+echo "Verifying frontend files in container..."
+FRONTEND_FILES=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
+    cd $REMOTE_DIR && 
+    FRONTEND_CONTAINER=\$(docker ps -q -f name=frontend | head -n 1) &&
+    if [ ! -z \"\$FRONTEND_CONTAINER\" ]; then
+        docker exec \$FRONTEND_CONTAINER ls -la /usr/share/nginx/html || echo 'Frontend files not found'
+    else
+        echo 'Frontend container not found'
+    fi
+")
+
+if echo "$FRONTEND_FILES" | grep -q "index.html"; then
+    echo "✅ Frontend files exist in container"
+else
+    echo "❌ Frontend files are missing in container"
+    exit 1
+fi
+
+# Check for frontend assets
+echo "Verifying frontend assets..."
+FRONTEND_ASSETS=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
+    cd $REMOTE_DIR && 
+    FRONTEND_CONTAINER=\$(docker ps -q -f name=frontend | head -n 1) &&
+    if [ ! -z \"\$FRONTEND_CONTAINER\" ]; then
+        docker exec \$FRONTEND_CONTAINER ls -la /usr/share/nginx/html/assets || echo 'Frontend assets not found'
+    else
+        echo 'Frontend container not found'
+    fi
+")
+
+if echo "$FRONTEND_ASSETS" | grep -q ".js"; then
+    echo "✅ Frontend assets exist in container"
+else
+    echo "❌ Frontend assets are missing in container"
     exit 1
 fi
 
