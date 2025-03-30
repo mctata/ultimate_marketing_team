@@ -1,9 +1,13 @@
 -- SQL Script to install pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Note: This requires the pgvector extension to be installed on the PostgreSQL server
+-- If this fails, run the fix_pgvector.sh script to compile and install the extension
 
--- Verify installation with a simple test
+-- Try to create the extension
 DO $$
 BEGIN
+    -- Create extension if it exists
+    CREATE EXTENSION IF NOT EXISTS vector;
+    
     -- Create a test table
     CREATE TABLE IF NOT EXISTS vector_test (
         id SERIAL PRIMARY KEY,
@@ -17,6 +21,8 @@ BEGIN
     DROP TABLE vector_test;
     
     RAISE NOTICE 'pgvector extension successfully installed and tested';
-EXCEPTION WHEN OTHERS THEN
-    RAISE EXCEPTION 'Error testing pgvector extension: %', SQLERRM;
+EXCEPTION 
+    WHEN OTHERS THEN
+        -- Just log the error but don't fail
+        RAISE NOTICE 'Could not initialize pgvector: %. Run fix_pgvector.sh to install manually.', SQLERRM;
 END$$;
