@@ -18,14 +18,35 @@ if [[ "$SSH_USER" == "your_ssh_user" ]]; then
     exit 1
 fi
 
-echo "Testing connection to $SSH_USER@$SSH_HOST..."
+echo "Testing connection to $SSH_USER@$SSH_HOST using key $SSH_KEY..."
 
-# Test SSH connection
+# Test SSH connection with debugging
 echo "Attempting SSH connection..."
-if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST echo "Connection successful"; then
+echo "SSH command: ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST"
+
+# Check if SSH key exists
+if [ ! -f "$SSH_KEY" ]; then
+    echo "ERROR: SSH key file '$SSH_KEY' not found!"
+    echo "Please provide a valid SSH key using SSH_KEY=/path/to/key."
+    exit 1
+fi
+
+# Check SSH key permissions
+if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
+    KEY_PERMS=$(stat -f "%Lp" "$SSH_KEY" 2>/dev/null || stat -c "%a" "$SSH_KEY" 2>/dev/null)
+    if [[ "$KEY_PERMS" != "400" ]] && [[ "$KEY_PERMS" != "600" ]]; then
+        echo "WARNING: SSH key has permissions $KEY_PERMS, but should be 400 or 600."
+        echo "Attempting to fix permissions..."
+        chmod 400 "$SSH_KEY"
+    fi
+fi
+
+# Try connecting with verbose output
+if ssh -v -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST echo "Connection successful"; then
     echo "SSH connection test PASSED ✓"
 else
     echo "SSH connection test FAILED ✗"
+    echo "Please check your SSH credentials and network connection."
     exit 1
 fi
 
