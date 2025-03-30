@@ -205,6 +205,38 @@ The migration verification is integrated into the CI/CD pipeline as follows:
    - Automatically performs database backups prior to migrations
    - Provides detailed logs of migration execution
 
+### Deployment
+
+The project includes a structured deployment system with scripts organized by environment:
+
+```
+scripts/deployment/
+├── ec2/                # EC2-specific deployment scripts
+│   ├── check_services.sh
+│   ├── deploy.sh
+│   └── fix_services.sh
+├── shared/             # Shared utilities used by all deployment scripts
+│   ├── ssl_setup.sh
+│   └── utils.sh
+├── staging/            # Staging-specific deployment scripts
+│   ├── check_services.sh
+│   ├── deploy.sh
+│   └── quick_deploy.sh
+└── archives/           # Deployment archives
+```
+
+To deploy to staging:
+```bash
+./scripts/deployment/staging/deploy.sh
+```
+
+To deploy to EC2:
+```bash
+SSH_KEY=ultimate-marketing-staging.pem ./scripts/deployment/ec2/deploy.sh
+```
+
+For detailed deployment instructions, see the [Deployment Summary](docs/deployment/DEPLOYMENT_SUMMARY.md).
+
 ### Troubleshooting
 
 If you encounter issues:
