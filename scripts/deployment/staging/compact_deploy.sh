@@ -2,7 +2,7 @@
 # Compact deployment script for low-bandwidth situations
 set -e
 
-PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" && pwd)
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../" && pwd)
 cd "$PROJECT_ROOT"
 
 echo "======== CREATING MINIMAL DEPLOYMENT PACKAGE ========"

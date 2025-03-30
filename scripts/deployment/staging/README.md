@@ -2,7 +2,9 @@
 
 This directory contains scripts for deploying to the staging environment.
 
-## Quick Deployment
+## Deployment Options
+
+### Standard Deployment
 
 To deploy to staging with a single command, run:
 
@@ -15,6 +17,16 @@ This script:
 2. Deploys to the staging EC2 instance
 3. Automatically fixes any known issues (such as pgvector extensions)
 4. Restarts services if needed
+
+### Compact Deployment (for slow connections)
+
+If you're experiencing timeouts or slow uploads, use the compact deploy script:
+
+```bash
+./scripts/deployment/staging/compact_deploy.sh
+```
+
+This creates a minimal deployment package with only essential files, making it faster to upload over limited bandwidth connections.
 
 ## Staging Environment
 
