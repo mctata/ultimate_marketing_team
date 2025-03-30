@@ -1,9 +1,9 @@
 #!/bin/bash
-# Script to test SSH connection and basic access to staging server
+# Test SSH connection to staging environment before deployment
 
 set -e
 
-echo "Testing connection to staging server..."
+echo "Testing SSH connection to staging server..."
 
 # Configuration
 SSH_USER=${SSH_USER:-"tangible-studios.com"}
@@ -18,67 +18,58 @@ if [[ "$SSH_USER" == "your_ssh_user" ]]; then
     exit 1
 fi
 
-echo "Testing connection to $SSH_USER@$SSH_HOST using key $SSH_KEY..."
+echo "Testing connection to $SSH_USER@$SSH_HOST:$REMOTE_DIR..."
 
-# Test SSH connection with debugging
-echo "Attempting SSH connection..."
-echo "SSH command: ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST"
-
-# Check if SSH key exists
-if [ ! -f "$SSH_KEY" ]; then
-    echo "ERROR: SSH key file '$SSH_KEY' not found!"
-    echo "Please provide a valid SSH key using SSH_KEY=/path/to/key."
-    exit 1
-fi
-
-# Check SSH key permissions
-if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
-    KEY_PERMS=$(stat -f "%Lp" "$SSH_KEY" 2>/dev/null || stat -c "%a" "$SSH_KEY" 2>/dev/null)
-    if [[ "$KEY_PERMS" != "400" ]] && [[ "$KEY_PERMS" != "600" ]]; then
-        echo "WARNING: SSH key has permissions $KEY_PERMS, but should be 400 or 600."
-        echo "Attempting to fix permissions..."
-        chmod 400 "$SSH_KEY"
-    fi
-fi
-
-# Try connecting with verbose output
-if ssh -v -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST echo "Connection successful"; then
-    echo "SSH connection test PASSED ✓"
+# Test SSH connection
+if ssh -p $SSH_PORT -i $SSH_KEY -o BatchMode=yes -o ConnectTimeout=5 $SSH_USER@$SSH_HOST echo "SSH connection successful"; then
+    echo "✅ SSH connection test passed"
 else
-    echo "SSH connection test FAILED ✗"
-    echo "Please check your SSH credentials and network connection."
+    echo "❌ SSH connection test failed. Please verify your SSH credentials and try again."
     exit 1
 fi
 
-# Test remote directory access
-echo "Testing access to $REMOTE_DIR..."
-if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "[ -d $REMOTE_DIR ] && echo 'Directory exists' || echo 'Directory does not exist'"; then
-    echo "Remote directory test PASSED ✓"
+# Test write permissions
+echo "Testing write permissions to remote directory..."
+if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "mkdir -p $REMOTE_DIR && touch $REMOTE_DIR/test_write_permission && rm $REMOTE_DIR/test_write_permission"; then
+    echo "✅ Write permission test passed"
 else
-    echo "Remote directory test FAILED ✗"
+    echo "❌ Write permission test failed. Please verify your directory permissions."
     exit 1
 fi
 
-# Test Docker availability
-echo "Testing Docker availability..."
-if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "command -v docker >/dev/null 2>&1 && echo 'Docker installed' || echo 'Docker not installed'"; then
-    echo "Docker availability test PASSED ✓"
+# Test Docker and Docker Compose availability
+echo "Checking if Docker and Docker Compose are installed on the remote server..."
+if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "command -v docker && command -v docker-compose"; then
+    echo "✅ Docker and Docker Compose are available"
 else
-    echo "Docker availability test FAILED ✗"
+    echo "❌ Docker and/or Docker Compose not available on the remote server."
     exit 1
 fi
 
-# Test Docker Compose availability
-echo "Testing Docker Compose availability..."
-if ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST "command -v docker-compose >/dev/null 2>&1 && echo 'Docker Compose installed' || echo 'Docker Compose not installed'"; then
-    echo "Docker Compose availability test PASSED ✓"
+# Test PostgreSQL Vector Extension compatibility 
+echo "Testing if ankane/pgvector image is available..."
+if docker pull ankane/pgvector:latest >/dev/null 2>&1; then
+    echo "✅ ankane/pgvector image available"
 else
-    echo "Docker Compose availability test FAILED ✗"
+    echo "❌ Failed to pull ankane/pgvector image. Check Docker Hub or your internet connection."
     exit 1
 fi
 
-echo "All connection tests PASSED ✓"
-echo "The staging server is reachable and has the necessary tools installed."
-echo ""
-echo "You can proceed with deployment using:"
-echo "  ./scripts/deployment/deploy_staging.sh"
+# Test if we can start a temporary PostgreSQL container
+echo "Testing PostgreSQL vector extension initialization..."
+docker run --name pg_vector_test -e POSTGRES_PASSWORD=postgres -d ankane/pgvector:latest >/dev/null 2>&1
+sleep 5  # Give the container time to start
+
+# Test if vector extension is available
+if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then
+    echo "✅ PostgreSQL vector extension installation successful"
+else
+    echo "❌ Failed to create vector extension in PostgreSQL container"
+    docker rm -f pg_vector_test >/dev/null 2>&1
+    exit 1
+fi
+
+# Clean up test container
+docker rm -f pg_vector_test >/dev/null 2>&1
+
+echo "All connection tests passed! You can now proceed with the deployment."

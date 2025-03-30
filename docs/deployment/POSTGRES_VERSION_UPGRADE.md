@@ -1,129 +1,112 @@
-# PostgreSQL Version Upgrade Guide
+# PostgreSQL Version Upgrade with pgvector
 
-This document outlines the steps to test and verify the PostgreSQL version change from 14 to 17 before deploying to staging.
+This document outlines the process of upgrading PostgreSQL to use the pgvector extension for vector operations across all environments (development, testing, staging, production).
 
 ## Background
 
-We've updated the PostgreSQL version from 14 to 17 in all environments. This upgrade requires careful testing to ensure all database operations work correctly with the new version.
+We need to support vector operations in PostgreSQL for AI features in our application. The pgvector extension provides efficient vector similarity search capabilities.
 
-## Changes Made
+## Chosen Solution
 
-1. Updated PostgreSQL image from `postgres:14-alpine` to `ankane/pgvector:latest` in:
-   - docker-compose.dev.yml
-   - docker-compose.test.yml
-   - docker-compose.staging.yml
-   
-   > Note: We're using the ankane/pgvector image which includes the vector extension needed for our application.
+After evaluating different options, we've decided to use the `ankane/pgvector` image which comes with the vector extension pre-installed. This provides several advantages:
 
-2. Added `POSTGRES_HOST` environment variable to Postgres service configuration
-   - Default: `postgres` for local development/testing
-   - Staging: `ultimatemarketing-staging.c0dcu2ywapx7.us-east-1.rds.amazonaws.com`
+1. Simplified setup - no need to compile or install the extension manually
+2. Consistent behavior across environments
+3. Regularly updated with latest PostgreSQL and pgvector versions
+4. Production-ready with proper configuration
 
-3. Updated all `DATABASE_URL` references to use the `POSTGRES_HOST` environment variable
+## Implementation Details
 
-## Testing Instructions
+### Docker Image
 
-Follow these steps to test the PostgreSQL version upgrade:
+All environments now use the `ankane/pgvector` image instead of the standard PostgreSQL image:
 
-### 1. Clean Your Environment
-
-Remove existing PostgreSQL volumes to start with a clean database:
-
-```bash
-# Stop all containers and remove volumes
-docker-compose down -v
+```yaml
+postgres:
+  image: ankane/pgvector:latest
+  # ... other configuration ...
 ```
 
-### 2. Start Development Environment
+### SQL Initialization Scripts
 
-```bash
-# Start PostgreSQL and other services
-docker-compose -f docker-compose.dev.yml up -d
+We've organized our PostgreSQL initialization in the following order:
+
+1. `init.sql` - Creates the database schema and tables
+2. `integration_upgrade.sql` - Adds integration-specific fields and tables
+3. `install_pgvector.sql` - Ensures the vector extension is installed and tests it
+
+The `install_pgvector.sql` script contains a validation test to ensure the vector extension is working correctly:
+
+```sql
+-- SQL Script to install pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Verify installation with a simple test
+DO $$
+BEGIN
+    -- Create a test table
+    CREATE TABLE IF NOT EXISTS vector_test (
+        id SERIAL PRIMARY KEY,
+        embedding vector(3)
+    );
+    
+    -- Insert a test vector
+    INSERT INTO vector_test (embedding) VALUES ('[1,2,3]');
+    
+    -- Clean up
+    DROP TABLE vector_test;
+    
+    RAISE NOTICE 'pgvector extension successfully installed and tested';
+EXCEPTION WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error testing pgvector extension: %', SQLERRM;
+END$$;
 ```
 
-### 3. Run Migrations
+### Environment-Specific Configuration
 
-```bash
-# Create a virtual environment if you don't have one
-python -m venv venv
-source venv/bin/activate
+Each environment has its specific Docker Compose file that uses the ankane/pgvector image:
 
-# Install dependencies
-pip install -r requirements.txt
+- `docker-compose.dev.yml` - Development environment
+- `docker-compose.test.yml` - Testing environment
+- `docker-compose.staging.yml` - Staging environment
+- `docker-compose.production.yml` - Production environment
 
-# Run migrations
-alembic upgrade head
-```
+### Testing Scripts
 
-### 4. Run Tests
+We've created two scripts to verify the PostgreSQL setup:
 
-```bash
-# Run tests that interact with the database
-pytest tests/models/
-pytest tests/integration/test_migrations.py
-```
+1. `scripts/deployment/test_local_db.sh` - Tests the local development setup
+2. `scripts/deployment/test_connection.sh` - Tests the deployment environment connection and PostgreSQL compatibility
 
-### 5. Test Specific PostgreSQL 17 Features
+## Deployment Process
 
-PostgreSQL 17 has several new features and changes that may affect our application. Test the following:
+When deploying to a new environment or upgrading an existing one:
 
-- Query execution plans (EXPLAIN)
-- Full-text search functionality
-- JSON operations
-- Transaction handling
+1. Run the appropriate test script to verify PostgreSQL compatibility
+2. Use the environment-specific Docker Compose file to deploy the services
+3. Verify that the migrations run successfully
+4. Test vector operations in the application
 
-```bash
-# Run specific PostgreSQL 17 tests
-pytest tests/database/test_specific_pg17_features.py
-```
+## Troubleshooting
 
-### 6. Run the Application Locally
+Common issues and their solutions:
 
-```bash
-# Start the development server
-uvicorn src.api.main:app --reload
-```
+1. **Container exits immediately**
+   - Check if the host machine has enough disk space
+   - Verify that no other service is using the specified ports
+   - Check the logs for specific errors: `docker logs <container_id>`
 
-Test all functionality that interacts with the database.
+2. **Vector extension not available**
+   - Verify you're using the ankane/pgvector image
+   - Check if the install_pgvector.sql script is being mounted correctly
+   - Try running the CREATE EXTENSION command manually
 
-## Common Issues
+3. **Data migration issues**
+   - If upgrading from a previous PostgreSQL version, use pg_dump and pg_restore
+   - Make sure to backup your data before upgrading
 
-### Compatibility Issues
+## Performance Considerations
 
-PostgreSQL 17 has some syntax changes and deprecated features:
-
-1. **Deprecated Functions**:
-   - Some string functions have changed
-   - Timestamp handling has been updated
-
-2. **Changed Behavior**:
-   - Some indexing behavior is different
-   - Query optimization may produce different execution plans
-
-### Connection Issues
-
-If you encounter connection issues:
-
-1. Verify the `POSTGRES_HOST` environment variable is set correctly
-2. Check that PostgreSQL is running: `docker ps | grep postgres`
-3. Try connecting directly with psql:
-   ```bash
-   docker exec -it $(docker ps -q -f name=postgres) psql -U postgres -d ultimatemarketing
-   ```
-
-## Rollback Plan
-
-If serious issues are found, follow these steps to rollback:
-
-1. Revert the Docker Compose files to use PostgreSQL 14
-2. Rebuild and restart the containers
-3. Restore from a database backup if needed
-
-## Verification
-
-Before deploying to staging, verify:
-
-1. All migrations run successfully with PostgreSQL 17
-2. All tests pass with PostgreSQL 17
-3. The application functions normally with PostgreSQL 17
-4. No performance regressions are observed
+- The pgvector extension may require additional memory for optimal performance
+- For production, consider allocating more resources to the PostgreSQL container
+- Monitor query performance, especially for vector similarity searches
