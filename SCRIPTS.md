@@ -25,8 +25,10 @@ Scripts have been reorganized into the `/scripts` directory with the following s
 - **Test Runner:** `scripts/testing/run_tests.py`
 
 ### Utility Scripts
-- **Fix Imports:** `scripts/utils/fix_imports.py`
-- **Update Models:** `scripts/utils/update_models.py`
+- **Fix Imports:** `scripts/utilities/codebase/fix_imports.py`
+- **Update Models:** `scripts/utilities/codebase/update_models.py`
+- **Logging Utils:** `scripts/utilities/logging_utils.py`
+- **Verify Actions:** `scripts/utilities/verify_actions.py`
 
 ## Makefile Shortcuts
 
