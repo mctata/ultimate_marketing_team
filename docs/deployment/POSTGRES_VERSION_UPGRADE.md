@@ -8,10 +8,12 @@ We've updated the PostgreSQL version from 14 to 17 in all environments. This upg
 
 ## Changes Made
 
-1. Updated PostgreSQL image version from `postgres:14-alpine` to `postgres:17-alpine` in:
+1. Updated PostgreSQL image from `postgres:14-alpine` to `ankane/pgvector:latest` in:
    - docker-compose.dev.yml
    - docker-compose.test.yml
    - docker-compose.staging.yml
+   
+   > Note: We're using the ankane/pgvector image which includes the vector extension needed for our application.
 
 2. Added `POSTGRES_HOST` environment variable to Postgres service configuration
    - Default: `postgres` for local development/testing

@@ -40,7 +40,7 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: postgres:17-alpine
+    image: ankane/pgvector:latest
     ports:
       - "5432:5432"
     environment:
