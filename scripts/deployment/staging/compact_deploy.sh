@@ -24,7 +24,8 @@ echo "Created temporary directory: $TEMP_DIR"
 
 echo "Copying essential files only..."
 # Copy only the essential directories and files
-mkdir -p $TEMP_DIR/scripts
+mkdir -p $TEMP_DIR/scripts/deployment
+mkdir -p $TEMP_DIR/scripts/utilities
 mkdir -p $TEMP_DIR/src
 mkdir -p $TEMP_DIR/docker
 mkdir -p $TEMP_DIR/migrations
@@ -52,6 +53,10 @@ cp -r config/env $TEMP_DIR/config/
 # Copy source code
 cp -r src $TEMP_DIR/
 cp -r migrations $TEMP_DIR/
+
+# Copy deployment scripts
+cp -r scripts/deployment/* $TEMP_DIR/scripts/deployment/
+cp -r scripts/utilities/manual_setup.sh $TEMP_DIR/scripts/utilities/
 
 # Copy essential configuration files
 cp requirements.txt $TEMP_DIR/
