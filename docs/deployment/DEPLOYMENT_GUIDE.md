@@ -212,6 +212,43 @@ This script will:
 4. Deploy to the specified environment
 5. Start Docker containers using the environment's compose file
 
+### Compact Deployment (Recommended)
+
+For deployments over slow connections or with minimal changes:
+
+```bash
+# First, test the connection
+./scripts/deployment/test_connection.sh
+
+# Then run the compact deployment
+./scripts/deployment/staging/compact_deploy.sh
+
+# After deployment, verify it was successful
+./scripts/deployment/verify_deployment.sh
+./scripts/deployment/verify_migrations.sh
+```
+
+This creates a minimal deployment package with only essential files, making it faster to upload over limited bandwidth connections.
+
+#### What the compact_deploy.sh script does:
+
+1. **Preparation**:
+   - Verifies configuration files exist
+   - Builds the frontend application
+   - Verifies frontend build and schema files
+
+2. **Packaging**:
+   - Creates a minimal archive (usually <2MB)
+   - Only includes essential code and configuration
+   - Excludes node_modules, venv, and other large directories
+
+3. **Deployment**:
+   - Transfers archive to staging server
+   - Extracts files with proper permissions
+   - Sets up Docker containers
+   - Installs pgvector extension
+   - Applies database migrations
+
 ### Quick Deployment
 
 For faster deployment using an existing archive:
@@ -233,17 +270,28 @@ Replace `staging_deploy_20250330_120000.tar.gz` with your actual archive filenam
 After deployment, verify services are running correctly:
 
 ```bash
-# Check services on staging (default)
-./scripts/deployment/check_services.sh
+# Comprehensive verification of deployed services
+./scripts/deployment/verify_deployment.sh
 
-# Check services on local environment
-./scripts/deployment/check_services.sh local
+# Verify database migrations were applied correctly
+./scripts/deployment/verify_migrations.sh
+
+# Check frontend build files for proper structure
+./scripts/deployment/verify_frontend.sh
+
+# Verify schemas directory for API dependencies
+./scripts/deployment/verify_schemas.sh
+
+# Legacy check services command
+./scripts/deployment/check_services.sh
 ```
 
-This script will show:
-- Running container status
-- Container logs (last 10 lines)
-- API endpoint health
+These scripts verify different aspects of the deployment:
+- `verify_deployment.sh` - Checks containers, services, and API endpoints
+- `verify_migrations.sh` - Confirms database schema and tables are properly created
+- `verify_frontend.sh` - Ensures frontend assets are correctly built
+- `verify_schemas.sh` - Validates API schema files exist for proper imports
+- Legacy `check_services.sh` - Checks container status and logs
 
 ### Manual Monitoring
 
@@ -313,6 +361,53 @@ curl http://localhost:8000/api/health
    - Check security groups allow necessary ports (22, 80, 443)
    - Verify Docker service is running: `systemctl status docker`
    - Check system logs: `sudo journalctl -u docker`
+
+6. **Permission Issues**
+   - If you see "Permission denied" errors during deployment:
+     ```
+     rm: cannot remove '/home/ubuntu/ultimate-marketing-team/something': Permission denied
+     ```
+   - This often happens with files created by Docker containers. The latest compact_deploy.sh script includes fixes for this, but you can also manually fix it:
+     ```bash
+     ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "sudo chown -R ubuntu:ubuntu /home/ubuntu/ultimate-marketing-team"
+     ```
+
+7. **Container Startup Failures**
+   - If containers continuously restart:
+     1. Check the specific container logs:
+        ```bash
+        ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "cd /home/ubuntu/ultimate-marketing-team && docker-compose -f docker-compose.staging.yml logs api-gateway"
+        ```
+     2. Check for missing environment variables:
+        ```bash
+        ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "cd /home/ubuntu/ultimate-marketing-team && cat .env"
+        ```
+
+8. **Missing Frontend Assets**
+   - If the frontend is loading but shows empty/broken pages:
+     1. Check that the frontend container has the correct files:
+        ```bash
+        ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "docker exec -it $(docker ps -q -f name=frontend) ls -la /usr/share/nginx/html"
+        ```
+     2. Run the frontend verification script:
+        ```bash
+        ./scripts/deployment/verify_frontend.sh
+        ```
+
+9. **API Schema Import Errors**
+   - If the API fails with import errors related to schemas:
+     1. Verify the schemas directory exists in the API container:
+        ```bash
+        ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "docker exec -it $(docker ps -q -f name=api-gateway) ls -la /app/src/schemas"
+        ```
+     2. Check the Dockerfile to ensure it's copying schemas:
+        ```bash
+        cat docker/api_gateway/Dockerfile | grep schemas
+        ```
+     3. Verify schema files locally:
+        ```bash
+        ./scripts/deployment/verify_schemas.sh
+        ```
 
 ### AWS RDS Configuration
 
