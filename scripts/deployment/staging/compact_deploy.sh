@@ -104,7 +104,18 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     echo "Checking archive exists..."
     ls -la /tmp/$ARCHIVE_FILENAME
     echo "Creating fresh directory..."
-    rm -rf /home/ubuntu/ultimate-marketing-team
+    
+    # Handle directory clean up with sudo if needed
+    if [ -d "/home/ubuntu/ultimate-marketing-team" ]; then
+        echo "Removing existing directory with sudo if needed..."
+        sudo rm -rf /home/ubuntu/ultimate-marketing-team || {
+            echo "Failed to remove directory with sudo, trying alternative approach..."
+            find /home/ubuntu/ultimate-marketing-team -type d -exec chmod 755 {} \;
+            find /home/ubuntu/ultimate-marketing-team -type f -exec chmod 644 {} \;
+            rm -rf /home/ubuntu/ultimate-marketing-team
+        }
+    fi
+    
     mkdir -p /home/ubuntu/ultimate-marketing-team
     echo "Extracting archive to directory..."
     tar -xzf /tmp/$ARCHIVE_FILENAME -C /home/ubuntu/ultimate-marketing-team
