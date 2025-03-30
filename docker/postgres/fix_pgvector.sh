@@ -26,8 +26,14 @@ docker exec -i $CONTAINER bash -c "
         # Clone a specific version of pgvector known to work with PostgreSQL 17
         git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector
         
-        # Build and install pgvector
-        cd /tmp/pgvector && make USE_PGXS=1 && make USE_PGXS=1 install
+        # Build and install pgvector with JIT disabled to avoid clang dependency
+        cd /tmp/pgvector \
+        && echo "Disabling JIT in Makefile to avoid clang dependency" \
+        && sed -i 's/USE_PGXS=1 clean/USE_PGXS=1 NO_JIT=1 clean/g' Makefile \
+        && sed -i 's/USE_PGXS=1 all/USE_PGXS=1 NO_JIT=1 all/g' Makefile \
+        && sed -i 's/USE_PGXS=1 install/USE_PGXS=1 NO_JIT=1 install/g' Makefile \
+        && make USE_PGXS=1 NO_JIT=1 \
+        && make USE_PGXS=1 NO_JIT=1 install
         
         # Create the extension
         psql -U postgres -d $DATABASE -c 'CREATE EXTENSION IF NOT EXISTS vector;'

@@ -107,7 +107,13 @@ else
         docker exec pg_vector_test bash -c "
             apk add --no-cache git build-base postgresql-dev
             git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector
-            cd /tmp/pgvector && make USE_PGXS=1 && make USE_PGXS=1 install
+            cd /tmp/pgvector \
+            && echo "Disabling JIT in Makefile to avoid clang dependency" \
+            && sed -i 's/USE_PGXS=1 clean/USE_PGXS=1 NO_JIT=1 clean/g' Makefile \
+            && sed -i 's/USE_PGXS=1 all/USE_PGXS=1 NO_JIT=1 all/g' Makefile \
+            && sed -i 's/USE_PGXS=1 install/USE_PGXS=1 NO_JIT=1 install/g' Makefile \
+            && make USE_PGXS=1 NO_JIT=1 \
+            && make USE_PGXS=1 NO_JIT=1 install
         "
         
         if docker exec pg_vector_test psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null 2>&1; then

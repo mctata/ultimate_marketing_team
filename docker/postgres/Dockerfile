@@ -3,17 +3,17 @@ FROM postgres:17-alpine
 # Install PostgreSQL contributed modules and build dependencies
 RUN apk add --no-cache postgresql-contrib git build-base postgresql-dev
 
-# Try to use preinstalled pgvector if available or build from source
-RUN if [ -f /usr/local/share/postgresql/extension/vector.control ]; then \
-      echo "Using preinstalled pgvector"; \
-    else \
-      echo "Building pgvector from source"; \
-      git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector \
-      && cd /tmp/pgvector \
-      && make USE_PGXS=1 \
-      && make USE_PGXS=1 install \
-      && rm -rf /tmp/pgvector; \
-    fi
+# Install pgvector from source with JIT disabled to avoid clang dependency
+RUN echo "Building pgvector from source"; \
+    git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git /tmp/pgvector \
+    && cd /tmp/pgvector \
+    && echo "Disabling JIT in Makefile to avoid clang dependency" \
+    && sed -i 's/USE_PGXS=1 clean/USE_PGXS=1 NO_JIT=1 clean/g' Makefile \
+    && sed -i 's/USE_PGXS=1 all/USE_PGXS=1 NO_JIT=1 all/g' Makefile \
+    && sed -i 's/USE_PGXS=1 install/USE_PGXS=1 NO_JIT=1 install/g' Makefile \
+    && make USE_PGXS=1 NO_JIT=1 \
+    && make USE_PGXS=1 NO_JIT=1 install \
+    && rm -rf /tmp/pgvector
 
 # Copy SQL initialization files
 COPY init.sql /docker-entrypoint-initdb.d/01-init.sql
