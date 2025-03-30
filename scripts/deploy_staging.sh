@@ -59,10 +59,10 @@ DEPLOY_ARCHIVE="staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
 echo "Created deployment archive: $DEPLOY_ARCHIVE"
 
-# Save a copy to archives directory for future reference
-mkdir -p scripts/archives
-cp $DEPLOY_ARCHIVE scripts/archives/
-echo "Saved a copy of the archive to scripts/archives/"
+# Save a copy to deployment archives directory for future reference
+mkdir -p deployment/archives
+cp $DEPLOY_ARCHIVE deployment/archives/
+echo "Saved a copy of the archive to deployment/archives/"
 
 # Upload the archive to the server
 echo "Uploading deployment archive to server..."
