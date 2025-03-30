@@ -53,6 +53,8 @@ cp -r config/env $TEMP_DIR/config/
 
 # Copy source code
 cp -r src $TEMP_DIR/
+mkdir -p $TEMP_DIR/src/schemas
+cp -r src/schemas/* $TEMP_DIR/src/schemas/ 2>/dev/null || echo "No schemas directory found"
 cp -r migrations $TEMP_DIR/
 
 # Copy deployment scripts
