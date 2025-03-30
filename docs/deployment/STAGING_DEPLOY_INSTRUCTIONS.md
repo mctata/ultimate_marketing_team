@@ -9,7 +9,13 @@ This document provides simple instructions for deploying to the staging environm
 
 ## Deployment
 
-To deploy to staging, simply run:
+Before deploying, you can test your connection to the staging server:
+
+```bash
+./scripts/deployment/test_connection.sh
+```
+
+Once you've verified the connection, deploy to staging by running:
 
 ```bash
 ./scripts/deployment/deploy_staging.sh
