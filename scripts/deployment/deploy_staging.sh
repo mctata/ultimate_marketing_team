@@ -36,9 +36,9 @@ rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
 
 # Copy environment files
 echo "Copying environment files..."
-if [ -f deployment_secrets/.env.staging.real ]; then
-    echo "Using real credentials from deployment_secrets folder..."
-    cp deployment_secrets/.env.staging.real $TEMP_DIR/.env
+if [ -f deployments/secrets/.env.staging.real ]; then
+    echo "Using real credentials from deployments/secrets folder..."
+    cp deployments/secrets/.env.staging.real $TEMP_DIR/.env
 else
     echo "Using template credentials from config/env folder (WILL NEED TO BE UPDATED)..."
     cp config/env/.env.staging $TEMP_DIR/.env
@@ -47,8 +47,8 @@ fi
 # Copy frontend env
 if [ -f frontend/.env.staging ]; then
     cp frontend/.env.staging $TEMP_DIR/frontend/.env
-elif [ -f deployment_secrets/frontend.env.staging.real ]; then
-    cp deployment_secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
+elif [ -f deployments/secrets/frontend.env.staging.real ]; then
+    cp deployments/secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
 else
     cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
 fi
@@ -59,10 +59,10 @@ DEPLOY_ARCHIVE="staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
 echo "Created deployment archive: $DEPLOY_ARCHIVE"
 
-# Save a copy to deployment archives directory for future reference
-mkdir -p deployment/archives
-cp $DEPLOY_ARCHIVE deployment/archives/
-echo "Saved a copy of the archive to deployment/archives/"
+# Save a copy to deployments archives directory for future reference
+mkdir -p deployments/archives
+cp $DEPLOY_ARCHIVE deployments/archives/
+echo "Saved a copy of the archive to deployments/archives/"
 
 # Upload the archive to the server
 echo "Uploading deployment archive to server..."
