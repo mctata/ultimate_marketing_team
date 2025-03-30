@@ -41,6 +41,7 @@ cp -r docker/postgres $TEMP_DIR/docker/
 
 # Copy env files
 cp config/env/.env.staging $TEMP_DIR/.env
+cp config/env/.env.staging $TEMP_DIR/.env.staging  # Also add as .env.staging for docker-compose
 mkdir -p $TEMP_DIR/frontend
 if [ -f "frontend/.env.staging" ]; then
     cp frontend/.env.staging $TEMP_DIR/frontend/.env.staging
@@ -103,27 +104,28 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     
     # Run docker-compose
     echo "Starting Docker containers..."
+    echo "Environment files:"
+    ls -la *.env*
+    echo "Docker compose file:"
+    ls -la docker-compose.staging.yml
+    
+    # Export postgres variables for docker
+    export POSTGRES_USER=postgres
+    export POSTGRES_PASSWORD=postgres
+    export POSTGRES_DB=umt_db
+    export POSTGRES_HOST=postgres
+    export RABBITMQ_USER=guest
+    export RABBITMQ_PASSWORD=guest
+    export VECTOR_DB_USER=postgres
+    export VECTOR_DB_PASSWORD=postgres
+    export VECTOR_DB_NAME=umt_vectors
+    
     docker-compose -f docker-compose.staging.yml down
     docker-compose -f docker-compose.staging.yml up -d
     
     # Fix pgvector extension
     echo "Fixing pgvector extension..."
-    # Source environment variables
-    if [ -f ".env" ]; then
-        echo "Using existing .env file"
-        set -a
-        source .env
-        set +a
-    else
-        echo "WARNING: .env file not found!"
-        # Set default environment variables if needed
-        export POSTGRES_USER=${POSTGRES_USER:-postgres}
-        export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-        export POSTGRES_DB=${POSTGRES_DB:-umt_db}
-        export VECTOR_DB_USER=${VECTOR_DB_USER:-postgres}
-        export VECTOR_DB_PASSWORD=${VECTOR_DB_PASSWORD:-postgres}
-        export VECTOR_DB_NAME=${VECTOR_DB_NAME:-umt_vectors}
-    fi
+    # Environment variables already set above
     
     echo "Installing pgvector in PostgreSQL containers..."
     # Get container IDs
@@ -143,10 +145,10 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
             cd /tmp/pgvector && make && make install
         
             echo 'Creating vector extension...'
-            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
+            psql -U postgres -d umt_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
             
             echo 'Testing vector extension...'
-            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"
+            psql -U postgres -d umt_db -c \"
                 CREATE TABLE IF NOT EXISTS vector_test (id SERIAL PRIMARY KEY, embedding vector(3));
                 INSERT INTO vector_test (embedding) VALUES ('[1,2,3]');
                 SELECT * FROM vector_test;
@@ -170,10 +172,10 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
             cd /tmp/pgvector && make && make install
         
             echo 'Creating vector extension...'
-            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
+            psql -U postgres -d umt_vectors -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
             
             echo 'Testing vector extension...'
-            psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"
+            psql -U postgres -d umt_vectors -c \"
                 CREATE TABLE IF NOT EXISTS vector_test (id SERIAL PRIMARY KEY, embedding vector(3));
                 INSERT INTO vector_test (embedding) VALUES ('[1,2,3]');
                 SELECT * FROM vector_test;
@@ -190,7 +192,7 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     
     # Clean up
     echo "Cleaning up..."
-    rm /tmp/$ARCHIVE_FILENAME
+    rm -f /tmp/$ARCHIVE_FILENAME || echo "Archive already removed"
     
     echo "Deployment completed successfully!"
 EOF
