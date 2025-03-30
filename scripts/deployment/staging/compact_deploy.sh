@@ -105,9 +105,25 @@ ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazona
     # Run docker-compose
     echo "Starting Docker containers..."
     echo "Environment files:"
-    ls -la *.env*
+    ls -la .env* 2>/dev/null || echo "No .env files found"
     echo "Docker compose file:"
-    ls -la docker-compose.staging.yml
+    ls -la docker-compose.staging.yml 2>/dev/null || echo "Docker compose file not found"
+    
+    # Create .env file if it doesn't exist
+    if [ ! -f ".env" ]; then
+        echo "Creating .env file with default values"
+        cat > .env << EOF
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=umt_db
+POSTGRES_HOST=postgres
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
+VECTOR_DB_USER=postgres
+VECTOR_DB_PASSWORD=postgres
+VECTOR_DB_NAME=umt_vectors
+EOF
+    fi
     
     # Export postgres variables for docker
     export POSTGRES_USER=postgres
