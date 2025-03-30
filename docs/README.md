@@ -16,8 +16,9 @@ This directory contains all project documentation.
   - `content_generation_api.md`: Content generation API specifications
   - `/guides/`: API usage guides
 - `/deployment/`: Deployment documentation
-  - `DEPLOYMENT_GUIDE.md`: Comprehensive deployment instructions for all environments 
+  - `DEPLOYMENT_GUIDE.md`: Comprehensive deployment instructions for all environments
   - `POSTGRES_CONFIG.md`: PostgreSQL 17 configuration with vector extension
+  - `SSL_WORKFLOW.md`: SSL certificate configuration and management
 - `/pr-templates/`: Pull request templates and guides
   - `pr_template.md`: General PR template
   - `log_ci_integration_pr_template.md`: CI integration PR template

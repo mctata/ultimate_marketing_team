@@ -90,7 +90,7 @@ echo "Checking documentation..."
 REQUIRED_DOCS=(
   "docs/deployment/DEPLOYMENT_GUIDE.md"
   "docs/deployment/POSTGRES_CONFIG.md"
-)
+  "docs/deployment/SSL_WORKFLOW.md")
 
 for doc in "${REQUIRED_DOCS[@]}"; do
   if [ ! -f "$doc" ]; then
