@@ -20,19 +20,20 @@ To deploy to the staging environment:
 This script will:
 
 1. Create a deployment archive with all necessary files
-2. Upload the archive to the staging server
-3. Extract files on the server
-4. Start or restart all Docker containers
+2. Save a copy of the archive to `deployments/archives/staging/` for future reference
+3. Upload the archive to the staging server
+4. Extract files on the server
+5. Start or restart all Docker containers
 
 ### Quick Deployment
 
 If you already have a deployment archive (useful for deploying the same version multiple times):
 
 ```bash
-./scripts/deployment/staging/quick_deploy.sh deploy_20250330_120000.tar.gz
+./scripts/deployment/staging/quick_deploy.sh staging_deploy_20250330_120000.tar.gz
 ```
 
-Replace `deploy_20250330_120000.tar.gz` with the name of your archive file (stored in `scripts/deployment/archives/`).
+Replace `staging_deploy_20250330_120000.tar.gz` with the name of your archive file (stored in `deployments/archives/staging/`).
 
 ## Customizing Deployment
 

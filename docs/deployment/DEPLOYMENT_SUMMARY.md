@@ -14,13 +14,13 @@ The staging environment is available at `https://staging.tangible-studios.com` a
 ./scripts/deployment/test_connection.sh
 
 # Standard deployment 
-./scripts/deployment/deploy_staging.sh
+./scripts/deployment/staging/deploy.sh
 
 # Quick deployment with existing archive
-./scripts/deployment/quick_deploy.sh <archive_name>
+./scripts/deployment/staging/quick_deploy.sh <archive_filename>
 
 # Check service status
-./scripts/deployment/check_services.sh
+./scripts/deployment/staging/check_services.sh
 ```
 
 For detailed instructions, see [Simplified Staging Deploy](SIMPLIFIED_STAGING_DEPLOY.md).
@@ -51,11 +51,12 @@ All deployment scripts are organized in the `scripts/deployment/` directory:
 
 ```
 scripts/deployment/
-├── deploy_staging.sh          # Main staging deployment script
+├── staging/                   # Staging-specific deployment scripts
+│   ├── deploy.sh              # Main staging deployment script
+│   ├── quick_deploy.sh        # Fast deployment with existing archive
+│   └── check_services.sh      # Check services status
 ├── ec2_deploy.sh              # EC2 deployment script
-├── check_services.sh          # Check services status
 ├── fix_staging_services.sh    # Fix services if needed
-├── quick_deploy.sh            # Fast deployment with existing archive
 ├── test_connection.sh         # Test SSH connection and deployment prerequisites
 ├── test_local_db.sh           # Test local PostgreSQL setup
 └── simple_ssl_setup.sh        # SSL certificate setup
