@@ -1,6 +1,6 @@
 # Ultimate Marketing Team - Deployment Guide
 
-This guide provides comprehensive instructions for deploying the Ultimate Marketing Team application to different environments.
+This guide provides comprehensive instructions for deploying the Ultimate Marketing Team application to all environments.
 
 ## Table of Contents
 
@@ -8,18 +8,23 @@ This guide provides comprehensive instructions for deploying the Ultimate Market
 2. [Environment Setup](#environment-setup)
 3. [PostgreSQL Configuration](#postgresql-configuration)
 4. [Deployment Steps](#deployment-steps)
+   - [Staging Deployment](#staging-deployment)
+   - [EC2 Deployment](#ec2-deployment)
+   - [Production Deployment](#production-deployment)
 5. [Verification and Monitoring](#verification-and-monitoring)
 6. [Troubleshooting](#troubleshooting)
 7. [Rollback Procedure](#rollback-procedure)
+8. [SSL Configuration](#ssl-configuration)
 
 ## Deployment Overview
 
-The Ultimate Marketing Team application can be deployed to:
+The Ultimate Marketing Team application can be deployed to multiple environments:
 
-- **Staging Environment** - For testing before production
+- **Staging Environment** - Shared hosting at staging.tangible-studios.com
+- **EC2 Environment** - AWS EC2 instance for more control and scalability
 - **Production Environment** - Live environment for end users
 
-All environments use Docker and Docker Compose for containerization.
+All environments use Docker and Docker Compose for containerization, ensuring consistency across deployments.
 
 ## Environment Setup
 
@@ -30,10 +35,11 @@ Before deploying, ensure you have:
 - SSH access to the target server
 - Docker and Docker Compose installed locally
 - Appropriate SSH key file
+- Proper permissions to the deployment directories
 
 ### Directory Structure
 
-The deployment system uses the following structure:
+The deployment system uses a unified directory structure:
 
 ```
 scripts/deployment/
@@ -41,7 +47,12 @@ scripts/deployment/
 │   ├── deploy.sh              # Main staging deployment script
 │   ├── quick_deploy.sh        # Fast deployment with existing archive
 │   └── check_services.sh      # Check services status
-├── production/                # Production deployment scripts
+├── ec2/                       # EC2-specific deployment scripts
+│   ├── deploy.sh              # Main EC2 deployment script
+│   ├── fix_services.sh        # Fix services if needed
+│   └── check_services.sh      # Check service status
+├── shared/                    # Shared deployment utilities
+│   └── ssl_setup.sh           # SSL certificate setup
 ├── test_connection.sh         # Test SSH connection and prerequisites
 ├── verify_deployment_setup.sh # Verify deployment configuration
 └── quick_deploy.sh            # General quick deployment script
@@ -69,50 +80,53 @@ postgres:
     - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/3_install_pgvector.sql
 ```
 
-The vector extension is installed using the `install_pgvector.sql` script which:
-1. Creates the vector extension
-2. Verifies it works with a simple test
-3. Ensures compatibility with our application requirements
+The vector extension is installed via initialization scripts during container startup.
+
+### Database Connections
+
+- **Staging Database**: ultimatemarketing-staging.c0dcu2ywapx7.us-east-1.rds.amazonaws.com
+- **Production Database**: (Configure in secrets file)
 
 ## Deployment Steps
 
-### Step 1: Verify Setup
+### Preparation Steps for All Environments
 
-First, verify your deployment setup is correct:
+1. Verify your deployment setup:
+   ```bash
+   ./scripts/deployment/verify_deployment_setup.sh
+   ```
 
-```bash
-./scripts/deployment/verify_deployment_setup.sh
-```
+2. Test connection to the target server:
+   ```bash
+   ./scripts/deployment/test_connection.sh
+   ```
 
-This ensures all required scripts and directories exist and have the correct permissions.
+### Staging Deployment
 
-### Step 2: Test Connection
+#### Standard Deployment
 
-Test your connection to the target server:
-
-```bash
-./scripts/deployment/test_connection.sh
-```
-
-This checks SSH connectivity, write permissions, and Docker availability.
-
-### Step 3: Deploy Application
-
-#### Option A: Full Deployment (New Archive)
-
-For a complete deployment with a fresh archive:
+Deploy to the shared hosting staging environment:
 
 ```bash
 ./scripts/deployment/staging/deploy.sh
 ```
 
-This script will:
-- Create a deployment archive
-- Save a copy for future reference
-- Upload and extract on the server
-- Start Docker containers
+This creates a fresh archive and deploys it to the staging server.
 
-#### Option B: Quick Deployment (Existing Archive)
+#### Customization Options
+
+```bash
+SSH_USER=username SSH_HOST=hostname SSH_KEY=~/.ssh/keyfile ./scripts/deployment/staging/deploy.sh
+```
+
+Available variables:
+- `SSH_USER`: SSH username (default: tangible-studios.com)
+- `SSH_HOST`: Server hostname (default: ssh.tangible-studios.com)
+- `SSH_PORT`: SSH port (default: 22)
+- `REMOTE_DIR`: Remote directory (default: /customers/8/2/5/tangible-studios.com/httpd.www/staging)
+- `SSH_KEY`: Path to SSH key file (default: ~/.ssh/id_rsa)
+
+#### Quick Deployment with Existing Archive
 
 For faster deployment using an existing archive:
 
@@ -120,32 +134,73 @@ For faster deployment using an existing archive:
 ./scripts/deployment/staging/quick_deploy.sh staging_deploy_20250330_120000.tar.gz
 ```
 
-Replace the filename with your actual archive from `deployments/archives/staging/`.
+### EC2 Deployment
 
-### Step 4: Verify Deployment
+#### First-Time Deployment
 
-After deployment, check if all services are running properly:
+Deploy to an AWS EC2 instance:
 
 ```bash
-./scripts/deployment/staging/check_services.sh
+SSH_KEY=path/to/key.pem ./scripts/deployment/ec2/deploy.sh
 ```
 
-This will show container status, logs, and verify API health.
+This script will:
+1. Build the frontend application
+2. Create and upload a deployment archive
+3. Set up Docker and Docker Compose if needed
+4. Start all services
+5. Configure SSL certificates
+
+#### Customization Options
+
+```bash
+SSH_USER=ubuntu SSH_HOST=ec2-instance.amazonaws.com SSH_KEY=path/to/key.pem ./scripts/deployment/ec2/deploy.sh
+```
+
+Available variables:
+- `SSH_USER`: SSH username (default: ubuntu)
+- `SSH_HOST`: EC2 hostname or IP (default: ec2-44-202-29-233.compute-1.amazonaws.com)
+- `SSH_PORT`: SSH port (default: 22)
+- `REMOTE_DIR`: Remote directory (default: /home/ubuntu/ultimate-marketing-team)
+- `SSH_KEY`: Path to SSH key file (required)
+
+#### Fixing Services
+
+If EC2 services aren't starting properly:
+
+```bash
+SSH_KEY=path/to/key.pem ./scripts/deployment/ec2/fix_services.sh
+```
+
+### Production Deployment
+
+Production deployment follows similar steps to staging, but with additional safeguards:
+
+```bash
+./scripts/deployment/production/deploy.sh
+```
 
 ## Verification and Monitoring
 
 ### Service Health Checks
 
-The `check_services.sh` script provides comprehensive health information:
+After deployment, verify services are running correctly:
 
+```bash
+# For staging:
+./scripts/deployment/staging/check_services.sh
+
+# For EC2:
+SSH_KEY=path/to/key.pem ./scripts/deployment/ec2/check_services.sh
+```
+
+These scripts show:
 - Running container status
-- Container logs (last 10 lines)
+- Container logs
 - API endpoint health
 - Database connection status
 
-### Monitoring Commands
-
-To monitor the application manually:
+### Manual Monitoring
 
 ```bash
 # Check API health
@@ -153,6 +208,9 @@ curl https://staging.tangible-studios.com/api/health
 
 # Check container logs
 ssh user@host "cd /path && docker-compose -f docker-compose.staging.yml logs --tail=20"
+
+# Monitor resource usage
+ssh user@host "docker stats"
 ```
 
 ## Troubleshooting
@@ -161,17 +219,23 @@ ssh user@host "cd /path && docker-compose -f docker-compose.staging.yml logs --t
 
 1. **Connection Failures**
    - Verify SSH credentials and key permissions (`chmod 400 keyfile.pem`)
-   - Check network connectivity to the server
+   - Test connection: `ssh -i keyfile.pem user@host`
+   - Check network rules and security groups (for EC2)
 
 2. **Container Startup Failures**
    - Check environment variables in `.env` files
-   - Verify Docker and Docker Compose versions on the server
-   - Inspect container logs for specific errors
+   - Verify Docker and Docker Compose versions
+   - Inspect container logs
 
 3. **Database Issues**
    - Verify PostgreSQL container is running
-   - Check that migrations have been applied
-   - Validate vector extension installation
+   - Check migrations with `docker-compose logs migrations`
+   - Test database connection
+
+4. **EC2-Specific Issues**
+   - Ensure instance has sufficient resources
+   - Check security groups allow necessary ports (80, 443, etc.)
+   - Verify Docker service is running: `systemctl status docker`
 
 ### AWS RDS Configuration
 
@@ -182,25 +246,46 @@ For the production environment on AWS RDS PostgreSQL 17:
    CREATE EXTENSION IF NOT EXISTS vector;
    ```
 
-2. Verify RDS parameter group settings:
-   - Ensure `shared_preload_libraries` includes required extensions
-   - Set appropriate `max_connections` for your workload
-
-3. Test vector operations after setup:
-   ```sql
-   CREATE TABLE test_vectors (id serial PRIMARY KEY, embedding vector(3));
-   INSERT INTO test_vectors (embedding) VALUES ('[1,2,3]');
-   SELECT * FROM test_vectors;
-   DROP TABLE test_vectors;
-   ```
+2. Verify RDS parameter group settings are appropriate for the workload.
 
 ## Rollback Procedure
 
 If a deployment introduces issues:
 
-1. Identify the problem using `check_services.sh`
-2. Use `quick_deploy.sh` with a previous working archive:
+1. Identify the problem using the check_services.sh script
+
+2. For staging environment:
    ```bash
    ./scripts/deployment/staging/quick_deploy.sh staging_deploy_PREVIOUS_VERSION.tar.gz
    ```
-3. Verify services are working correctly after rollback
+
+3. For EC2 environment:
+   ```bash
+   SSH_KEY=path/to/key.pem ./scripts/deployment/ec2/fix_services.sh
+   ```
+
+4. Verify services are working after rollback.
+
+## SSL Configuration
+
+SSL certificates are automatically set up during deployment. For manual setup:
+
+### Staging SSL
+
+SSL is managed by the hosting provider for staging.tangible-studios.com.
+
+### EC2 SSL
+
+For EC2, SSL is set up using Let's Encrypt:
+
+```bash
+SSH_KEY=path/to/key.pem ssh -i path/to/key.pem ubuntu@ec2-instance
+cd /home/ubuntu/ultimate-marketing-team
+./scripts/deployment/shared/ssl_setup.sh
+```
+
+This script will:
+1. Install certbot
+2. Obtain certificates for your domain
+3. Configure nginx with the SSL certificates
+4. Set up auto-renewal
