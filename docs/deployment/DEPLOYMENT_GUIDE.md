@@ -1,15 +1,13 @@
 # Ultimate Marketing Team - Deployment Guide
 
-This guide provides comprehensive instructions for deploying the Ultimate Marketing Team application to all environments.
+This guide provides comprehensive instructions for deploying the Ultimate Marketing Team application to different environments.
 
 ## Table of Contents
 
 1. [Deployment Overview](#deployment-overview)
-2. [Environment Setup](#environment-setup)
+2. [Environment Configuration](#environment-configuration)
 3. [PostgreSQL Configuration](#postgresql-configuration)
 4. [Deployment Steps](#deployment-steps)
-   - [Staging Deployment](#staging-deployment)
-   - [Production Deployment](#production-deployment)
 5. [Verification and Monitoring](#verification-and-monitoring)
 6. [Troubleshooting](#troubleshooting)
 7. [Rollback Procedure](#rollback-procedure)
@@ -20,20 +18,39 @@ This guide provides comprehensive instructions for deploying the Ultimate Market
 The Ultimate Marketing Team application can be deployed to the following environments:
 
 - **Staging Environment** - AWS EC2 instance at staging.tangible-studios.com
-- **Production Environment** - Live environment for end users
+- **Local Environment** - Local development setup for testing
+- **Production Environment** - Live environment for end users (coming soon)
 
 All environments use Docker and Docker Compose for containerization, ensuring consistency across deployments.
 
-## Environment Setup
+## Environment Configuration
 
-### Prerequisites
+The deployment system now uses environment-specific configuration files located in `config/env/`:
 
-Before deploying, ensure you have:
+```
+config/env/
+├── deployment.env.local    # Local deployment configuration
+├── deployment.env.staging  # Staging deployment configuration
+└── .env.staging           # Application environment variables
+```
 
-- SSH access to the target server
-- Docker and Docker Compose installed locally
-- Appropriate SSH key file
-- Proper permissions to the deployment directories
+### Setting Up a New Environment
+
+To add a new deployment environment:
+
+1. Create a new configuration file: `config/env/deployment.env.<environment_name>`
+2. Add the following parameters:
+
+```bash
+# Deployment SSH configuration
+SSH_USER=<username>
+SSH_HOST=<hostname>
+SSH_PORT=22
+REMOTE_DIR=<remote_directory>
+SSH_KEY=<ssh_key_path>
+ENVIRONMENT=<environment_name>
+COMPOSE_FILE=<docker_compose_file>
+```
 
 ### Directory Structure
 
@@ -41,22 +58,25 @@ The deployment system uses the following directory structure:
 
 ```
 scripts/deployment/
-├── staging/                   # Staging-specific deployment scripts
-│   ├── deploy.sh              # Main staging deployment script
-│   ├── quick_deploy.sh        # Fast deployment with existing archive
-│   └── check_services.sh      # Check services status
-├── deploy_staging.sh          # Legacy staging deployment script
+├── deploy.sh               # Universal deployment script (new)
+├── check_services.sh       # Universal service check script (new)
+├── quick_deploy.sh         # Universal quick deployment script (new)
+├── staging/                # Staging-specific scripts (legacy)
+│   ├── deploy.sh           # Main staging deployment script
+│   ├── quick_deploy.sh     # Fast deployment with existing archive
+│   └── check_services.sh   # Check services status
+├── deploy_staging.sh       # Legacy staging deployment script
 ├── check_staging_services.sh  # Legacy script to check staging services
-├── quick_deploy.sh            # General quick deployment script
-├── test_connection.sh         # Test SSH connection and prerequisites
-├── test_local_db.sh           # Test local PostgreSQL setup
+├── test_connection.sh      # Test SSH connection and prerequisites
+├── test_local_db.sh        # Test local PostgreSQL setup
 └── verify_deployment_setup.sh # Verify deployment configuration
 
 deployments/
-├── archives/                  # Deployment archives
-│   ├── staging/               # Staging deployment archives
-│   └── production/            # Production deployment archives
-└── secrets/                   # Environment credentials (gitignored)
+├── archives/               # Deployment archives
+│   ├── staging/            # Staging deployment archives
+│   ├── local/              # Local deployment archives
+│   └── production/         # Production deployment archives
+└── secrets/                # Environment credentials (gitignored)
 ```
 
 ## PostgreSQL Configuration
@@ -75,146 +95,127 @@ postgres:
     - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/3_install_pgvector.sql
 ```
 
-The vector extension is installed via initialization scripts during container startup.
-
 ### Database Connections
 
 - **Staging Database**: ultimatemarketing-staging.c0dcu2ywapx7.us-east-1.rds.amazonaws.com
+- **Local Database**: localhost:5432
 - **Production Database**: (Configure in secrets file)
 
 ## Deployment Steps
 
-### Preparation Steps for All Environments
+All deployment scripts now support multiple environments by passing the environment name as a parameter.
 
-1. Verify your deployment setup:
-   ```bash
-   ./scripts/deployment/verify_deployment_setup.sh
-   ```
+### Testing Connection
 
-2. Test connection to the target server:
-   ```bash
-   ./scripts/deployment/test_connection.sh
-   ```
-
-### Staging Deployment
-
-The staging environment runs on AWS EC2 at staging.tangible-studios.com.
-
-#### Standard Deployment (Recommended)
-
-Deploy using the staging-specific deployment script:
+Before deploying, test your connection to the target environment:
 
 ```bash
-./scripts/deployment/staging/deploy.sh
+# Test connection to staging (default)
+./scripts/deployment/test_connection.sh
+
+# Test connection to local environment
+./scripts/deployment/test_connection.sh local
 ```
 
-This creates a fresh archive and deploys it to the staging server.
+### Standard Deployment
 
-#### Legacy Deployment Script
-
-There's also a legacy deployment script available:
+For a fresh deployment to any environment:
 
 ```bash
-./scripts/deployment/deploy_staging.sh
+# Deploy to staging (default)
+./scripts/deployment/deploy.sh
+
+# Deploy to local environment
+./scripts/deployment/deploy.sh local
 ```
 
-Both scripts perform similar functions, but the staging-specific script includes additional checks and better organization.
+This script will:
+1. Load environment-specific configuration
+2. Create a deployment archive
+3. Deploy to the specified environment
+4. Start Docker containers using the environment's compose file
 
-#### Customization Options
-
-You can customize the deployment with environment variables:
-
-```bash
-SSH_USER=username SSH_HOST=hostname SSH_KEY=~/.ssh/keyfile ./scripts/deployment/staging/deploy.sh
-```
-
-Available variables:
-- `SSH_USER`: SSH username (default: tangible-studios.com)
-- `SSH_HOST`: Server hostname (default: ssh.tangible-studios.com)
-- `SSH_PORT`: SSH port (default: 22)
-- `REMOTE_DIR`: Remote directory (default: /customers/8/2/5/tangible-studios.com/httpd.www/staging)
-- `SSH_KEY`: Path to SSH key file (default: ~/.ssh/id_rsa)
-
-#### Quick Deployment with Existing Archive
+### Quick Deployment
 
 For faster deployment using an existing archive:
 
 ```bash
-./scripts/deployment/staging/quick_deploy.sh staging_deploy_20250330_120000.tar.gz
+# Quick deploy to staging (default)
+./scripts/deployment/quick_deploy.sh staging_deploy_20250330_120000.tar.gz
+
+# Quick deploy to local environment
+./scripts/deployment/quick_deploy.sh staging_deploy_20250330_120000.tar.gz local
 ```
 
-This option is useful when:
-- Redeploying the same version
-- Rolling back to a previous version
-- Deploying to multiple instances
-
-### Production Deployment
-
-Production deployment will follow similar steps to staging, with additional safeguards. The production deployment script is still in development:
-
-```bash
-# To be implemented
-# ./scripts/deployment/production/deploy.sh
-```
+Replace `staging_deploy_20250330_120000.tar.gz` with your actual archive filename.
 
 ## Verification and Monitoring
 
-### Service Health Checks
+### Checking Service Status
 
 After deployment, verify services are running correctly:
 
 ```bash
-# Using the recommended script
-./scripts/deployment/staging/check_services.sh
+# Check services on staging (default)
+./scripts/deployment/check_services.sh
 
-# Or the legacy script
-./scripts/deployment/check_staging_services.sh
+# Check services on local environment
+./scripts/deployment/check_services.sh local
 ```
 
-These scripts show:
+This script will show:
 - Running container status
-- Container logs
+- Container logs (last 10 lines)
 - API endpoint health
-- Database connection status
 
 ### Manual Monitoring
 
-```bash
-# Check API health
-curl https://staging.tangible-studios.com/api/health
+#### Staging Environment
 
+```bash
 # Check container logs
-ssh -i your_key.pem user@host "cd /path && docker-compose -f docker-compose.staging.yml logs --tail=20"
+ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "cd /home/ubuntu/ultimate-marketing-team && docker-compose -f docker-compose.staging.yml logs --tail=20"
 
 # Monitor resource usage
-ssh -i your_key.pem user@host "docker stats"
+ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "docker stats"
+
+# Check API health
+curl https://staging.tangible-studios.com/api/health
+```
+
+#### Local Environment
+
+```bash
+# Check container logs
+docker-compose -f docker-compose.dev.yml logs --tail=20
+
+# Monitor resource usage
+docker stats
+
+# Check API health
+curl http://localhost:8000/api/health
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Connection Failures**
-   - Verify SSH credentials and key permissions (`chmod 400 keyfile.pem`)
-   - Test connection: `ssh -i keyfile.pem user@host`
-   - Check AWS security groups allow SSH on port 22
-   - Verify the EC2 instance is running
+1. **Configuration Issues**
+   - Check if your environment file exists: `config/env/deployment.env.<environment>`
+   - Verify SSH connection details in the environment file
+   
+2. **SSH Issues**
+   - Ensure your SSH key has correct permissions: `chmod 400 your_key.pem`
+   - Test SSH connection: `ssh -i your_key.pem user@host`
+   - For staging: `ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com`
 
-2. **Container Startup Failures**
-   - Check environment variables in `.env` files
-   - Verify Docker and Docker Compose versions on the server
-   - Inspect container logs with `docker-compose logs`
-   - Check disk space with `df -h`
-
-3. **Database Issues**
-   - Verify PostgreSQL container is running
-   - Check migrations with `docker-compose logs migrations`
-   - Test database connection
-   - Verify RDS connection settings if using external database
+3. **Docker Issues**
+   - Verify Docker is running: `docker ps`
+   - Check Docker Compose is installed: `docker-compose --version`
+   - Ensure the correct Docker Compose file is specified in the environment config
 
 4. **EC2 Server Issues**
-   - Ensure instance has sufficient resources (CPU/Memory)
-   - Check security groups allow necessary ports (80, 443, etc.)
+   - Check security groups allow necessary ports (22, 80, 443)
    - Verify Docker service is running: `systemctl status docker`
    - Check system logs: `sudo journalctl -u docker`
 
@@ -231,16 +232,20 @@ For PostgreSQL 17 on AWS RDS:
 
 ## Rollback Procedure
 
-If a deployment introduces issues:
+If a deployment has issues:
 
-1. Identify the problem using the check_services.sh script
+1. Identify which previous deployment was working
+2. Use quick_deploy.sh to deploy that version:
 
-2. Roll back using the quick deployment script with a previous archive:
-   ```bash
-   ./scripts/deployment/staging/quick_deploy.sh staging_deploy_PREVIOUS_VERSION.tar.gz
-   ```
+```bash
+./scripts/deployment/quick_deploy.sh <previous_working_archive> <environment>
+```
 
-3. Verify services are working after rollback.
+3. Verify services are running correctly:
+
+```bash
+./scripts/deployment/check_services.sh <environment>
+```
 
 ## SSL Configuration
 
