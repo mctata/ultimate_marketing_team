@@ -6,14 +6,15 @@ This directory contains deployment archives created for staging and production e
 
 - `staging/` - Archives for the staging environment
 - `production/` - Archives for the production environment
+- `local/` - Archives for local testing (if needed)
 
 ## Naming Convention
 
 Archives follow the pattern:
-- `ec2_deploy_{timestamp}.tar.gz` - For EC2 deployments
-- `staging_deploy_{timestamp}.tar.gz` - For shared hosting deployments
+- `staging_deploy_{timestamp}.tar.gz` - Standard deployments
+- `minimal_staging_deploy_{timestamp}.tar.gz` - Compact deployments
 
-Example: `staging_deploy_20250328_112844.tar.gz`
+Example: `minimal_staging_deploy_20250330_162316.tar.gz`
 
 ## Archive Contents
 

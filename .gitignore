@@ -51,8 +51,12 @@ ai_models/
 uploaded_content/
 CLAUDE.md
 deployments/secrets/
+
+# Deployment archives
 *.tar.gz
-deployments/archives/*.tar.gz
+deployments/archives/*/*.tar.gz
+!deployments/archives/README.md
+!deployments/archives/*/*.md
 
 # Backup files
 *.bak

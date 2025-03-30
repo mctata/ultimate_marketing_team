@@ -53,14 +53,10 @@ cp alembic.ini $TEMP_DIR/
 
 # Create minimal deployment archive
 echo "Creating minimal deployment archive..."
-DEPLOY_ARCHIVE="minimal_staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
+mkdir -p deployments/archives/staging
+DEPLOY_ARCHIVE="deployments/archives/staging/minimal_staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
 echo "Created deployment archive: $DEPLOY_ARCHIVE ($(du -h $DEPLOY_ARCHIVE | cut -f1))"
-
-# Save a copy for reference
-mkdir -p deployments/archives/staging
-cp $DEPLOY_ARCHIVE deployments/archives/staging/
-echo "Saved a copy of the archive to deployments/archives/staging/"
 
 # Upload
 echo "Uploading minimal archive to server..."
@@ -127,7 +123,7 @@ EOF
 # Clean up local temporary files
 echo "Cleaning up local temporary files..."
 rm -rf $TEMP_DIR
-rm $DEPLOY_ARCHIVE
+# Note: Not removing the archive as it's now stored in the proper location
 
 echo "✅ Minimal deployment to staging completed!"
 echo ""
