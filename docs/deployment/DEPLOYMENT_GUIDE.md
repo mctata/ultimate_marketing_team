@@ -125,15 +125,15 @@ Both scripts perform similar functions, but the staging-specific script includes
 You can customize the deployment with environment variables:
 
 ```bash
-SSH_USER=username SSH_HOST=hostname SSH_KEY=~/.ssh/keyfile ./scripts/deployment/staging/deploy.sh
+SSH_USER=ubuntu SSH_HOST=ec2-44-202-29-233.compute-1.amazonaws.com SSH_KEY=ultimate-marketing-staging.pem ./scripts/deployment/staging/deploy.sh
 ```
 
 Available variables:
-- `SSH_USER`: SSH username (default: tangible-studios.com)
-- `SSH_HOST`: Server hostname (default: ssh.tangible-studios.com)
+- `SSH_USER`: SSH username (default: ubuntu)
+- `SSH_HOST`: EC2 hostname (default: ec2-44-202-29-233.compute-1.amazonaws.com)
 - `SSH_PORT`: SSH port (default: 22)
-- `REMOTE_DIR`: Remote directory (default: /customers/8/2/5/tangible-studios.com/httpd.www/staging)
-- `SSH_KEY`: Path to SSH key file (default: ~/.ssh/id_rsa)
+- `REMOTE_DIR`: Remote directory (default: /home/ubuntu/ultimate-marketing-team)
+- `SSH_KEY`: Path to SSH key file (default: ultimate-marketing-staging.pem)
 
 #### Quick Deployment with Existing Archive
 
@@ -184,10 +184,10 @@ These scripts show:
 curl https://staging.tangible-studios.com/api/health
 
 # Check container logs
-ssh -i your_key.pem user@host "cd /path && docker-compose -f docker-compose.staging.yml logs --tail=20"
+ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "cd /home/ubuntu/ultimate-marketing-team && docker-compose -f docker-compose.staging.yml logs --tail=20"
 
 # Monitor resource usage
-ssh -i your_key.pem user@host "docker stats"
+ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "docker stats"
 ```
 
 ## Troubleshooting
