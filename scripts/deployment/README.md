@@ -31,3 +31,10 @@ The deployment process follows these steps:
 5. Deploy the api-gateway service
 
 This approach ensures reliable deployments even with limited disk space.
+
+## Source Files
+
+Source files for deployment are in the `src` directory:
+- `health_api.py`: Simple health check API implementation
+- `staging_main.py`: Simplified API gateway for staging
+

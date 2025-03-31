@@ -49,7 +49,7 @@ mkdir -p $DEPLOY_DIR
 
 # Copy only essential files
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp health_api.py Dockerfile.health-api staging_main.py $DEPLOY_DIR/
+cp scripts/deployment/src/health_api.py Dockerfile.health-api scripts/deployment/src/staging_main.py $DEPLOY_DIR/
 cp .env.staging $DEPLOY_DIR/.env
 
 # Create a tar file of the deployment directory
