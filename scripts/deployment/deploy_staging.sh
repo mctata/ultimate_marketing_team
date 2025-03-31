@@ -46,10 +46,13 @@ echo "🔹 Preparing deployment package..."
 DEPLOY_DIR="tmp_deploy"
 rm -rf $DEPLOY_DIR
 mkdir -p $DEPLOY_DIR
+mkdir -p $DEPLOY_DIR/docker/health-api
 
 # Copy only essential files
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp scripts/deployment/src/health_api.py docker/health-api/Dockerfile.health-api scripts/deployment/src/staging_main.py $DEPLOY_DIR/
+cp scripts/deployment/src/health_api.py $DEPLOY_DIR/health_api.py
+cp scripts/deployment/src/staging_main.py $DEPLOY_DIR/staging_main.py
+cp docker/health-api/Dockerfile.health-api $DEPLOY_DIR/docker/health-api/
 cp .env.staging $DEPLOY_DIR/.env
 
 # Create a tar file of the deployment directory
