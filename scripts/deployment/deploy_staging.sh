@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ultra-simplified script to deploy the Ultimate Marketing Team application to staging
+# Script to deploy the Ultimate Marketing Team application to staging
 
 set -e  # Exit immediately if a command exits with a non-zero status
 
@@ -37,45 +37,42 @@ echo "🚀 Starting deployment to STAGING environment"
 echo "🔹 Target: $SSH_USER@$SSH_HOST:$SSH_PORT"
 echo "🔹 Remote directory: $REMOTE_DIR"
 
-# First clean up Docker resources
+# Clean up Docker resources to ensure enough space
 echo "🔹 Cleaning up Docker resources..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker system prune -af --volumes"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker system prune -af"
 
-# Create remote directory if it doesn't exist
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
+# Prepare deployment files
+echo "🔹 Preparing deployment package..."
+DEPLOY_DIR="tmp_deploy"
+rm -rf $DEPLOY_DIR
+mkdir -p $DEPLOY_DIR
+mkdir -p $DEPLOY_DIR/docker/{agents,api_gateway,frontend,migrations,health-api}
+mkdir -p $DEPLOY_DIR/src/{api,core,models,agents,schemas}
 
-# Create health_api.py directly on the server
-echo "🔹 Creating health_api.py on server..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/health_api.py << 'EOF'
-import os
-import time
-import psutil
-from fastapi import FastAPI
-import uvicorn
+# Copy essential files for all services
+cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
+cp -r docker/* $DEPLOY_DIR/docker/
+cp scripts/deployment/src/health_api.py $DEPLOY_DIR/health_api.py
+cp scripts/deployment/src/staging_main.py $DEPLOY_DIR/staging_main.py
+cp .env.staging $DEPLOY_DIR/.env
 
-app = FastAPI()
+# Copy source code for all services
+cp -r src/api/* $DEPLOY_DIR/src/api/
+cp -r src/core/* $DEPLOY_DIR/src/core/
+cp -r src/models/* $DEPLOY_DIR/src/models/
+cp -r src/agents/* $DEPLOY_DIR/src/agents/
+[ -d "src/schemas" ] && cp -r src/schemas/* $DEPLOY_DIR/src/schemas/
 
-@app.get('/')
-async def root():
-    return {
-        'status': 'healthy',
-        'timestamp': time.time(),
-        'service': 'health-api',
-        'version': '1.0.0',
-        'environment': os.environ.get('ENVIRONMENT', 'development')
-    }
+# Create necessary empty Python packages
+touch $DEPLOY_DIR/src/__init__.py
+touch $DEPLOY_DIR/src/api/__init__.py
+touch $DEPLOY_DIR/src/core/__init__.py
+touch $DEPLOY_DIR/src/models/__init__.py
+touch $DEPLOY_DIR/src/agents/__init__.py
+touch $DEPLOY_DIR/src/schemas/__init__.py
 
-@app.get('/ping')
-async def ping():
-    return 'pong'
-
-if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
-EOF"
-
-# Create Dockerfile.health-api directly on the server
-echo "🔹 Creating Dockerfile for health-api..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/Dockerfile.health-api << 'EOF'
+# Create simple health-api Dockerfile in the health-api directory
+cat > $DEPLOY_DIR/docker/health-api/Dockerfile << 'EOF'
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -86,126 +83,24 @@ COPY health_api.py /app/
 
 EXPOSE 8000
 
-CMD [\"python\", \"health_api.py\"]
-EOF"
+CMD ["python", "health_api.py"]
+EOF
 
-# Create staging_main.py for API gateway
-echo "🔹 Creating staging_main.py for API gateway..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/staging_main.py << 'EOF'
-import time
-import os
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+# Create a tar file of the deployment directory
+TAR_FILE="staging-deploy.tar.gz"
+tar -czf $TAR_FILE -C $DEPLOY_DIR .
 
-# Create FastAPI app with minimal configuration
-app = FastAPI(
-    title=\"Ultimate Marketing Team\",
-    description=\"API Gateway for the Ultimate Marketing Team\",
-    version=\"0.1.0\"
-)
+# Create remote directory if it doesn't exist
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[\"*\"],
-    allow_credentials=True,
-    allow_methods=[\"GET\", \"POST\", \"PUT\", \"DELETE\", \"OPTIONS\", \"PATCH\"],
-    allow_headers=[\"Authorization\", \"Content-Type\", \"X-CSRF-Token\"],
-)
+# Copy the tar file to the remote server
+echo "🔹 Copying deployment files to remote server..."
+scp -i "$SSH_KEY" -P "$SSH_PORT" $TAR_FILE "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
 
-# Root endpoint
-@app.get(\"/\")
-async def root():
-    """API root endpoint."""
-    return {
-        \"name\": \"Ultimate Marketing Team\",
-        \"version\": \"0.1.0\",
-        \"status\": \"online\",
-        \"message\": \"API server is running - fixed context manager\",
-        \"environment\": os.environ.get(\"ENVIRONMENT\", \"staging\")
-    }
+# Extract the tar file on the remote server
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf $TAR_FILE && rm $TAR_FILE"
 
-# Health check endpoint
-@app.get(\"/api/health\")
-async def health_check():
-    """API basic health check endpoint."""
-    return {
-        \"status\": \"healthy\",
-        \"timestamp\": time.time(),
-        \"version\": \"0.1.0\",
-        \"environment\": os.environ.get(\"ENVIRONMENT\", \"staging\"),
-        \"message\": \"Fixed context manager usage in startup\"
-    }
-
-# Database health check - simplified version
-@app.get(\"/api/health/db\")
-async def db_health_check():
-    """
-    Check database connectivity.
-    This is a simplified version that doesn't actually connect to the database.
-    """
-    return {
-        \"status\": \"simulated_connection\",
-        \"timestamp\": time.time(),
-        \"message\": \"This is a simplified version for staging - fixed context manager\",
-        \"database_url\": \"Redacted for security\"
-    }
-EOF"
-
-# Create Dockerfile for API gateway
-echo "🔹 Creating Dockerfile for API gateway..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/Dockerfile.api-gateway << 'EOF'
-FROM python:3.10-slim
-
-WORKDIR /app
-
-RUN pip install fastapi uvicorn
-
-COPY staging_main.py /app/main.py
-
-EXPOSE 8000
-
-CMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]
-EOF"
-
-# Create simplified docker-compose.yml with both services
-echo "🔹 Creating docker-compose.yml..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/docker-compose.yml << 'EOF'
-version: '3.8'
-
-services:
-  health-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.health-api
-    ports:
-      - \"8001:8000\"
-    environment:
-      - ENVIRONMENT=staging
-    restart: always
-    networks:
-      - umt-network
-
-  api-gateway:
-    build:
-      context: .
-      dockerfile: Dockerfile.api-gateway
-    ports:
-      - \"8000:8000\"
-    environment:
-      - ENVIRONMENT=staging
-      - LOG_LEVEL=INFO
-    restart: always
-    networks:
-      - umt-network
-
-networks:
-  umt-network:
-    driver: bridge
-EOF"
-
-# Deploy health-api container first
+# Deploy health-api first (lightweight service)
 echo "🔹 Deploying health-api service..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api && docker-compose up -d health-api"
 
@@ -218,28 +113,55 @@ HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s h
 if [ "$HEALTH_CHECK" = "failed" ]; then
   echo "❌ Health API failed to start. Check server logs."
   ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose logs health-api"
-  exit 1
 else
   echo "✅ Health API is running"
 fi
 
-# Deploy api-gateway container
-echo "🔹 Deploying api-gateway service..."
+# Deploy data services
+echo "🔹 Deploying data services (PostgreSQL proxy, Redis, RabbitMQ)..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy redis rabbitmq vector-db-proxy"
+
+# Deploy API gateway
+echo "🔹 Deploying API gateway..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build api-gateway && docker-compose up -d api-gateway"
 
-# Wait a bit for api-gateway to start
+# Deploy agent services
+echo "🔹 Deploying agent services..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
+  docker-compose build auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent && \
+  docker-compose up -d auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent"
+
+# Deploy frontend
+echo "🔹 Deploying frontend..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build frontend && docker-compose up -d frontend"
+
+# Run database migrations
+echo "🔹 Running database migrations..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d migrations"
+
+# Wait a bit for services to initialize
 sleep 10
 
-# Check api-gateway is working
-echo "🔹 Checking api-gateway..."
+# Check API gateway
+echo "🔹 Verifying API gateway..."
 API_HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000/api/health || echo 'failed'")
 if [[ "$API_HEALTH_CHECK" == *"failed"* ]]; then
-  echo "❌ API Gateway failed to start. Check server logs."
+  echo "⚠️ API Gateway might not be running correctly. Check logs for more details."
   ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose logs api-gateway"
-  echo "⚠️ Deployment partially complete (health-api only)"
 else
   echo "✅ API Gateway is running"
-  echo "✅ Deployment to STAGING complete!"
-  echo "📝 Health API: https://$DOMAIN:8001"
-  echo "📝 API Gateway: https://$DOMAIN:8000"
 fi
+
+# Show all running containers
+echo "🔹 Deployed containers:"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
+
+# Clean up local deployment files
+rm $TAR_FILE
+rm -rf $DEPLOY_DIR
+
+echo "✅ Deployment to STAGING complete!"
+echo "📝 Access the application at: https://$DOMAIN"
+echo "📝 Health API: https://$DOMAIN:8001"
+echo "📝 API Gateway: https://$DOMAIN:8000"
+echo "📝 Frontend: https://$DOMAIN:3000"

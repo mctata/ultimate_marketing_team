@@ -5,12 +5,18 @@ services:
   health-api:
     build:
       context: .
-      dockerfile: ./docker/health-api/Dockerfile.health-api
+      dockerfile: ./docker/health-api/Dockerfile
     ports:
       - "8001:8000"
     environment:
       - ENVIRONMENT=staging
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - umt-network
     deploy:
@@ -32,6 +38,10 @@ services:
       - USE_SIMPLIFIED_API=true
     volumes:
       - ./staging_main.py:/app/src/api/main.py  # Override with simplified version
+    depends_on:
+      - postgres-proxy
+      - redis
+      - rabbitmq
     restart: always
     networks:
       - umt-network
@@ -41,6 +51,245 @@ services:
           cpus: '1'
           memory: 1G
 
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - ENVIRONMENT=staging
+    depends_on:
+      - api-gateway
+    restart: always
+    networks:
+      - umt-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Agent Services
+  auth-agent:
+    build:
+      context: .
+      dockerfile: ./docker/agents/Dockerfile
+    environment:
+      - AGENT_NAME=auth_integration_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres-proxy
+    restart: always
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  brand-agent:
+    build:
+      context: .
+      dockerfile: ./docker/agents/Dockerfile
+    environment:
+      - AGENT_NAME=brand_project_management_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres-proxy
+    restart: always
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  content-strategy-agent:
+    build:
+      context: .
+      dockerfile: ./docker/agents/Dockerfile
+    environment:
+      - AGENT_NAME=content_strategy_research_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres-proxy
+    restart: always
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  content-creation-agent:
+    build:
+      context: .
+      dockerfile: ./docker/agents/Dockerfile
+    environment:
+      - AGENT_NAME=content_creation_testing_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres-proxy
+    restart: always
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  content-ad-agent:
+    build:
+      context: .
+      dockerfile: ./docker/agents/Dockerfile
+    environment:
+      - AGENT_NAME=content_ad_management_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres-proxy
+    restart: always
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Database Proxy for RDS (no local PostgreSQL)
+  postgres-proxy:
+    image: alpine:latest
+    command: >
+      sh -c "
+        apk add --no-cache curl && 
+        echo 'PostgreSQL proxy container is running.' && 
+        echo 'Using RDS instance at ${POSTGRES_HOST}' && 
+        while true; do sleep 3600; done
+      "
+    networks:
+      - umt-network
+    healthcheck:
+      test: ["CMD", "echo", "Proxy running"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - umt-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - umt-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  # Vector Database Proxy - using the same RDS instance
+  vector-db-proxy:
+    image: alpine:latest
+    command: >
+      sh -c "
+        apk add --no-cache curl && 
+        echo 'Vector database proxy container is running.' && 
+        echo 'Using RDS instance for vector database' && 
+        while true; do sleep 3600; done
+      "
+    networks:
+      - umt-network
+    healthcheck:
+      test: ["CMD", "echo", "Proxy running"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+      
+  # Database Migrations
+  migrations:
+    build:
+      context: .
+      dockerfile: ./docker/migrations/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres-proxy
+    networks:
+      - umt-network
+    command: alembic upgrade head
+
 networks:
   umt-network:
     driver: bridge
+
+volumes:
+  redis-data:
+  rabbitmq-data:
