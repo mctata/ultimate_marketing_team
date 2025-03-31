@@ -148,31 +148,27 @@ async def startup_event():
     max_retries = 5 if is_production_env else 1
     retry_delay = 5  # seconds
     
-    # Create a synchronous function to handle database operations
-    def init_jwt_with_db():
-        for attempt in range(1, max_retries + 1):
-            try:
-                # Properly use the context manager
-                with get_db() as db:
-                    # Initialize JWT with db session
-                    jwt_manager.initialize(db)
-                    logger.info("JWT manager initialized successfully")
-                    return True
-            except Exception as e:
-                logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
-                
-                if attempt < max_retries:
-                    logger.info(f"Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                else:
-                    logger.warning("Max retries reached. API will start with limited JWT functionality.")
-                    logger.warning("Authentication features may not work correctly until the database connection is restored.")
-                    return False
+    # Import asyncio to safely run blocking operations
+    import asyncio
     
-    # Run the initialization in a separate thread to avoid blocking the async event loop
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        await app.state.loop.run_in_executor(executor, init_jwt_with_db)
+    # Run the blocking database operations in a way that won't block the event loop
+    for attempt in range(1, max_retries + 1):
+        try:
+            # This is the fix - properly use the context manager
+            with get_db() as db:
+                # Initialize JWT with db session
+                jwt_manager.initialize(db)
+                logger.info("JWT manager initialized successfully")
+                break
+        except Exception as e:
+            logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
+            
+            if attempt < max_retries:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)  # Use asyncio.sleep instead of time.sleep
+            else:
+                logger.warning("Max retries reached. API will start with limited JWT functionality.")
+                logger.warning("Authentication features may not work correctly until the database connection is restored.")
     
     logger.info("Application startup complete")
 
@@ -277,27 +273,25 @@ async def health_check():
 async def db_health_check():
     """Check database connectivity."""
     
-    # Define a synchronous function to check the database
-    def check_db_connection():
-        try:
-            # Use context manager correctly
-            with get_db() as db:
-                # Execute simple query to verify connection
-                result = db.execute("SELECT 1").scalar()
-                return {"status": "connected" if result == 1 else "error", "error": None}
-        except Exception as e:
-            return {"status": "error", "error": str(e)}
+    # Import asyncio to safely run blocking operations
+    import asyncio
     
-    # Run the database check in a separate thread
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        result = await app.state.loop.run_in_executor(executor, check_db_connection)
+    try:
+        # This is the fix - properly use the context manager
+        with get_db() as db:
+            # Execute simple query to verify connection
+            result = db.execute("SELECT 1").scalar()
+            db_status = "connected" if result == 1 else "error"
+            error_msg = None
+    except Exception as e:
+        db_status = "error"
+        error_msg = str(e)
     
     return {
-        "status": result["status"],
+        "status": db_status,
         "timestamp": time.time(),
         "database_url": os.environ.get("DATABASE_URL", "Not set directly in environment"),
-        "error": result["error"]
+        "error": error_msg
     }
 
 @app.get("/api/debug/routes")
