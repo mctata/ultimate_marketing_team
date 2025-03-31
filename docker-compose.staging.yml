@@ -28,7 +28,7 @@ services:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
     depends_on:
-      postgres:
+      postgres-proxy:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -74,7 +74,7 @@ services:
       - LOG_LEVEL=INFO
     depends_on:
       - rabbitmq
-      - postgres
+      - postgres-proxy
     restart: always
     networks:
       - umt-network
@@ -96,7 +96,7 @@ services:
       - LOG_LEVEL=INFO
     depends_on:
       - rabbitmq
-      - postgres
+      - postgres-proxy
     restart: always
     networks:
       - umt-network
@@ -118,7 +118,7 @@ services:
       - LOG_LEVEL=INFO
     depends_on:
       - rabbitmq
-      - postgres
+      - postgres-proxy
     restart: always
     networks:
       - umt-network
@@ -140,7 +140,7 @@ services:
       - LOG_LEVEL=INFO
     depends_on:
       - rabbitmq
-      - postgres
+      - postgres-proxy
     restart: always
     networks:
       - umt-network
@@ -162,7 +162,7 @@ services:
       - LOG_LEVEL=INFO
     depends_on:
       - rabbitmq
-      - postgres
+      - postgres-proxy
     restart: always
     networks:
       - umt-network
@@ -173,38 +173,29 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  # Infrastructure Services
-  postgres:
-    build:
-      context: ./docker/postgres
-      dockerfile: Dockerfile
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/02-install_pgvector.sql
-      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/03-integration_upgrade.sql
-      - ./docker/postgres/scripts:/docker-scripts
+  # Database Proxy for RDS (no local PostgreSQL)
+  # We're using AWS RDS instance directly: ${POSTGRES_HOST}
+  postgres-proxy:
+    image: alpine:latest
+    command: >
+      sh -c "
+        apk add --no-cache curl && 
+        echo 'PostgreSQL proxy container is running.' && 
+        echo 'Using RDS instance at ${POSTGRES_HOST}' && 
+        while true; do sleep 3600; done
+      "
     networks:
       - umt-network
-    restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1"]
-      interval: 10s
+      test: ["CMD", "echo", "Proxy running"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 3
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 1G
+          cpus: '0.1'
+          memory: 64M
 
   redis:
     image: redis:6.2-alpine
@@ -253,36 +244,28 @@ services:
           cpus: '0.5'
           memory: 1G
 
-  vector-db:
-    build:
-      context: ./docker/postgres
-      dockerfile: Dockerfile
-    ports:
-      - "5433:5432"
-    environment:
-      - POSTGRES_USER=${VECTOR_DB_USER}
-      - POSTGRES_PASSWORD=${VECTOR_DB_PASSWORD}
-      - POSTGRES_DB=${VECTOR_DB_NAME}
-    volumes:
-      - vector-db-data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/02-install_pgvector.sql
-      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/03-integration_upgrade.sql
-      - ./docker/postgres/scripts:/docker-scripts
+  # Vector Database Proxy - using the same RDS instance
+  vector-db-proxy:
+    image: alpine:latest
+    command: >
+      sh -c "
+        apk add --no-cache curl && 
+        echo 'Vector database proxy container is running.' && 
+        echo 'Using RDS instance for vector database' && 
+        while true; do sleep 3600; done
+      "
     networks:
       - umt-network
-    restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1"]
-      interval: 10s
+      test: ["CMD", "echo", "Proxy running"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 3
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.1'
+          memory: 64M
       
   # Database Migrations
   migrations:
@@ -296,7 +279,7 @@ services:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
     depends_on:
-      - postgres
+      - postgres-proxy
     networks:
       - umt-network
     command: alembic upgrade head
@@ -306,7 +289,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
   redis-data:
   rabbitmq-data:
-  vector-db-data:

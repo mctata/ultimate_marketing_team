@@ -1,8 +1,9 @@
--- Create database (will be ignored if DB already exists)
-CREATE DATABASE ultimatemarketing_db;
+-- For RDS instances, we don't need to create the database
+-- as it's created during RDS instance setup.
+-- Just use the existing database.
 
--- Switch to the ultimatemarketing_db database for all operations
-\c ultimatemarketing_db;
+-- Note: This script assumes the database (ultimatemarketing_db)
+-- already exists on the RDS instance.
 
 -- Initialize database schema
 
