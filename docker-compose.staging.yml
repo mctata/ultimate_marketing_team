@@ -8,28 +8,7 @@ services:
     ports:
       - "8001:8000"
     command: >
-      bash -c "
-      pip install fastapi uvicorn psutil &&
-      echo 'from fastapi import FastAPI
-import time
-import os
-
-app = FastAPI()
-
-@app.get(\"/\")
-async def health_check():
-    return {
-        \"status\": \"healthy\",
-        \"timestamp\": time.time(),
-        \"service\": \"health-api\",
-        \"version\": \"1.0.0\",
-        \"environment\": os.getenv(\"ENVIRONMENT\", \"staging\")
-    }
-
-@app.get(\"/ping\")
-async def ping():
-    return \"pong\"' > /app/health_app.py &&
-      uvicorn health_app:app --host 0.0.0.0 --port 8000"
+      bash -c "pip install fastapi uvicorn psutil && echo \"from fastapi import FastAPI; import time; import os; app = FastAPI(); @app.get('/'); async def health_check(): return {'status': 'healthy', 'timestamp': time.time(), 'service': 'health-api', 'version': '1.0.0', 'environment': os.getenv('ENVIRONMENT', 'staging')}; @app.get('/ping'); async def ping(): return 'pong'\" > /app/health_app.py && uvicorn health_app:app --host 0.0.0.0 --port 8000"
     restart: always
     environment:
       - ENVIRONMENT=staging
@@ -45,7 +24,7 @@ async def ping():
       resources:
         limits:
           cpus: '0.2'
-          memory: 256M
+          memory: '256M'
 
   # API Gateway
   api-gateway:
