@@ -13,7 +13,7 @@ SSH_KEY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ultimate-marketing-
 chmod 600 "$SSH_KEY"
 
 # Parse arguments
-DB_NAME="umt_db"
+DB_NAME="ultimatemarketing_db"
 if [ "$1" == "vector" ]; then
   DB_NAME="umt_vector_db"
   echo "Connecting to vector database ($DB_NAME)..."
@@ -38,7 +38,7 @@ fi
 
 # Connect to PostgreSQL
 echo "Opening PostgreSQL console..."
-if [ "$DB_NAME" == "umt_db" ]; then
+if [ "$DB_NAME" == "ultimatemarketing_db" ]; then
   SERVICE="postgres"
 else
   SERVICE="vector-db"

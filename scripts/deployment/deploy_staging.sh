@@ -33,6 +33,7 @@ SSH_HOST=ec2-44-202-29-233.compute-1.amazonaws.com
 SSH_PORT=22
 REMOTE_DIR=/home/ubuntu/ultimate-marketing-team
 SSH_KEY="$PROJECT_ROOT/ultimate-marketing-staging.pem"
+DOMAIN=staging.tangible-studios.com
 
 # Check if SSH key exists
 if [ ! -f "$SSH_KEY" ]; then
@@ -95,7 +96,7 @@ echo "🔹 Creating environment files..."
 cat > tmp_deploy/.env.staging << EOL
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres_password
-POSTGRES_DB=umt_db
+POSTGRES_DB=ultimatemarketing_db
 POSTGRES_HOST=postgres
 VECTOR_DB_USER=postgres
 VECTOR_DB_PASSWORD=postgres_password
@@ -173,7 +174,7 @@ echo "🔹 Cleaning up..."
 rm -rf tmp_deploy tmp_deploy.tar.gz
 
 echo "✅ Deployment completed successfully!"
-echo "✅ Access your staging environment at: http://$SSH_HOST"
+echo "✅ Access your staging environment at: https://$DOMAIN"
 echo ""
 echo "Useful commands:"
 echo "  - Connect to server:      ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\""

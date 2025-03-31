@@ -6,7 +6,7 @@ set -e
 
 # Default values
 CONTAINER=${1:-"postgres"}
-DATABASE=${2:-"umt_db"}
+DATABASE=${2:-"ultimatemarketing_db"}
 
 echo "Installing pgvector extension in container $CONTAINER for database $DATABASE..."
 

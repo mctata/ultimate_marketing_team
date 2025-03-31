@@ -100,7 +100,7 @@ case "$1" in
         
     backup)
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        BACKUP_FILE="umt_db_backup_$TIMESTAMP.sql"
+        BACKUP_FILE="ultimatemarketing_db_backup_$TIMESTAMP.sql"
         echo "Creating database backup to $BACKUP_FILE..."
         ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
         POSTGRES_CONTAINER=\$(docker ps -q -f name=postgres | head -n 1) && \
