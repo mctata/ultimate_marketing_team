@@ -37,6 +37,24 @@ We've addressed the API gateway database initialization issues when deploying to
 - Updated the Docker configuration to include database tools and proper error handling
 - Added a dedicated database migration script for the staging environment
 - Enhanced the Docker startup script to wait for database availability
+- **Upgraded to PostgreSQL 17** with compatible commands and configuration
+
+## Quick Start
+
+To fix database initialization issues in staging:
+
+```bash
+# Make scripts executable 
+chmod +x scripts/deployment/staging/deploy.sh
+chmod +x scripts/deployment/fix_api_gateway_db.sh
+chmod +x scripts/deployment/staging/run_migrations.sh
+
+# Deploy using the enhanced deployment script
+./scripts/deployment/staging/deploy.sh
+
+# If issues persist, run the repair script
+./scripts/deployment/fix_api_gateway_db.sh
+```
 
 ## Development Setup
 
@@ -108,4 +126,9 @@ If you encounter database initialization issues:
 4. For more extensive database operations in staging:
    ```
    ./scripts/deployment/staging/db_operations.sh console
+   ```
+
+5. Read the comprehensive troubleshooting guide:
+   ```
+   docs/staging-troubleshooting.md
    ```
