@@ -56,7 +56,7 @@ echo "🔹 Using Docker Compose file: $COMPOSE_FILE"
 # Copy necessary files to deployment directory
 echo "🔹 Preparing deployment files..."
 cp -r docker/* $DEPLOY_DIR/docker/
-cp docker-compose.staging.yml $DEPLOY_DIR/
+cp docker-compose.staging.yml health_api.py Dockerfile.health-api $DEPLOY_DIR/
 cp .env.staging $DEPLOY_DIR/
 cp -r scripts/deployment/* $DEPLOY_DIR/scripts/deployment/
 

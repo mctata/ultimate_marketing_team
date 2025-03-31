@@ -3,37 +3,14 @@ version: '3.8'
 services:
   # Simple Health API
   health-api:
-    image: python:3.10-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile.health-api
     ports:
       - "8001:8000"
-    command: |
-      bash -c "pip install fastapi uvicorn psutil && 
-      cat > /app/health_app.py << 'EOF'
-from fastapi import FastAPI
-import time
-import os
-
-app = FastAPI()
-
-@app.get('/')
-async def health_check():
-    return {
-        'status': 'healthy',
-        'timestamp': time.time(),
-        'service': 'health-api', 
-        'version': '1.0.0',
-        'environment': os.getenv('ENVIRONMENT', 'staging')
-    }
-
-@app.get('/ping')
-async def ping():
-    return 'pong'
-EOF
-      uvicorn health_app:app --host 0.0.0.0 --port 8000"
-    restart: always
     environment:
       - ENVIRONMENT=staging
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/ping || exit 1"]
       interval: 30s
