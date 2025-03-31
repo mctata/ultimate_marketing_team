@@ -103,7 +103,7 @@ rm $TAR_FILE
 rm -rf $DEPLOY_DIR
 
 echo "✅ Deployment to STAGING complete!"
-echo "📝 Access the application at: http://$SSH_HOST"
-echo "📝 Health API: http://$SSH_HOST:8001"
-echo "📝 API Gateway: http://$SSH_HOST:8000"
-echo "📝 Frontend: http://$SSH_HOST:3000"
+echo "📝 Access the application at: https://$DOMAIN"
+echo "📝 Health API: http://$DOMAIN:8001"
+echo "📝 API Gateway: http://$DOMAIN:8000"
+echo "📝 Frontend: http://$DOMAIN:3000"

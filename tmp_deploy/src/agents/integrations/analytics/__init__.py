@@ -1,3 +1,0 @@
-"""
-Analytics integrations package.
-"""
