@@ -148,23 +148,31 @@ async def startup_event():
     max_retries = 5 if is_production_env else 1
     retry_delay = 5  # seconds
     
-    for attempt in range(1, max_retries + 1):
-        try:
-            # Properly use the context manager
-            with get_db() as db:
-                # Initialize JWT with db session
-                jwt_manager.initialize(db)
-                logger.info("JWT manager initialized successfully")
-                break
-        except Exception as e:
-            logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
-            
-            if attempt < max_retries:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
-            else:
-                logger.warning("Max retries reached. API will start with limited JWT functionality.")
-                logger.warning("Authentication features may not work correctly until the database connection is restored.")
+    # Create a synchronous function to handle database operations
+    def init_jwt_with_db():
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Properly use the context manager
+                with get_db() as db:
+                    # Initialize JWT with db session
+                    jwt_manager.initialize(db)
+                    logger.info("JWT manager initialized successfully")
+                    return True
+            except Exception as e:
+                logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
+                
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.warning("Max retries reached. API will start with limited JWT functionality.")
+                    logger.warning("Authentication features may not work correctly until the database connection is restored.")
+                    return False
+    
+    # Run the initialization in a separate thread to avoid blocking the async event loop
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        await app.state.loop.run_in_executor(executor, init_jwt_with_db)
     
     logger.info("Application startup complete")
 
@@ -268,21 +276,28 @@ async def health_check():
 @app.get("/api/health/db", tags=["Health"])
 async def db_health_check():
     """Check database connectivity."""
-    try:
-        # Use context manager correctly
-        with get_db() as db:
-            # Execute simple query to verify connection
-            result = db.execute("SELECT 1").scalar()
-            db_status = "connected" if result == 1 else "error"
-    except Exception as e:
-        db_status = "error"
-        result = str(e)
+    
+    # Define a synchronous function to check the database
+    def check_db_connection():
+        try:
+            # Use context manager correctly
+            with get_db() as db:
+                # Execute simple query to verify connection
+                result = db.execute("SELECT 1").scalar()
+                return {"status": "connected" if result == 1 else "error", "error": None}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+    
+    # Run the database check in a separate thread
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = await app.state.loop.run_in_executor(executor, check_db_connection)
     
     return {
-        "status": db_status,
+        "status": result["status"],
         "timestamp": time.time(),
         "database_url": os.environ.get("DATABASE_URL", "Not set directly in environment"),
-        "error": None if db_status == "connected" else result
+        "error": result["error"]
     }
 
 @app.get("/api/debug/routes")
