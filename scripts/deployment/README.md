@@ -2,45 +2,43 @@
 
 This directory contains scripts for deploying the Ultimate Marketing Team application to different environments.
 
-## Deployment Process
+## Simplified Deployment Process
 
-The deployment process consists of the following steps:
+We have streamlined the deployment process into a single script that handles all steps:
 
-1. **Connection Testing** - Test SSH connection to the target environment
-2. **Configuration Setup** - Ensure environment-specific configuration files exist
-3. **Package Creation** - Create a deployment package with necessary files
-4. **Remote Deployment** - Upload package to the server and start services
-5. **Post-Deployment Fixes** - Apply any necessary fixes (e.g., pgvector installation)
-6. **Verification** - Verify that the deployment was successful
+1. **Package Creation** - Create a deployment package with necessary files
+2. **Connection Testing** - Test SSH connection to the target environment
+3. **Remote Deployment** - Upload package to the server and start services
+4. **Verification & Fixes** - Verify deployment and fix issues (e.g., pgvector)
 
-## Available Scripts
+## Main Deployment Script
 
-### General Scripts
-
-- `test_connection.sh [environment]` - Test SSH connection to environment
-- `verify_deployment.sh [environment]` - Verify deployment was successful
-- `fix_pgvector.sh` - Fix pgvector extension if it was not installed correctly
-
-### Staging Environment Scripts
-
-- `staging/deploy.sh` - Standard deployment to staging
-- `staging/compact_deploy.sh` - Optimized deployment with minimal package size
-- `staging/check_services.sh` - Check if services are running in staging
-
-## Staging Deployment
-
-For deploying to the staging environment, use:
+The primary script you should use for deployments:
 
 ```bash
-# Test connection first
-./scripts/deployment/test_connection.sh staging
+# Deploy to staging environment
+./scripts/deployment/deploy_staging.sh
 
-# Deploy using compact method (optimized for low bandwidth)
-./scripts/deployment/staging/compact_deploy.sh
+# Test the deployment process without actually deploying
+./scripts/deployment/deploy_staging.sh --dry-run
 
-# Verify deployment
-./scripts/deployment/verify_deployment.sh staging
+# Get help
+./scripts/deployment/deploy_staging.sh --help
 ```
+
+## Utility Scripts
+
+- `fix_pgvector.sh` - Fixes pgvector extension issues in PostgreSQL containers
+- `test_connection.sh` - Tests SSH connection to deployment environment
+- `test_local_db.sh` - Tests local database configuration and setup
+- `db_connect.sh` - Connect directly to the PostgreSQL database
+  ```bash
+  # Connect to main database
+  ./scripts/deployment/db_connect.sh
+  
+  # Connect to vector database
+  ./scripts/deployment/db_connect.sh vector
+  ```
 
 ## Environment Configuration
 
@@ -55,6 +53,7 @@ The deployment includes several verification scripts to ensure everything is wor
 - `verify_deployment.sh` - Main verification script that runs on the server
 - `verify_frontend.sh` - Verifies frontend build files exist locally before deployment
 - `verify_schemas.sh` - Verifies required schema files exist locally before deployment
+- `verify_migrations.sh` - Verifies database migrations are properly applied
 
 ## Troubleshooting
 

@@ -1,8 +1,27 @@
 #!/bin/bash
-# Simple deployment script for staging environment - Tested and Working
+# Universal Staging Deployment Script - The ONLY script you need for staging deployment
 set -e
 
-echo "========== DEPLOYING TO STAGING =========="
+echo "========== ULTIMATE MARKETING TEAM: STAGING DEPLOYMENT =========="
+
+# Parse arguments
+DRY_RUN=false
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --help)
+      echo "Usage: $0 [--dry-run]"
+      echo ""
+      echo "Options:"
+      echo "  --dry-run    Prepare deployment package but don't upload or deploy"
+      echo "  --help       Show this help message"
+      exit 0
+      ;;
+  esac
+done
 
 # Get project root directory
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -15,10 +34,18 @@ SSH_PORT=22
 REMOTE_DIR=/home/ubuntu/ultimate-marketing-team
 SSH_KEY="$PROJECT_ROOT/ultimate-marketing-staging.pem"
 
+# Check if SSH key exists
+if [ ! -f "$SSH_KEY" ]; then
+  echo "❌ Error: SSH key not found at $SSH_KEY"
+  echo "Please provide the correct path to your SSH key or place it in the project root."
+  exit 1
+fi
+
 # Set SSH key permissions
 chmod 600 "$SSH_KEY"
 
-echo "🔹 Deploying to $SSH_USER@$SSH_HOST:$REMOTE_DIR"
+echo "🔹 Target: $SSH_USER@$SSH_HOST:$REMOTE_DIR"
+echo "🔹 Mode: $([ "$DRY_RUN" == "true" ] && echo "Dry run (no upload)" || echo "Full deployment")"
 
 # Create a deployment directory
 echo "🔹 Preparing deployment package..."
@@ -43,6 +70,29 @@ VECTOR_DB_NAME=umt_vector_db
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
 EOL
+fi
+
+# Create frontend environment file
+if [ ! -f tmp_deploy/frontend/.env ]; then
+    echo "🔹 Creating frontend environment file..."
+    mkdir -p tmp_deploy/frontend
+    cat > tmp_deploy/frontend/.env << EOL
+VITE_API_URL=http://${SSH_HOST}:8000
+VITE_ENV=staging
+EOL
+fi
+
+if [ "$DRY_RUN" == "true" ]; then
+  echo "✅ Dry run completed. Deployment package created in tmp_deploy/"
+  echo "✅ To perform the actual deployment, run without --dry-run"
+  exit 0
+fi
+
+# Test connection before proceeding
+echo "🔹 Testing connection to staging server..."
+if ! ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=5 -o BatchMode=yes "$SSH_USER@$SSH_HOST" "echo Connection successful" 2>/dev/null; then
+  echo "❌ Connection to $SSH_USER@$SSH_HOST failed. Please check your SSH credentials and network."
+  exit 1
 fi
 
 # Upload to server
@@ -88,4 +138,8 @@ rm -rf tmp_deploy
 
 echo "✅ Deployment completed successfully!"
 echo "✅ Access your staging environment at: http://$SSH_HOST"
-echo "✅ To connect to the server: ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\""
+echo ""
+echo "Useful commands:"
+echo "  - Connect to server:      ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\""
+echo "  - View container logs:    ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\" \"cd $REMOTE_DIR && docker-compose -f docker-compose.staging.yml logs -f\""
+echo "  - Check container status: ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\" \"cd $REMOTE_DIR && docker ps\""
