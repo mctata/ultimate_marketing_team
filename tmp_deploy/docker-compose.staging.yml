@@ -5,10 +5,10 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: docker/api_gateway/Dockerfile
+      dockerfile: ./docker/api_gateway/Dockerfile
     ports:
       - "8000:8000"
-    env_file: .env.staging
+    env_file: ./.env.staging
     environment:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
@@ -29,7 +29,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: docker/frontend/Dockerfile
+      dockerfile: ./docker/frontend/Dockerfile
     ports:
       - "3000:80"
     env_file: ./frontend/.env.staging
@@ -48,8 +48,8 @@ services:
   auth-agent:
     build:
       context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/agents/Dockerfile
+    env_file: ./.env.staging
     environment:
       - AGENT_NAME=auth_integration_agent
       - ENVIRONMENT=staging
@@ -70,8 +70,8 @@ services:
   brand-agent:
     build:
       context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/agents/Dockerfile
+    env_file: ./.env.staging
     environment:
       - AGENT_NAME=brand_project_management_agent
       - ENVIRONMENT=staging
@@ -92,8 +92,8 @@ services:
   content-strategy-agent:
     build:
       context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/agents/Dockerfile
+    env_file: ./.env.staging
     environment:
       - AGENT_NAME=content_strategy_agent
       - ENVIRONMENT=staging
@@ -114,8 +114,8 @@ services:
   content-creation-agent:
     build:
       context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/agents/Dockerfile
+    env_file: ./.env.staging
     environment:
       - AGENT_NAME=content_creation_agent
       - ENVIRONMENT=staging
@@ -136,8 +136,8 @@ services:
   content-ad-agent:
     build:
       context: .
-      dockerfile: docker/agents/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/agents/Dockerfile
+    env_file: ./.env.staging
     environment:
       - AGENT_NAME=content_ad_management_agent
       - ENVIRONMENT=staging
@@ -157,20 +157,31 @@ services:
 
   # Infrastructure Services
   postgres:
-    image: postgres:14-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
-      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/02-install_pgvector.sql
+      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/03-integration_upgrade.sql
+      - ./docker/postgres/scripts:/docker-scripts
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -213,7 +224,9 @@ services:
           memory: 1G
 
   vector-db:
-    image: ankane/pgvector:latest
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
     ports:
       - "5433:5432"
     environment:
@@ -222,9 +235,19 @@ services:
       - POSTGRES_DB=${VECTOR_DB_NAME}
     volumes:
       - vector-db-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/02-install_pgvector.sql
+      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/03-integration_upgrade.sql
+      - ./docker/postgres/scripts:/docker-scripts
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -235,10 +258,10 @@ services:
   migrations:
     build:
       context: .
-      dockerfile: docker/migrations/Dockerfile
-    env_file: .env.staging
+      dockerfile: ./docker/migrations/Dockerfile
+    env_file: ./.env.staging
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
       - PYTHONPATH=/app
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
