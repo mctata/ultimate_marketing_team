@@ -25,7 +25,7 @@ services:
           cpus: '0.2'
           memory: '256M'
 
-  # API Gateway
+  # API Gateway - Simplified version
   api-gateway:
     build:
       context: .
@@ -36,6 +36,9 @@ services:
     environment:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
+      - USE_SIMPLIFIED_API=true
+    volumes:
+      - ./staging_main.py:/app/src/api/main.py  # Override with simplified version
     depends_on:
       postgres-proxy:
         condition: service_healthy

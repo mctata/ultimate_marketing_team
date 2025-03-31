@@ -52,7 +52,21 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONHASHSEED=random \
-    PYTHONFAULTHANDLER=1
+    PYTHONFAULTHANDLER=1 \
+    USE_SIMPLIFIED_API=false
 
-# Run in production mode (no reload)
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Copy simplified API for staging
+COPY staging_main.py /app/
+
+# Use a script to determine which API to run
+RUN echo '#!/bin/bash\n\
+if [ "$USE_SIMPLIFIED_API" = "true" ]; then\n\
+  echo "Starting simplified API gateway..."\n\
+  exec uvicorn staging_main:app --host 0.0.0.0 --port 8000\n\
+else\n\
+  echo "Starting standard API gateway..."\n\
+  exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000\n\
+fi' > /app/start.sh && chmod +x /app/start.sh
+
+# Run the startup script
+CMD ["/app/start.sh"]
