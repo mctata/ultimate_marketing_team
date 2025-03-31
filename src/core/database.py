@@ -6,8 +6,9 @@ from contextlib import contextmanager
 import os
 import time
 import logging
+import traceback
 from functools import wraps
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 from src.core.settings import settings
 from src.core.logging import log_slow_query
@@ -63,45 +64,64 @@ if settings.DB_STATEMENT_TIMEOUT:
     engine_kwargs["connect_args"]["options"] = f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT}"
 
 # Create SQLAlchemy engine with optimized connection pooling
-engine = create_engine(str(database_url), **engine_kwargs)
+try:
+    engine = create_engine(str(database_url), **engine_kwargs)
+    logging.info("Database engine initialized successfully")
+except Exception as e:
+    logging.error(f"Error creating database engine: {str(e)}")
+    # Create a dummy engine that will be replaced once DB is available
+    # This allows the app to start even if DB is temporarily unavailable
+    engine = None
 
 # Add connection pool listeners
-@event.listens_for(engine, "connect")
+@event.listens_for(create_engine(str(database_url)), "connect")
 def connect(dbapi_connection, connection_record):
     """Configure new connections with best practices."""
-    # Set session parameters for this connection
-    cursor = dbapi_connection.cursor()
-    cursor.execute("SET TIME ZONE 'UTC';")
-    cursor.execute("SET application_name TO 'ultimatemarketing';")
-    cursor.close()
+    try:
+        # Set session parameters for this connection
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET TIME ZONE 'UTC';")
+        cursor.execute("SET application_name TO 'ultimatemarketing';")
+        cursor.close()
+    except Exception as e:
+        logging.error(f"Error configuring database connection: {str(e)}")
 
-@event.listens_for(engine, "checkout")
+@event.listens_for(create_engine(str(database_url)), "checkout")
 def checkout(dbapi_connection, connection_record, connection_proxy):
     """Validate connections on checkout to ensure they're still alive."""
-    connection_record.info.setdefault('checkout_time', time.time())
-    # Check if the connection has been waiting too long in the pool
-    if settings.ENV == "production":
-        checkout_age = time.time() - connection_record.info['checkout_time']
-        if checkout_age > 3600:  # 1 hour
-            # If the connection is too old, replace it
-            connection_record.connection = connection_proxy.connection = None
-            raise exc.DisconnectionError("Connection too old")
+    try:
+        connection_record.info.setdefault('checkout_time', time.time())
+        # Check if the connection has been waiting too long in the pool
+        if settings.ENV == "production":
+            checkout_age = time.time() - connection_record.info['checkout_time']
+            if checkout_age > 3600:  # 1 hour
+                # If the connection is too old, replace it
+                connection_record.connection = connection_proxy.connection = None
+                raise exc.DisconnectionError("Connection too old")
+    except Exception as e:
+        logging.error(f"Error during connection checkout: {str(e)}")
+        raise
 
 # Add listener for connection recycling
-@event.listens_for(engine, "checkin")
+@event.listens_for(create_engine(str(database_url)), "checkin")
 def checkin(dbapi_connection, connection_record):
     """Update connection record after checkin."""
     connection_record.info['checkout_time'] = time.time()
     connection_record.info['checkin_count'] = connection_record.info.get('checkin_count', 0) + 1
 
 # Create session factory - use scoped_session for thread safety with advanced settings
-session_factory = sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False,
-    expire_on_commit=False,  # Don't expire objects when committing (better performance)
-)
-SessionLocal = scoped_session(session_factory)
+try:
+    session_factory = sessionmaker(
+        bind=engine,
+        autocommit=False,
+        autoflush=False,
+        expire_on_commit=False,  # Don't expire objects when committing (better performance)
+    )
+    SessionLocal = scoped_session(session_factory)
+except Exception as e:
+    logging.error(f"Error creating session factory: {str(e)}")
+    # Create a placeholder session factory
+    SessionLocal = None
 
 # Base class for SQLAlchemy models
 Base = declarative_base()
@@ -115,10 +135,41 @@ def get_engine():
     Returns:
         Engine: SQLAlchemy engine instance
     """
+    global engine
+    # If engine wasn't created successfully, try to recreate it now
+    if engine is None:
+        try:
+            engine = create_engine(str(database_url), **engine_kwargs)
+            logging.info("Database engine initialized successfully on retry")
+        except Exception as e:
+            logging.error(f"Error recreating database engine: {str(e)}")
+            raise
+    
     return engine
 
+def initialize_session_factory():
+    """Reinitialize session factory if it wasn't created successfully."""
+    global SessionLocal, session_factory, engine
+    
+    if SessionLocal is None:
+        try:
+            if engine is None:
+                engine = get_engine()
+                
+            session_factory = sessionmaker(
+                bind=engine,
+                autocommit=False,
+                autoflush=False,
+                expire_on_commit=False,
+            )
+            SessionLocal = scoped_session(session_factory)
+            logging.info("Session factory initialized successfully on retry")
+        except Exception as e:
+            logging.error(f"Error reinitializing session factory: {str(e)}")
+            raise
+
 # Set up query performance monitoring
-@event.listens_for(engine, "before_cursor_execute")
+@event.listens_for(create_engine(str(database_url)), "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     # Store start time in context for this query
     context._query_start_time = time.time()
@@ -126,7 +177,7 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
     if settings.ENV == "development" and settings.LOG_LEVEL == "DEBUG":
         logging.debug(f"SQL: {statement}\nParameters: {parameters}")
 
-@event.listens_for(engine, "after_cursor_execute")
+@event.listens_for(create_engine(str(database_url)), "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     # Calculate query execution time
     execution_time = time.time() - context._query_start_time
@@ -142,13 +193,72 @@ def configure_mappers():
     This function should be called before any database operation to ensure
     all relationships are properly set up.
     """
-    import src.models
-    from sqlalchemy.orm import configure_mappers
-    configure_mappers()
+    try:
+        import src.models
+        from sqlalchemy.orm import configure_mappers
+        configure_mappers()
+        logging.debug("SQLAlchemy mappers configured successfully")
+    except Exception as e:
+        logging.error(f"Error configuring SQLAlchemy mappers: {str(e)}")
+        if settings.ENV != "production":  # More detailed logs for non-production
+            tb = traceback.format_exc()
+            logging.error(f"Mapper configuration traceback: {tb}")
+        raise
+
+def retry_on_db_error(max_retries=3, retry_delay=1):
+    """
+    Decorator to retry database operations on specific exceptions.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        retry_delay: Delay between retries in seconds
+        
+    Returns:
+        Decorated function that will retry on specific database exceptions
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            last_error = None
+            
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except (exc.OperationalError, exc.DisconnectionError) as e:
+                    retries += 1
+                    last_error = e
+                    error_msg = str(e)
+                    
+                    # Only retry on connection errors
+                    if "could not connect" in error_msg or "connection" in error_msg.lower():
+                        logging.warning(f"Database connection error (attempt {retries}/{max_retries}): {error_msg}")
+                        if retries < max_retries:
+                            logging.info(f"Retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            continue
+                    
+                    # For other operational errors, don't retry
+                    raise
+                except Exception as e:
+                    # Don't retry on other exceptions
+                    raise
+            
+            # If we get here, we've exhausted retries
+            logging.error(f"Maximum retry attempts reached. Last error: {last_error}")
+            raise last_error
+        
+        return wrapper
+    
+    return decorator
 
 @contextmanager
 def get_db():
     """Provides a transactional scope around a series of operations."""
+    # Ensure session factory is initialized
+    if SessionLocal is None:
+        initialize_session_factory()
+    
     # Ensure all mappers are configured before creating the session
     configure_mappers()
     
@@ -171,3 +281,18 @@ def with_db_transaction(func):
         with get_db() as db:
             return func(db=db, *args, **kwargs)
     return wrapper
+
+def health_check():
+    """
+    Perform a simple database health check.
+    
+    Returns:
+        bool: True if database is accessible, False otherwise
+    """
+    try:
+        with get_db() as db:
+            result = db.execute(text("SELECT 1")).scalar()
+            return result == 1
+    except Exception as e:
+        logging.error(f"Database health check failed: {str(e)}")
+        return False
