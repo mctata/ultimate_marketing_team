@@ -29,6 +29,10 @@ class Brand(Base):
     cms_accounts = relationship("CMSAccount", back_populates="brand", cascade="all, delete-orphan")
     ad_accounts = relationship("AdAccount", back_populates="brand", cascade="all, delete-orphan")
     ad_campaigns = relationship("AdCampaign", back_populates="brand", cascade="all, delete-orphan")
+    email_accounts = relationship("EmailAccount", back_populates="brand", cascade="all, delete-orphan")
+    analytics_accounts = relationship("AnalyticsAccount", back_populates="brand", cascade="all, delete-orphan")
+    api_keys = relationship("ApiKey", back_populates="brand", cascade="all, delete-orphan")
+    webhooks = relationship("Webhook", back_populates="brand", cascade="all, delete-orphan")
 
 class ProjectType(Base):
     """Project type model for categorizing projects (e.g., Email, Blog, Social Post)."""
