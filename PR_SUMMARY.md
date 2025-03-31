@@ -18,7 +18,8 @@ This PR addresses critical deployment issues with the Ultimate Marketing Team ap
    - Updated environment variables configuration
    - Enhanced database configuration with proper volume mounts
    - Added health checks for service reliability
-   - Added a lightweight health-api service for reliable health monitoring
+   - Added a lightweight health-api service with simple_health.py for reliable health monitoring
+   - Implemented proper service dependency checks with condition: service_healthy
 
 3. **Frontend Configuration**
    - Fixed Dockerfile path references for nginx.conf
@@ -54,8 +55,10 @@ Staged deployment and verification have been tested on EC2. Key components:
    - Verified API proxying to backend services
 
 4. **Health API Endpoint**
-   - Dedicated health API endpoint available at http://staging.tangible-studios.com:8001/health
-   - Provides independent availability monitoring separate from main application
+   - Dedicated health API endpoint available at http://staging.tangible-studios.com:8001/
+   - Provides independent availability monitoring separate from main application 
+   - Returns JSON with status, timestamp, service name, version, and environment
+   - Implemented as a lightweight FastAPI service with minimal dependencies
 
 5. **Deployment Process**
    - Test connection: `./scripts/deployment/test_connection.sh`
