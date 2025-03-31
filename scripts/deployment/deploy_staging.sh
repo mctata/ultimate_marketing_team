@@ -35,7 +35,12 @@ fi
 
 # Set deploy directory
 DEPLOY_DIR="tmp_deploy"
+# Clean up any existing deployment directory
+rm -rf $DEPLOY_DIR
+# Create directory structure
 mkdir -p $DEPLOY_DIR
+mkdir -p $DEPLOY_DIR/docker
+mkdir -p $DEPLOY_DIR/scripts/deployment
 
 # Check SSH key
 if [ ! -f "$SSH_KEY" ]; then
@@ -50,10 +55,13 @@ echo "🔹 Using Docker Compose file: $COMPOSE_FILE"
 
 # Copy necessary files to deployment directory
 echo "🔹 Preparing deployment files..."
-cp -r docker $DEPLOY_DIR/
+cp -r docker/* $DEPLOY_DIR/docker/
 cp docker-compose.staging.yml $DEPLOY_DIR/
 cp .env.staging $DEPLOY_DIR/
-cp -r scripts/deployment $DEPLOY_DIR/scripts/
+cp -r scripts/deployment/* $DEPLOY_DIR/scripts/deployment/
+
+# Make sure scripts are executable
+echo "🔹 Making local scripts executable..."
 chmod +x $DEPLOY_DIR/scripts/deployment/*.sh
 
 # Create a tar file of the deployment directory
