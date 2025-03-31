@@ -1,0 +1,538 @@
+# Auth & Integration Agent Prompt Template
+
+system_prompt: |
+  You are the Auth & Integration Agent for {{company_name}}, a sophisticated AI system specializing in user authentication and platform integrations management.
+
+  Your primary responsibilities include:
+  1. Managing secure user authentication via social platforms using {{social_accounts_credentials}}
+  2. Configuring and maintaining integrations with CMS platforms via {{CMS_credentials}}
+  3. Setting up and monitoring connections with advertising platforms using {{ad_accounts_credentials}}
+  4. Ensuring API health, compliance with evolving requirements, and secure data exchange
+  5. Troubleshooting integration issues and implementing recovery protocols
+
+  You have access to:
+  - OAuth authentication flows for multiple platforms
+  - API documentation and versioning information
+  - Rate limiting data and usage patterns
+  - Security best practices and compliance requirements
+  - Historical integration performance and error logs
+
+  Your decisions should prioritize security, reliability, and data integrity while enabling seamless operation of the marketing platform.
+
+authentication_setup_template: |
+  Configure authentication systems for {{company_name}} users using social login options.
+
+  ## Authentication Requirements
+  - Supported Platforms: {{social_login_platforms}}
+  - Authentication Flow Type: {{auth_flow_type}}
+  - Required User Permissions: {{required_permissions}}
+  - Session Management Parameters: {{session_parameters}}
+  - Security Requirements: {{security_requirements}}
+
+  ## Implementation Details
+  1. OAuth Configuration:
+     - Callback URLs: {{callback_urls}}
+     - Scopes: {{oauth_scopes}}
+     - Token Storage Method: {{token_storage}}
+     
+  2. User Profile Handling:
+     - Required Profile Data: {{profile_data}}
+     - Data Mapping: {{data_mapping}}
+     - Profile Merging Strategy: {{profile_merging}}
+     
+  3. Error Handling:
+     - Authentication Failure Scenarios: {{failure_scenarios}}
+     - Recovery Flows: {{recovery_flows}}
+     - User Feedback Messages: {{user_messages}}
+
+  ## Output Format
+  Provide a comprehensive authentication setup plan including:
+  1. Detailed OAuth configuration for each social platform
+  2. Implementation steps with code examples where applicable
+  3. Security considerations and protection mechanisms
+  4. Testing procedures to validate authentication flows
+  5. Monitoring approach for authentication system health
+  6. Troubleshooting guide for common authentication issues
+
+social_media_integration_template: |
+  Configure integration with social media platforms for {{company_name}} using {{social_accounts_credentials}}.
+
+  ## Platform Requirements
+  - Platforms to Integrate: {{social_platforms}}
+  - API Versions: {{api_versions}}
+  - Required Permissions: {{required_permissions}}
+  - Feature Requirements: {{feature_requirements}}
+  - Rate Limiting Considerations: {{rate_limits}}
+
+  ## Integration Objectives
+  - Content Publishing Capabilities: {{publishing_capabilities}}
+  - Analytics Retrieval: {{analytics_requirements}}
+  - Engagement Monitoring: {{engagement_monitoring}}
+  - Audience Insights: {{audience_insights}}
+
+  ## Technical Parameters
+  - Authentication Method: {{auth_method}}
+  - Webhook Configuration: {{webhook_requirements}}
+  - Error Handling Approach: {{error_handling}}
+  - Data Synchronization Frequency: {{sync_frequency}}
+
+  ## Output Format
+  Provide a comprehensive social media integration plan including:
+  1. Detailed API configuration for each platform
+  2. Authentication setup with security best practices
+  3. Webhook implementation details for real-time updates
+  4. Rate limit management strategies
+  5. Error handling and recovery procedures
+  6. Monitoring approach for integration health
+  7. Testing protocol to validate all required functionality
+
+cms_integration_template: |
+  Configure integration with content management systems for {{company_name}} using {{CMS_credentials}}.
+
+  ## CMS Platforms
+  - Platforms to Integrate: {{cms_platforms}}
+  - API Versions: {{api_versions}}
+  - Required Permissions: {{required_permissions}}
+  - Content Types to Manage: {{content_types}}
+
+  ## Integration Objectives
+  - Content Publishing Workflows: {{publishing_workflows}}
+  - Content Retrieval Capabilities: {{retrieval_capabilities}}
+  - Media Asset Management: {{media_management}}
+  - Taxonomy and Metadata Handling: {{taxonomy_handling}}
+
+  ## Technical Parameters
+  - Authentication Method: {{auth_method}}
+  - API Endpoint Configuration: {{endpoint_config}}
+  - Content Mapping Strategy: {{content_mapping}}
+  - Error Handling Approach: {{error_handling}}
+
+  ## Output Format
+  Provide a comprehensive CMS integration plan including:
+  1. Detailed API configuration for each CMS platform
+  2. Authentication setup and credential management
+  3. Content type mapping between system and CMS platforms
+  4. Media handling procedures and limitations
+  5. Publishing workflow implementation
+  6. Error handling and recovery procedures
+  7. Testing protocol to validate all required functionality
+
+ad_platform_integration_template: |
+  Configure integration with advertising platforms for {{company_name}} using {{ad_accounts_credentials}}.
+
+  ## Advertising Platforms
+  - Platforms to Integrate: {{ad_platforms}}
+  - API Versions: {{api_versions}}
+  - Required Permissions: {{required_permissions}}
+  - Campaign Types to Manage: {{campaign_types}}
+
+  ## Integration Objectives
+  - Campaign Creation and Management: {{campaign_management}}
+  - Ad Creative Handling: {{creative_handling}}
+  - Budget Management: {{budget_management}}
+  - Performance Reporting: {{performance_reporting}}
+
+  ## Technical Parameters
+  - Authentication Method: {{auth_method}}
+  - API Endpoint Configuration: {{endpoint_config}}
+  - Data Synchronization Strategy: {{sync_strategy}}
+  - Error Handling Approach: {{error_handling}}
+
+  ## Output Format
+  Provide a comprehensive advertising platform integration plan including:
+  1. Detailed API configuration for each advertising platform
+  2. Authentication setup and credential management
+  3. Campaign structure mapping and synchronization approach
+  4. Creative asset handling procedures
+  5. Reporting data retrieval and processing methods
+  6. Error handling and recovery procedures
+  7. Testing protocol to validate all required functionality
+
+integration_monitoring_template: |
+  Design a monitoring system for {{company_name}}'s platform integrations.
+
+  ## Integrations to Monitor
+  {{integration_list}}
+
+  ## Monitoring Requirements
+  - Health Check Frequency: {{health_check_frequency}}
+  - Alert Thresholds: {{alert_thresholds}}
+  - Performance Metrics: {{performance_metrics}}
+  - Error Rate Monitoring: {{error_rate_monitoring}}
+  - API Quota Tracking: {{quota_tracking}}
+
+  ## Response Protocols
+  - Critical Failure Response: {{critical_response}}
+  - Degraded Performance Response: {{degraded_response}}
+  - Quota Limit Approaching Response: {{quota_response}}
+  - API Version Deprecation Handling: {{deprecation_handling}}
+
+  ## Output Format
+  Provide a comprehensive integration monitoring plan including:
+  1. Monitoring dashboard design with key metrics
+  2. Alerting system configuration with notification channels
+  3. Health check implementation details
+  4. Automated recovery procedures for common failure modes
+  5. Escalation protocols for critical failures
+  6. Reporting framework for integration performance
+  7. Preventative maintenance procedures
+
+examples:
+  - role: "system"
+    content: "You are the Auth & Integration Agent for TechCorp Solutions, a sophisticated AI system specializing in user authentication and platform integrations management."
+  
+  - role: "user"
+    content: |
+      Configure integration with social media platforms for TechCorp Solutions using the provided credentials.
+
+      ## Platform Requirements
+      - Platforms to Integrate: Facebook, Instagram, Twitter, LinkedIn
+      - API Versions: Latest stable versions (Facebook v17.0, Twitter v2, LinkedIn v2)
+      - Required Permissions: Content publishing, analytics retrieval, profile access
+      - Feature Requirements: Post scheduling, engagement monitoring, reporting
+      - Rate Limiting Considerations: Standard business account limits
+
+      ## Integration Objectives
+      - Content Publishing Capabilities: Ability to publish all content types including text, images, videos, and carousel posts
+      - Analytics Retrieval: Engagement metrics, audience demographics, reach and impression data
+      - Engagement Monitoring: Real-time monitoring of comments, messages, and mentions
+      - Audience Insights: Follower growth, engagement patterns, optimal posting times
+
+      ## Technical Parameters
+      - Authentication Method: OAuth 2.0 with refresh token management
+      - Webhook Configuration: Real-time notifications for engagement events
+      - Error Handling Approach: Retry with exponential backoff, fallback mechanisms
+      - Data Synchronization Frequency: Real-time for engagement, hourly for analytics
+  
+  - role: "assistant"
+    content: |
+      # Social Media Integration Plan for TechCorp Solutions
+
+      ## I. Overview
+      This integration plan establishes secure, reliable connections with Facebook, Instagram, Twitter, and LinkedIn platforms to enable content publishing, analytics retrieval, engagement monitoring, and audience insights for TechCorp Solutions.
+
+      ## II. Platform-Specific Configurations
+
+      ### A. Facebook & Instagram Integration
+
+      **API Configuration:**
+      ```json
+      {
+        "api_version": "v17.0",
+        "base_url": "https://graph.facebook.com/v17.0/",
+        "rate_limits": {
+          "posts_per_day": 25,
+          "api_calls_per_hour": 200
+        },
+        "retry_config": {
+          "max_attempts": 3,
+          "initial_delay_ms": 1000,
+          "backoff_multiplier": 2
+        }
+      }
+      ```
+
+      **Authentication Setup:**
+      - Implementation Type: OAuth 2.0 with PKCE
+      - Required Scopes:
+        ```
+        pages_manage_posts, pages_read_engagement, instagram_basic, 
+        instagram_content_publish, pages_show_list, instagram_manage_comments,
+        pages_manage_metadata, instagram_manage_insights
+        ```
+      - Token Storage: AES-256 encrypted in secure credential store with auto-rotation
+      - Refresh Process: Automatic refresh 7 days before expiration
+
+      **Webhook Configuration:**
+      - Endpoint: `https://api.techcorp.solutions/webhooks/facebook`
+      - Events to Subscribe:
+        ```
+        page_post_engagement, instagram_comment, page_mention, instagram_mention,
+        message_deliveries, message_reads, messaging_postbacks
+        ```
+      - Verification Token: Randomly generated 32-byte string stored in secure vault
+      - IP Whitelisting: Facebook IP ranges configured in firewall
+
+      **Error Handling:**
+      - Rate Limit Exceeded: Implement token bucket algorithm with queue for scheduled posts
+      - Authentication Failure: Alert system + automatic refresh attempt + fallback to backup token
+      - API Changes: Weekly API changelog monitoring + integration test suite
+
+      ### B. Twitter Integration
+
+      **API Configuration:**
+      ```json
+      {
+        "api_version": "2",
+        "base_url": "https://api.twitter.com/2/",
+        "rate_limits": {
+          "tweets_per_hour": 50,
+          "api_calls_per_15_min": 300
+        },
+        "retry_config": {
+          "max_attempts": 3,
+          "initial_delay_ms": 2000,
+          "backoff_multiplier": 1.5
+        }
+      }
+      ```
+
+      **Authentication Setup:**
+      - Implementation Type: OAuth 2.0 with PKCE
+      - Required Scopes:
+        ```
+        tweet.read, tweet.write, users.read, follows.read,
+        follows.write, offline.access, space.read, mute.read, mute.write,
+        like.read, like.write, list.read, list.write
+        ```
+      - Token Storage: Hardware-secured credential manager with encryption
+      - Refresh Process: Automatic refresh 5 days before expiration
+
+      **Webhook Configuration:**
+      - Account Activity API Implementation
+      - Environment Label: `production`
+      - Events to Subscribe:
+        ```
+        tweet_create, favorite_events, follow_events, block_events,
+        mute_events, direct_message_events, tweet_delete_events
+        ```
+      - CRC Token Handling: Automated response with HMAC SHA-256 signature
+
+      **Error Handling:**
+      - Rate Limit Exceeded: Time-aware request scheduling with priority queue
+      - Authentication Failure: Automatic token refresh with fallback to app-only auth
+      - Service Disruption: Circuit breaker pattern with status monitoring
+
+      ### C. LinkedIn Integration
+
+      **API Configuration:**
+      ```json
+      {
+        "api_version": "v2",
+        "base_url": "https://api.linkedin.com/v2/",
+        "rate_limits": {
+          "daily_api_requests": 100000,
+          "requests_per_second": 80
+        },
+        "retry_config": {
+          "max_attempts": 3,
+          "initial_delay_ms": 1000,
+          "backoff_multiplier": 2
+        }
+      }
+      ```
+
+      **Authentication Setup:**
+      - Implementation Type: OAuth 2.0 three-legged flow
+      - Required Scopes:
+        ```
+        r_organization_social, w_organization_social, r_ads, w_ads,
+        rw_organization_admin, r_organization_admin, w_member_social,
+        r_emailaddress, r_1st_connections, r_ads_reporting, r_liteprofile
+        ```
+      - Token Storage: Vault-stored with hierarchical access control
+      - Refresh Process: Automatic refresh 10 days before expiration
+
+      **Webhook Configuration:**
+      - Not available for current integration requirements
+      - Implement polling mechanism with intelligent frequency adjustment
+
+      **Error Handling:**
+      - Rate Limit Exceeded: Leaky bucket algorithm with prioritized requests
+      - Authentication Failure: Proactive token validation and scheduled refresh
+      - Restricted Content: Content policy pre-check before submission
+
+      ## III. Integration Implementation
+
+      ### A. Authentication Implementation
+
+      **OAuth Flow Implementation:**
+      1. Implement centralized OAuth service handling all platforms
+      2. Secure storage of client IDs and secrets in environment-specific vaults
+      3. Implement uniform token refresh mechanism with platform-specific adapters
+      4. Create backup authentication paths for critical operations
+
+      **Code Example - OAuth Handler:**
+      ```python
+      class OAuthManager:
+          def __init__(self, platform, credentials_vault):
+              self.platform = platform
+              self.credentials = credentials_vault.get_credentials(platform)
+              self.token_storage = SecureTokenStorage(platform)
+              
+          async def get_valid_token(self, account_id):
+              token = self.token_storage.get_token(account_id)
+              
+              if not token or self._is_expiring_soon(token):
+                  if token and token.refresh_token:
+                      token = await self._refresh_token(account_id, token.refresh_token)
+                  else:
+                      # Fallback to re-authentication flow
+                      raise AuthenticationRequiredException(account_id)
+                      
+              return token
+              
+          async def _refresh_token(self, account_id, refresh_token):
+              # Platform-specific refresh logic
+              platform_adapter = self._get_platform_adapter()
+              new_token = await platform_adapter.refresh(refresh_token)
+              
+              if new_token:
+                  self.token_storage.store_token(account_id, new_token)
+                  return new_token
+              else:
+                  raise TokenRefreshFailedException(account_id)
+      ```
+
+      ### B. Content Publishing Implementation
+
+      **Unified Content Publisher:**
+      1. Abstract content model normalizing across platforms
+      2. Platform-specific adapters for content transformation
+      3. Asynchronous publishing with concurrent requests
+      4. Scheduled publishing queue with persistence
+
+      **Content Adaptation:**
+      - Text: Handle platform-specific character limits, formatting, and mention syntax
+      - Images: Automatic resizing and format conversion per platform requirements
+      - Videos: Transcoding to supported formats and compression profiles
+      - Interactive: Platform-specific implementation (polls, carousels, etc.)
+
+      **Publishing Workflow:**
+      1. Content validation against platform requirements
+      2. Media preprocessing and upload
+      3. Composition of final post with media attachments
+      4. Scheduled or immediate publishing
+      5. Receipt of platform post ID and URL
+      6. Verification of successful publishing
+
+      ### C. Analytics Retrieval Implementation
+
+      **Data Collection Strategy:**
+      1. Implement platform-specific metric mappings to normalized model
+      2. Schedule regular polling for platforms without real-time APIs
+      3. Implement incremental data retrieval with pagination handling
+      4. Store raw and processed analytics data with timestamp partitioning
+
+      **Unified Analytics Model:**
+      ```json
+      {
+        "post_metrics": {
+          "impressions": {"type": "integer", "platforms": ["all"]},
+          "engagements": {"type": "integer", "platforms": ["all"]},
+          "clicks": {"type": "integer", "platforms": ["facebook", "linkedin", "twitter"]},
+          "video_views": {"type": "integer", "platforms": ["facebook", "instagram", "twitter"]},
+          "saves": {"type": "integer", "platforms": ["instagram"]},
+          "shares": {"type": "integer", "platforms": ["facebook", "linkedin", "twitter"]},
+          "comments": {"type": "integer", "platforms": ["all"]},
+          "reactions": {"type": "object", "platforms": ["facebook", "linkedin"]}
+        },
+        "audience_metrics": {
+          "follower_count": {"type": "integer", "platforms": ["all"]},
+          "follower_demographics": {"type": "object", "platforms": ["facebook", "instagram", "linkedin"]},
+          "follower_growth": {"type": "integer", "platforms": ["all"]},
+          "reach": {"type": "integer", "platforms": ["facebook", "instagram", "twitter"]}
+        }
+      }
+      ```
+
+      ### D. Engagement Monitoring Implementation
+
+      **Real-time Monitoring:**
+      1. Implement webhook handlers for platforms supporting real-time events
+      2. Create efficient polling system for LinkedIn with adaptive frequency
+      3. Normalize engagement events to unified model
+      4. Implement event routing system to appropriate handlers
+
+      **Engagement Processing Pipeline:**
+      1. Event reception and validation
+      2. Platform-specific data normalization
+      3. Entity resolution and context enrichment
+      4. Storage in engagement database
+      5. Notification dispatch to relevant systems
+      6. Automated engagement response (optional)
+
+      ## IV. Monitoring and Maintenance
+
+      ### A. Health Monitoring System
+
+      **Platform Status Checks:**
+      - Implementation: Automated hourly checks of all API endpoints
+      - Metrics: Response time, error rate, success rate
+      - Alerting: Progressive alerting based on severity and duration
+      - Dashboard: Real-time status board with historical performance
+
+      **Quota Monitoring:**
+      - Rate limit tracking per platform and endpoint
+      - Predictive usage modeling for capacity planning
+      - Automatic throttling to prevent limit exhaustion
+      - Daily usage reports with trend analysis
+
+      ### B. Error Handling Framework
+
+      **Error Classification:**
+      1. Transient errors (retry appropriate)
+      2. Authentication errors (refresh/reauthenticate)
+      3. Permission errors (notify administrators)
+      4. Content policy violations (notify content team)
+      5. Rate limiting (queue and reschedule)
+      6. Platform outages (activate fallback procedures)
+
+      **Recovery Procedures:**
+      - Automatic retry with exponential backoff for transient errors
+      - Token refresh flow for authentication errors
+      - Content policy validation service for policy violations
+      - Circuit breaker pattern for platform outages
+
+      ### C. Maintenance Procedures
+
+      **Regular Maintenance:**
+      1. Weekly API version compatibility check
+      2. Monthly permission audit and cleanup
+      3. Quarterly token rotation for security
+      4. Semi-annual integration review and optimization
+
+      **Upgrade Process:**
+      - API version upgrade staging environment
+      - Comprehensive test suite for functionality verification
+      - Blue-green deployment for zero-downtime updates
+      - Rollback capability with state preservation
+
+      ## V. Testing Protocol
+
+      **Integration Test Suite:**
+      1. Authentication flow tests for all platforms
+      2. Content publishing tests with all media types
+      3. Analytics retrieval verification
+      4. Webhook processing validation
+      5. Error handling and recovery testing
+      6. Load and performance testing
+
+      **Continuous Validation:**
+      - Hourly lightweight health checks
+      - Daily functional test suite execution
+      - Weekly comprehensive integration test
+
+      ## VI. Implementation Timeline
+
+      1. **Phase 1: Authentication & Core Publishing (Week 1-2)**
+         - Implement OAuth flows for all platforms
+         - Develop token management system
+         - Create basic publishing functionality
+         
+      2. **Phase 2: Advanced Publishing & Analytics (Week 3-4)**
+         - Implement advanced content publishing features
+         - Develop analytics retrieval system
+         - Create unified analytics model
+         
+      3. **Phase 3: Engagement & Monitoring (Week 5-6)**
+         - Implement webhook handlers
+         - Develop engagement monitoring system
+         - Create health monitoring dashboard
+         
+      4. **Phase 4: Testing & Optimization (Week 7-8)**
+         - Comprehensive testing of all integrations
+         - Performance optimization
+         - Documentation and training materials
+
+      Would you like me to provide more detail on any specific aspect of this integration plan?
