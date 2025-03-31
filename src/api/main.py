@@ -148,32 +148,31 @@ async def startup_event():
     max_retries = 5 if is_production_env else 1
     retry_delay = 5  # seconds
     
-    # Import asyncio to safely run blocking operations
-    import asyncio
-    
-    # Run the blocking database operations in a way that won't block the event loop
-    for attempt in range(1, max_retries + 1):
-        try:
-            # Use the loop's run_in_executor to run the blocking operation
-            def db_operation():
+    # Create a synchronous function to handle database operations
+    def init_jwt_with_db():
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Properly use the context manager
                 with get_db() as db:
+                    # Initialize JWT with db session
                     jwt_manager.initialize(db)
+                    logger.info("JWT manager initialized successfully")
                     return True
-                    
-            # Run the blocking operation in a thread pool
-            success = await asyncio.to_thread(db_operation)
-            if success:
-                logger.info("JWT manager initialized successfully")
-                break
-        except Exception as e:
-            logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
-            
-            if attempt < max_retries:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                await asyncio.sleep(retry_delay)  # Use asyncio.sleep instead of time.sleep
-            else:
-                logger.warning("Max retries reached. API will start with limited JWT functionality.")
-                logger.warning("Authentication features may not work correctly until the database connection is restored.")
+            except Exception as e:
+                logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
+                
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.warning("Max retries reached. API will start with limited JWT functionality.")
+                    logger.warning("Authentication features may not work correctly until the database connection is restored.")
+                    return False
+    
+    # Run the initialization in a separate thread to avoid blocking the async event loop
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        await app.state.loop.run_in_executor(executor, init_jwt_with_db)
     
     logger.info("Application startup complete")
 
@@ -278,9 +277,6 @@ async def health_check():
 async def db_health_check():
     """Check database connectivity."""
     
-    # Import asyncio to safely run blocking operations
-    import asyncio
-    
     # Define a synchronous function to check the database
     def check_db_connection():
         try:
@@ -292,8 +288,10 @@ async def db_health_check():
         except Exception as e:
             return {"status": "error", "error": str(e)}
     
-    # Run the database check using asyncio.to_thread
-    result = await asyncio.to_thread(check_db_connection)
+    # Run the database check in a separate thread
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = await app.state.loop.run_in_executor(executor, check_db_connection)
     
     return {
         "status": result["status"],
