@@ -5,7 +5,7 @@ services:
   health-api:
     build:
       context: .
-      dockerfile: Dockerfile.health-api
+      dockerfile: ./docker/health-api/Dockerfile.health-api
     ports:
       - "8001:8000"
     environment:
