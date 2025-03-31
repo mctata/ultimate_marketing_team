@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Health API - Simple standalone health check endpoint
+  # Simple Health API
   health-api:
     image: python:3.10-slim
     working_dir: /app
@@ -15,17 +15,6 @@ services:
     restart: always
     networks:
       - umt-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 256M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   # API Gateway
   api-gateway:
@@ -39,18 +28,15 @@ services:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: always
     networks:
       - umt-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     deploy:
       resources:
         limits:
@@ -230,6 +216,12 @@ services:
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     deploy:
       resources:
         limits:
@@ -249,6 +241,12 @@ services:
     networks:
       - umt-network
     restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
       resources:
         limits:
