@@ -39,7 +39,7 @@ services:
         done;
         echo 'PostgreSQL is ready!' &&
         # Use PostgreSQL 17 compatible command for database creation
-        psql -h postgres -U postgres -c \"SELECT 'CREATE DATABASE umt' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umt')\\gexec\" &&
+        psql -h postgres -U postgres -c "SELECT 'CREATE DATABASE umt' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umt')\gexec" &&
         psql -h postgres -U postgres -d umt -c 'CREATE SCHEMA IF NOT EXISTS umt;' &&
         tail -f /dev/null
       "
@@ -177,7 +177,7 @@ services:
           sleep 2;
         done;
         # Use PostgreSQL 17 compatible command for database creation
-        psql -h postgres -U postgres -c \"SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\\gexec\" &&
+        psql -h postgres -U postgres -c "SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec" &&
         echo 'Vector database initialized!' &&
         tail -f /dev/null
       "
