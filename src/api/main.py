@@ -136,14 +136,30 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 async def startup_event():
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION} in {settings.ENV} environment")
     
+    # Check if running in staging or production
+    is_production_env = settings.ENV in ["staging", "production"]
+    
     # Initialize JWT manager with database connection
-    from src.core.database import get_db
-    try:
-        with get_db() as db:
-            jwt_manager.initialize(db)
-            logger.info("JWT manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize JWT manager: {str(e)}")
+    # We make this non-blocking for startup to ensure the API starts even if the database is not ready
+    max_retries = 5 if is_production_env else 1
+    retry_delay = 5  # seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            from src.core.database import get_db
+            with get_db() as db:
+                jwt_manager.initialize(db)
+                logger.info("JWT manager initialized successfully")
+                break
+        except Exception as e:
+            logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
+            
+            if attempt < max_retries:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logger.warning("Max retries reached. API will start with limited JWT functionality.")
+                logger.warning("Authentication features may not work correctly until the database connection is restored.")
     
     logger.info("Application startup complete")
 
@@ -151,9 +167,13 @@ async def startup_event():
 async def shutdown_event():
     logger.info(f"Shutting down {settings.APP_NAME}")
     # Also shut down any WebSocket managers
-    from src.api.websocket import manager as general_ws_manager
-    from src.api.content_calendar_websocket import calendar_manager
-    await general_ws_manager.shutdown()
+    try:
+        from src.api.websocket import manager as general_ws_manager
+        from src.api.content_calendar_websocket import calendar_manager
+        await general_ws_manager.shutdown()
+    except Exception as e:
+        logger.error(f"Error during WebSocket shutdown: {str(e)}")
+    
     logger.info("Application shutdown complete")
 
 # Configure CORS with more restrictive settings
@@ -239,6 +259,27 @@ async def health_check():
         "environment": settings.ENV
     }
 
+# Added endpoint to verify database connection
+@app.get("/api/health/db", tags=["Health"])
+async def db_health_check():
+    """Check database connectivity."""
+    try:
+        from src.core.database import get_db
+        with get_db() as db:
+            # Execute simple query to verify connection
+            result = db.execute("SELECT 1").scalar()
+            db_status = "connected" if result == 1 else "error"
+    except Exception as e:
+        db_status = "error"
+        result = str(e)
+    
+    return {
+        "status": db_status,
+        "timestamp": time.time(),
+        "database_url": os.environ.get("DATABASE_URL", "Not set directly in environment"),
+        "error": None if db_status == "connected" else result
+    }
+
 @app.get("/api/debug/routes")
 async def debug_routes():
     """Debug endpoint to list all registered routes"""
@@ -290,6 +331,7 @@ async def templates_test_page(request: Request):
     endpoints = [
         "/",
         "/api/health",
+        "/api/health/db",  # New database health endpoint
         "/api/debug/routes",
         "/api/debug/router-status",
         "/api/v1/templates/test",
