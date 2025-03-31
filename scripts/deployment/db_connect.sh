@@ -7,7 +7,11 @@ set -e  # Exit immediately if a command exits with a non-zero status
 ENV_FILE=".env.staging"
 if [ -f "$ENV_FILE" ]; then
   echo "🔹 Loading environment variables from $ENV_FILE"
-  export $(grep -v '^#' $ENV_FILE | xargs)
+  # Use set -a to export all variables
+  set -a
+  # Source the file with quotes to handle spaces correctly
+  source "$ENV_FILE"
+  set +a
 else
   echo "❌ Environment file $ENV_FILE not found!"
   exit 1

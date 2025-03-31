@@ -17,7 +17,11 @@ shift  # Remove service name from args
 ENV_FILE=".env.staging"
 if [ -f "$ENV_FILE" ]; then
     echo "🔹 Loading environment variables from $ENV_FILE"
-    source $ENV_FILE
+    # Use set -a to export all variables
+    set -a
+    # Source the file with quotes to handle spaces correctly
+    source "$ENV_FILE"
+    set +a
 else
     echo "❌ Environment file $ENV_FILE not found!"
     exit 1

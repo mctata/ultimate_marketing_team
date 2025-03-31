@@ -7,7 +7,11 @@ set -e  # Exit immediately if a command exits with a non-zero status
 DEPLOY_CONFIG="config/env/deployment.env.staging.template"
 if [ -f "$DEPLOY_CONFIG" ]; then
   echo "🔹 Loading deployment configuration from $DEPLOY_CONFIG"
-  source $DEPLOY_CONFIG
+  # Use set -a to export all variables
+  set -a
+  # Source the file with quotes to handle spaces correctly
+  source "$DEPLOY_CONFIG"
+  set +a
 else
   echo "❌ Deployment configuration file $DEPLOY_CONFIG not found!"
   exit 1
