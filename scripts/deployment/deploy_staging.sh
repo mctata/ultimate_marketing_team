@@ -56,10 +56,43 @@ mkdir -p tmp_deploy
 echo "🔹 Copying project files..."
 cp -r docker docker-compose.staging.yml docker-compose.yml scripts migrations src config tests requirements.txt pyproject.toml alembic.ini tmp_deploy/
 
-# Create basic environment files if not exist
-if [ ! -f tmp_deploy/.env ]; then
-    echo "🔹 Creating environment file..."
-    cat > tmp_deploy/.env << EOL
+# Create placeholder frontend/dist directory for build
+echo "🔹 Creating placeholder frontend/dist directory..."
+mkdir -p tmp_deploy/frontend/dist
+echo "<html><body><h1>Ultimate Marketing Team</h1><p>Frontend placeholder - will be built in production</p></body></html>" > tmp_deploy/frontend/dist/index.html
+
+# Create nginx.conf if needed
+echo "🔹 Creating nginx configuration files..."
+mkdir -p tmp_deploy/docker/frontend
+cat > tmp_deploy/docker/frontend/nginx.conf << EOL
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api {
+        proxy_pass http://api-gateway:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+EOL
+
+# Create basic environment files
+echo "🔹 Creating environment files..."
+cat > tmp_deploy/.env.staging << EOL
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=umt_db
@@ -70,17 +103,14 @@ VECTOR_DB_NAME=umt_vector_db
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
 EOL
-fi
 
 # Create frontend environment file
-if [ ! -f tmp_deploy/frontend/.env ]; then
-    echo "🔹 Creating frontend environment file..."
-    mkdir -p tmp_deploy/frontend
-    cat > tmp_deploy/frontend/.env << EOL
+echo "🔹 Creating frontend environment file..."
+mkdir -p tmp_deploy/frontend
+cat > tmp_deploy/frontend/.env.staging << EOL
 VITE_API_URL=http://${SSH_HOST}:8000
 VITE_ENV=staging
 EOL
-fi
 
 if [ "$DRY_RUN" == "true" ]; then
   echo "✅ Dry run completed. Deployment package created in tmp_deploy/"
@@ -95,12 +125,18 @@ if ! ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=5 -o BatchMode=yes "$SSH
   exit 1
 fi
 
-# Upload to server
+# Upload to server - using tar+ssh instead of rsync for better compatibility
 echo "🔹 Uploading to server..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
-rsync -avz --exclude='node_modules' --exclude='venv' --exclude='.git' \
-     --exclude='__pycache__' --exclude='*.pyc' \
-     tmp_deploy/ "$SSH_USER@$SSH_HOST:$REMOTE_DIR"
+
+echo "🔹 Creating tar archive for upload..."
+tar -czf tmp_deploy.tar.gz -C tmp_deploy .
+
+echo "🔹 Uploading archive (this may take a moment)..."
+scp -i "$SSH_KEY" -P "$SSH_PORT" tmp_deploy.tar.gz "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
+
+echo "🔹 Extracting files on server..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf tmp_deploy.tar.gz && rm tmp_deploy.tar.gz"
 
 # Deploy on server
 echo "🔹 Deploying on server..."
@@ -134,7 +170,7 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
 
 # Clean up
 echo "🔹 Cleaning up..."
-rm -rf tmp_deploy
+rm -rf tmp_deploy tmp_deploy.tar.gz
 
 echo "✅ Deployment completed successfully!"
 echo "✅ Access your staging environment at: http://$SSH_HOST"
