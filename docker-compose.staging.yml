@@ -7,15 +7,35 @@ services:
     working_dir: /app
     volumes:
       - ./src:/src
-      - ./src/api:/app
     ports:
       - "8001:8000"
     environment:
       - PYTHONPATH=/src
     command: >
-      bash -c "pip install fastapi uvicorn psutil && 
-      cp /app/simple_health.py /app/__init__.py /app && 
-      echo 'Contents of /app:' && ls -la /app && 
+      bash -c "
+      pip install fastapi uvicorn psutil && 
+      echo 'Source code files:' && ls -la /src/api && 
+      echo 'Creating health app...' &&
+      echo 'from fastapi import FastAPI
+      import time
+      import os
+      import socket
+      import psutil
+      
+      app = FastAPI()
+      
+      @app.get(\"/\")
+      async def health_check():
+          return {
+              \"status\": \"healthy\",
+              \"timestamp\": time.time(),
+              \"service\": \"health-api\",
+              \"version\": \"1.0.0\"
+          }
+      
+      @app.get(\"/ping\")
+      async def ping():
+          return \"pong\"' > /app/simple_health.py &&
       uvicorn simple_health:app --host 0.0.0.0 --port 8000"
     restart: always
     healthcheck:

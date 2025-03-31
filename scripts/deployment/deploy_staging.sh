@@ -60,6 +60,22 @@ cp docker-compose.staging.yml $DEPLOY_DIR/
 cp .env.staging $DEPLOY_DIR/
 cp -r scripts/deployment/* $DEPLOY_DIR/scripts/deployment/
 
+# Copy src directory for API and other services
+echo "🔹 Copying source code for API and services..."
+mkdir -p $DEPLOY_DIR/src/api
+cp -r src/api/* $DEPLOY_DIR/src/api/
+
+# Ensure API files exist
+if [ -f src/api/simple_health.py ]; then
+  echo "✅ simple_health.py exists"
+else
+  echo "❌ simple_health.py not found!"
+fi
+
+# Create empty __init__.py files to ensure Python modules work
+touch $DEPLOY_DIR/src/__init__.py
+touch $DEPLOY_DIR/src/api/__init__.py
+
 # Make sure scripts are executable
 echo "🔹 Making local scripts executable..."
 chmod +x $DEPLOY_DIR/scripts/deployment/*.sh
