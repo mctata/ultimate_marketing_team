@@ -1,8 +1,8 @@
 -- Create database (will be ignored if DB already exists)
-CREATE DATABASE umt;
+CREATE DATABASE ultimatemarketing_db;
 
--- Switch to the umt database for all operations
-\c umt;
+-- Switch to the ultimatemarketing_db database for all operations
+\c ultimatemarketing_db;
 
 -- Initialize database schema
 
