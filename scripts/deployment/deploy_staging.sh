@@ -63,7 +63,16 @@ cp -r scripts/deployment/* $DEPLOY_DIR/scripts/deployment/
 # Copy src directory for API and other services
 echo "🔹 Copying source code for API and services..."
 mkdir -p $DEPLOY_DIR/src/api
+mkdir -p $DEPLOY_DIR/src/models
+mkdir -p $DEPLOY_DIR/src/core
+mkdir -p $DEPLOY_DIR/src/schemas
+mkdir -p $DEPLOY_DIR/src/agents
+
 cp -r src/api/* $DEPLOY_DIR/src/api/
+cp -r src/models/* $DEPLOY_DIR/src/models/
+cp -r src/core/* $DEPLOY_DIR/src/core/
+[ -d "src/schemas" ] && cp -r src/schemas/* $DEPLOY_DIR/src/schemas/
+[ -d "src/agents" ] && cp -r src/agents/* $DEPLOY_DIR/src/agents/
 
 # Ensure API files exist
 if [ -f src/api/simple_health.py ]; then
