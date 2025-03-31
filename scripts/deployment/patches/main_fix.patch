@@ -1,0 +1,29 @@
+--- a/src/api/main.py
++++ b/src/api/main.py
+@@ -137,7 +137,15 @@ from src.core.database import get_db
+ # Startup and shutdown events
+ @app.on_event("startup")
+ async def startup_event():
+-    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION} in {settings.ENV} environment")
++    # Check JWT manager initialization
++    try:
++        with get_db() as db:
++            # This is the fix - use the context manager correctly with "with"
++            jwt_manager.initialize(db)
++            logger.info("JWT manager initialized successfully")
++    except Exception as e:
++        logger.error(f"Failed to initialize JWT manager: {str(e)}")
++        logger.warning("Authentication features may not work correctly until the database connection is restored.")
+     
+     logger.info("Application startup complete")
+ 
+@@ -276,7 +284,7 @@ async def health_check():
+ async def db_health_check():
+     """Check database connectivity."""
+     try:
+-        db_gen = get_db()
+-        with db_gen as db:
++        # This is the fix - use the context manager correctly with "with"
++        with get_db() as db:
+             # Execute simple query to verify connection
+             result = db.execute("SELECT 1").scalar()

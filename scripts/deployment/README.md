@@ -1,48 +1,33 @@
-# Ultimate Marketing Team Deployment
+# Deployment Scripts
 
-This directory contains scripts for deploying and managing the Ultimate Marketing Team application.
+This directory contains scripts for deploying the Ultimate Marketing Team application.
 
 ## Main Deployment Script
 
-```bash
-# Deploy to staging environment
-./scripts/deployment/deploy_staging.sh
-
-# Test the deployment process (dry run)
-./scripts/deployment/deploy_staging.sh --dry-run
-
-# View help options
-./scripts/deployment/deploy_staging.sh --help
-```
-
-## Database Connection
-
-For quick PostgreSQL access:
-
-```bash
-# Connect to main database
-./scripts/deployment/db_connect.sh
-
-# Connect to vector database
-./scripts/deployment/db_connect.sh vector
-```
+- `deploy_staging.sh`: Simplified script to deploy to the staging environment
 
 ## Utility Scripts
 
-- `fix_pgvector.sh` - Fixes pgvector extension issues in PostgreSQL
-- `test_connection.sh` - Tests SSH connection to deployment environment
-- `verify_deployment.sh` - Verifies a completed deployment works correctly
+Utility scripts are located in the `util` directory:
 
-## Staging Management Tools
+- `clean_docker.sh`: Cleans up Docker resources on the staging server
+- `check_health_api.sh`: Verifies the health API is running correctly
 
-- `staging/connect.sh` - SSH into the staging server
-- `staging/status.sh` - Check status of the staging environment 
-- `staging/db_operations.sh` - Advanced database operations on staging
+## Patches
 
-## Troubleshooting
+Patches for known issues are stored in the `patches` directory:
 
-If services are not starting correctly:
+- `db_check_fix.patch`: Fixes for database connectivity checks
+- `main_fix.patch`: Fixes for FastAPI startup issues
 
-1. Verify PostgreSQL pgvector extension with `fix_pgvector.sh`
-2. Check connection with `test_connection.sh`
-3. For database-specific issues, use `db_connect.sh` to inspect tables directly
+## Deployment Process
+
+The deployment process follows these steps:
+
+1. Clean up Docker resources on the staging server
+2. Prepare a minimal deployment package
+3. Deploy the health-api service first
+4. Verify health-api is working
+5. Deploy the api-gateway service
+
+This approach ensures reliable deployments even with limited disk space.

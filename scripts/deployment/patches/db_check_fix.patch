@@ -1,0 +1,41 @@
+--- src/api/main.py
++++ src/api/main.py
+@@ -275,25 +275,17 @@
+ # Added endpoint to verify database connection
+ @app.get("/api/health/db", tags=["Health"])
+ async def db_health_check():
+-    """Check database connectivity."""
+-    
+-    # Import asyncio to safely run blocking operations
+-    import asyncio
+-    
+-    # Define a synchronous function to check the database
+-    def check_db_connection():
+-        try:
+-            # Use context manager correctly
+-            with get_db() as db:
+-                # Execute simple query to verify connection
+-                result = db.execute("SELECT 1").scalar()
+-                return {"status": "connected" if result == 1 else "error", "error": None}
+-        except Exception as e:
+-            return {"status": "error", "error": str(e)}
+-    
+-    # Run the database check in a separate thread
+-    import concurrent.futures
+-    with concurrent.futures.ThreadPoolExecutor() as executor:
+-        result = await app.state.loop.run_in_executor(executor, check_db_connection)
++    """Check database connectivity.""" 
++    try:
++        # Use context manager correctly
++        with get_db() as db:
++            # Execute simple query to verify connection
++            result = db.execute("SELECT 1").scalar()
++            db_status = "connected" if result == 1 else "error"
++            error = None
++    except Exception as e:
++        db_status = "error"
++        error = str(e)
+     
+     return {
+-        "status": result["status"],
++        "status": db_status,
