@@ -151,12 +151,7 @@ async def startup_event():
     for attempt in range(1, max_retries + 1):
         try:
             # Properly use the context manager
-            db_gen = get_db()
-            db = None
-            
-            # Use context manager correctly with contextlib.ExitStack if needed
-            with contextlib.ExitStack() as stack:
-                db = stack.enter_context(db_gen)
+            with get_db() as db:
                 # Initialize JWT with db session
                 jwt_manager.initialize(db)
                 logger.info("JWT manager initialized successfully")
@@ -275,8 +270,7 @@ async def db_health_check():
     """Check database connectivity."""
     try:
         # Use context manager correctly
-        db_gen = get_db()
-        with db_gen as db:
+        with get_db() as db:
             # Execute simple query to verify connection
             result = db.execute("SELECT 1").scalar()
             db_status = "connected" if result == 1 else "error"
