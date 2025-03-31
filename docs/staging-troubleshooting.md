@@ -169,6 +169,40 @@ The API Gateway has been configured to retry database connections multiple times
 
 Change these in the Docker environment variables or in the start.sh script.
 
+## PostgreSQL 17 Specific Issues
+
+Our staging environment uses PostgreSQL 17, which may have different behavior than earlier versions. Common issues include:
+
+### CREATE DATABASE IF NOT EXISTS Syntax
+
+PostgreSQL 17 may not support `CREATE DATABASE IF NOT EXISTS` directly. If you encounter issues, use this safer approach:
+
+```sql
+SELECT 'CREATE DATABASE umt' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umt');
+```
+
+### SCRAM Authentication
+
+PostgreSQL 17 uses SCRAM-SHA-256 authentication by default instead of MD5. If you have connection issues:
+
+1. Check authentication method:
+   ```bash
+   docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -c "SHOW password_encryption;"
+   ```
+
+2. If necessary, modify the pg_hba.conf file or set the authentication method in the PostgreSQL container:
+   ```bash
+   echo "host all all all scram-sha-256" > /var/lib/postgresql/data/pg_hba.conf
+   ```
+
+### Extension Compatibility
+
+Ensure any extensions (like pgvector) are compatible with PostgreSQL 17:
+
+```bash
+docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "SELECT * FROM pg_available_extensions;"
+```
+
 ## Separating Database Concerns
 
 For persistent issues, you may want to set up a dedicated database for staging:
@@ -177,7 +211,7 @@ For persistent issues, you may want to set up a dedicated database for staging:
    ```yaml
    services:
      postgres-staging:
-       image: postgres:14-alpine
+       image: postgres:17-alpine
        environment:
          POSTGRES_USER: postgres
          POSTGRES_PASSWORD: postgres
