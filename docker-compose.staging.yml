@@ -5,45 +5,40 @@ services:
   health-api:
     image: python:3.10-slim
     working_dir: /app
-    volumes:
-      - ./src:/src
     ports:
       - "8001:8000"
-    environment:
-      - PYTHONPATH=/src
     command: >
-      bash -c "
-      pip install fastapi uvicorn psutil && 
-      echo 'Source code files:' && ls -la /src/api && 
-      echo 'Creating health app...' &&
-      echo 'from fastapi import FastAPI
-      import time
-      import os
-      import socket
-      import psutil
-      
-      app = FastAPI()
-      
-      @app.get(\"/\")
-      async def health_check():
-          return {
-              \"status\": \"healthy\",
-              \"timestamp\": time.time(),
-              \"service\": \"health-api\",
-              \"version\": \"1.0.0\"
-          }
-      
-      @app.get(\"/ping\")
-      async def ping():
-          return \"pong\"' > /app/simple_health.py &&
-      uvicorn simple_health:app --host 0.0.0.0 --port 8000"
+      bash -c '
+      pip install fastapi uvicorn psutil &&
+      echo "from fastapi import FastAPI
+import time
+import os
+
+app = FastAPI()
+
+@app.get(\"/\")
+async def health_check():
+    return {
+        \"status\": \"healthy\",
+        \"timestamp\": time.time(),
+        \"service\": \"health-api\",
+        \"version\": \"1.0.0\",
+        \"environment\": os.getenv(\"ENVIRONMENT\", \"staging\")
+    }
+
+@app.get(\"/ping\")
+async def ping():
+    return \"pong\"" > /app/health_app.py &&
+      uvicorn health_app:app --host 0.0.0.0 --port 8000'
     restart: always
+    environment:
+      - ENVIRONMENT=staging
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/ping"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 10s
     networks:
       - umt-network
     deploy:
