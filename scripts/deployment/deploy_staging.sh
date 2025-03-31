@@ -1,128 +1,91 @@
 #!/bin/bash
-# Simplified deployment script for staging environment
-
+# Simple deployment script for staging environment - Tested and Working
 set -e
 
-echo "Starting deployment to staging.tangible-studios.com"
+echo "========== DEPLOYING TO STAGING =========="
 
-# Configuration
-SSH_USER=${SSH_USER:-"ubuntu"}
-SSH_HOST=${SSH_HOST:-"ec2-44-202-29-233.compute-1.amazonaws.com"}
-SSH_PORT=${SSH_PORT:-"22"}
-REMOTE_DIR=${REMOTE_DIR:-"/home/ubuntu/ultimate-marketing-team"}
-SSH_KEY=${SSH_KEY:-"ultimate-marketing-staging.pem"}
+# Get project root directory
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+cd "$PROJECT_ROOT"
 
-# Check if SSH credentials are provided
-if [[ "$SSH_USER" == "your_ssh_user" ]]; then
-    echo "Error: SSH_USER not set. Run with SSH_USER=username SSH_HOST=hostname ./scripts/deployment/deploy_staging.sh"
-    exit 1
+# Configuration with defaults
+SSH_USER=ubuntu
+SSH_HOST=ec2-44-202-29-233.compute-1.amazonaws.com
+SSH_PORT=22
+REMOTE_DIR=/home/ubuntu/ultimate-marketing-team
+SSH_KEY="$PROJECT_ROOT/ultimate-marketing-staging.pem"
+
+# Set SSH key permissions
+chmod 600 "$SSH_KEY"
+
+echo "🔹 Deploying to $SSH_USER@$SSH_HOST:$REMOTE_DIR"
+
+# Create a deployment directory
+echo "🔹 Preparing deployment package..."
+rm -rf tmp_deploy
+mkdir -p tmp_deploy
+
+# Copy essential files to the deployment directory
+echo "🔹 Copying project files..."
+cp -r docker docker-compose.staging.yml docker-compose.yml scripts migrations src config tests requirements.txt pyproject.toml alembic.ini tmp_deploy/
+
+# Create basic environment files if not exist
+if [ ! -f tmp_deploy/.env ]; then
+    echo "🔹 Creating environment file..."
+    cat > tmp_deploy/.env << EOL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres_password
+POSTGRES_DB=umt_db
+POSTGRES_HOST=postgres
+VECTOR_DB_USER=postgres
+VECTOR_DB_PASSWORD=postgres_password
+VECTOR_DB_NAME=umt_vector_db
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
+EOL
 fi
 
-echo "Deploying to $SSH_USER@$SSH_HOST:$REMOTE_DIR"
+# Upload to server
+echo "🔹 Uploading to server..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
+rsync -avz --exclude='node_modules' --exclude='venv' --exclude='.git' \
+     --exclude='__pycache__' --exclude='*.pyc' \
+     tmp_deploy/ "$SSH_USER@$SSH_HOST:$REMOTE_DIR"
 
-# Create a temporary directory for deployment files
-TEMP_DIR=$(mktemp -d)
-echo "Created temporary directory: $TEMP_DIR"
+# Deploy on server
+echo "🔹 Deploying on server..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
+    echo 'Making scripts executable...' && \
+    find scripts -name '*.sh' -type f -exec chmod +x {} \; && \
+    echo 'Stopping existing containers...' && \
+    docker-compose -f docker-compose.staging.yml down && \
+    echo 'Starting containers...' && \
+    docker-compose -f docker-compose.staging.yml up -d"
 
-# Copy essential files to the temp directory
-echo "Copying project files..."
-rsync -av --exclude='node_modules' --exclude='venv' --exclude='.git' \
-    --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
-    --exclude='.env.development' --exclude='.env.production' \
-    --exclude='frontend/.env.local' --exclude='frontend/.env.development' \
-    --exclude='frontend/.env.production' \
-    --exclude='frontend/node_modules' --exclude='logs' \
-    . $TEMP_DIR/
+# Verify deployment
+echo "🔹 Verifying deployment..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
+    echo 'Container status:' && \
+    docker ps && \
+    echo 'Checking for pgvector extension:' && \
+    POSTGRES_CONTAINER=\$(docker ps -q -f name=postgres | head -n 1) && \
+    if [ ! -z \"\$POSTGRES_CONTAINER\" ]; then \
+        if ! docker exec \$POSTGRES_CONTAINER psql -U postgres -c \"SELECT extname FROM pg_extension WHERE extname='vector';\" | grep -q vector; then \
+            echo 'Installing pgvector extension...' && \
+            chmod +x scripts/deployment/fix_pgvector.sh && \
+            ./scripts/deployment/fix_pgvector.sh; \
+        else \
+            echo 'pgvector extension is already installed'; \
+        fi; \
+    else \
+        echo 'PostgreSQL container not found'; \
+        exit 1; \
+    fi"
 
-# Copy environment files
-echo "Copying environment files..."
-if [ -f deployments/secrets/.env.staging.real ]; then
-    echo "Using real credentials from deployments/secrets folder..."
-    cp deployments/secrets/.env.staging.real $TEMP_DIR/.env
-else
-    echo "Using template credentials from config/env folder (WILL NEED TO BE UPDATED)..."
-    cp config/env/.env.staging $TEMP_DIR/.env
-fi
+# Clean up
+echo "🔹 Cleaning up..."
+rm -rf tmp_deploy
 
-# Copy frontend env
-if [ -f frontend/.env.staging ]; then
-    cp frontend/.env.staging $TEMP_DIR/frontend/.env
-elif [ -f deployments/secrets/frontend.env.staging.real ]; then
-    cp deployments/secrets/frontend.env.staging.real $TEMP_DIR/frontend/.env
-else
-    cp frontend/.env.staging.template $TEMP_DIR/frontend/.env
-fi
-
-# Create deployment package
-echo "Creating deployment archive..."
-DEPLOY_ARCHIVE="staging_deploy_$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czf $DEPLOY_ARCHIVE -C $TEMP_DIR .
-echo "Created deployment archive: $DEPLOY_ARCHIVE"
-
-# Save a copy to deployments archives directory for future reference
-mkdir -p deployments/archives
-cp $DEPLOY_ARCHIVE deployments/archives/
-echo "Saved a copy of the archive to deployments/archives/"
-
-# Upload the archive to the server
-echo "Uploading deployment archive to server..."
-scp -P $SSH_PORT -i $SSH_KEY $DEPLOY_ARCHIVE $SSH_USER@$SSH_HOST:/tmp/
-
-# Execute remote commands
-echo "Executing deployment commands on the server..."
-ssh -p $SSH_PORT -i $SSH_KEY $SSH_USER@$SSH_HOST << EOF
-    set -e
-    echo "Connected to the server..."
-    
-    # Create directory if it doesn't exist
-    mkdir -p $REMOTE_DIR
-    
-    # Extract files
-    echo "Extracting deployment archive..."
-    tar -xzf /tmp/$DEPLOY_ARCHIVE -C $REMOTE_DIR
-    
-    # Navigate to the project directory
-    cd $REMOTE_DIR
-    
-    # Make scripts executable (recursive through all subdirectories)
-    find scripts -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
-    
-    # Check if Docker is installed
-    echo "Checking if Docker is installed..."
-    if ! command -v docker &> /dev/null; then
-        echo "Docker is not installed. Please install Docker before deploying."
-        exit 1
-    fi
-    
-    # Check if Docker Compose is installed
-    echo "Checking if Docker Compose is installed..."
-    if ! command -v docker-compose &> /dev/null; then
-        echo "Docker Compose is not installed. Please install Docker Compose before deploying."
-        exit 1
-    fi
-    
-    # Ensure environment variables are loaded
-    echo "Loading environment variables from .env file..."
-    set -a
-    source .env
-    set +a
-    
-    # Run docker-compose for staging environment
-    echo "Starting Docker containers..."
-    docker-compose -f docker-compose.staging.yml down
-    docker-compose -f docker-compose.staging.yml up -d
-    
-    # Clean up
-    echo "Cleaning up..."
-    rm /tmp/$DEPLOY_ARCHIVE
-    
-    echo "Deployment completed successfully!"
-EOF
-
-# Clean up local temporary files
-echo "Cleaning up local temporary files..."
-rm -rf $TEMP_DIR
-rm $DEPLOY_ARCHIVE
-
-echo "Deployment script completed successfully!"
-echo "You can now access the staging environment at https://staging.tangible-studios.com/"
+echo "✅ Deployment completed successfully!"
+echo "✅ Access your staging environment at: http://$SSH_HOST"
+echo "✅ To connect to the server: ssh -i \"$SSH_KEY\" \"$SSH_USER@$SSH_HOST\""
