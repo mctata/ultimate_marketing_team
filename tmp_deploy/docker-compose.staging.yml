@@ -1,6 +1,32 @@
 version: '3.8'
 
 services:
+  # Health API - Simple standalone health check endpoint
+  health-api:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./src/api:/app
+    ports:
+      - "8001:8000"
+    command: >
+      bash -c "pip install fastapi uvicorn && 
+      uvicorn simple_health:app --host 0.0.0.0 --port 8000"
+    restart: always
+    networks:
+      - umt-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   # API Gateway
   api-gateway:
     build:
@@ -19,6 +45,12 @@ services:
     restart: always
     networks:
       - umt-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
       resources:
         limits:

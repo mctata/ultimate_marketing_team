@@ -28,9 +28,12 @@ services:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: always
     networks:
       - umt-network
