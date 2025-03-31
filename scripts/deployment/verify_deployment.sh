@@ -16,6 +16,9 @@ fi
 # Source the configuration file
 source "$ENV_FILE"
 
+# Define container prefix if not already set
+CONTAINER_PREFIX=${CONTAINER_PREFIX:-"umt"}
+
 # Verify SSH connection
 if ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "echo Connected successfully"; then
     echo "✅ SSH connection successful"
@@ -53,53 +56,72 @@ echo "Verifying pgvector extension installation..."
 PGVECTOR_STATUS=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
     cd $REMOTE_DIR && 
     POSTGRES_CONTAINER=\$(docker ps -q -f name=postgres | head -n 1) &&
+    VECTOR_DB_CONTAINER=\$(docker ps -q -f name=vector-db | head -n 1) &&
     if [ ! -z \"\$POSTGRES_CONTAINER\" ]; then
-        docker exec \$POSTGRES_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT * FROM pg_extension WHERE extname = 'vector';\"
+        docker exec \$POSTGRES_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1 && echo 'pgvector installed in postgres' || echo 'pgvector missing in postgres'
+        if [ ! -z \"\$VECTOR_DB_CONTAINER\" ]; then
+            docker exec \$VECTOR_DB_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1 && echo 'pgvector installed in vector-db' || echo 'pgvector missing in vector-db'
+        fi
     else
         echo 'Postgres container not found'
     fi
 ")
 
-if echo "$PGVECTOR_STATUS" | grep -q "vector"; then
-    echo "✅ pgvector extension is installed"
-else
-    echo "❌ pgvector extension is not properly installed"
-    echo "   Installing pgvector extension..."
+if echo "$PGVECTOR_STATUS" | grep -q "pgvector missing"; then
+    echo "❌ pgvector extension is not properly installed in one or more databases"
+    echo "   Running automated pgvector installation script..."
     
+    # Copy the fix script to the remote server
+    scp -i $SSH_KEY ./scripts/deployment/fix_pgvector.sh $SSH_USER@$SSH_HOST:$REMOTE_DIR/fix_pgvector.sh
+    
+    # Execute the fix script on the remote server
     INSTALL_RESULT=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
         cd $REMOTE_DIR && 
-        POSTGRES_CONTAINER=\$(docker ps -q -f name=postgres | head -n 1) &&
-        if [ ! -z \"\$POSTGRES_CONTAINER\" ]; then
-            docker exec -i \$POSTGRES_CONTAINER bash -c \"
-                apk add --no-cache git build-base postgresql-dev
-                git clone https://github.com/pgvector/pgvector.git /tmp/pgvector
-                cd /tmp/pgvector && make && make install
-                psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-            \"
-        else
-            echo 'Postgres container not found'
-        fi
+        chmod +x fix_pgvector.sh &&
+        ./fix_pgvector.sh $CONTAINER_PREFIX $POSTGRES_DB
     ")
+    
+    echo "$INSTALL_RESULT"
     
     # Verify installation succeeded
     PGVECTOR_VERIFY=$(ssh -i $SSH_KEY $SSH_USER@$SSH_HOST "
         cd $REMOTE_DIR && 
         POSTGRES_CONTAINER=\$(docker ps -q -f name=postgres | head -n 1) &&
+        VECTOR_DB_CONTAINER=\$(docker ps -q -f name=vector-db | head -n 1) &&
+        
+        POSTGRES_OK=0
+        VECTOR_DB_OK=0
+        
         if [ ! -z \"\$POSTGRES_CONTAINER\" ]; then
-            docker exec \$POSTGRES_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT * FROM pg_extension WHERE extname = 'vector';\"
+            docker exec \$POSTGRES_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1 && POSTGRES_OK=1 || POSTGRES_OK=0
+            
+            if [ ! -z \"\$VECTOR_DB_CONTAINER\" ]; then
+                docker exec \$VECTOR_DB_CONTAINER psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT count(*) FROM pg_extension WHERE extname = 'vector';\" | grep -q 1 && VECTOR_DB_OK=1 || VECTOR_DB_OK=0
+            else
+                VECTOR_DB_OK=1  # Skip if not present
+            fi
+            
+            # Return result
+            if [ \$POSTGRES_OK -eq 1 ] && [ \$VECTOR_DB_OK -eq 1 ]; then
+                echo 'pgvector_verified'
+            else
+                echo 'pgvector_failed'
+            fi
         else
             echo 'Postgres container not found'
         fi
     ")
     
-    if echo "$PGVECTOR_VERIFY" | grep -q "vector"; then
-        echo "✅ pgvector extension installed successfully"
+    if echo "$PGVECTOR_VERIFY" | grep -q "pgvector_verified"; then
+        echo "✅ pgvector extension installed and verified successfully"
     else
         echo "❌ Failed to install pgvector extension"
-        echo "   Manual fix required. Connect to the server and run:"
-        echo "   cd $REMOTE_DIR && docker-compose exec postgres /bin/bash -c 'cd /docker-entrypoint-initdb.d && psql -U postgres -d umt_db -f fix_pgvector.sh'"
+        echo "   Manual intervention required. Connect to the server and run:"
+        echo "   cd $REMOTE_DIR && ./fix_pgvector.sh $CONTAINER_PREFIX $POSTGRES_DB"
         exit 1
     fi
+else
+    echo "✅ pgvector extension is installed"
 fi
 
 # Check for src/schemas in the API container
