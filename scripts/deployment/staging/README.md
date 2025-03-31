@@ -1,59 +1,57 @@
-# Staging Deployment
+# Staging Environment Tools
 
-This directory contains scripts for deploying to the staging environment.
+This directory contains utilities for managing the staging environment. For deployment, use the main deployment script in the parent directory.
 
-## Deployment Options
-
-### Standard Deployment
-
-To deploy to staging with a single command, run:
+## Deployment
 
 ```bash
-./scripts/deployment/staging/deploy.sh
+# Main deployment script
+./scripts/deployment/deploy_staging.sh
 ```
 
-This script:
-1. Sets up configuration files
-2. Deploys to the staging EC2 instance
-3. Automatically fixes any known issues (such as pgvector extensions)
-4. Restarts services if needed
+## Management Tools
 
-### Compact Deployment (for slow connections)
-
-If you're experiencing timeouts or slow uploads, use the compact deploy script:
+### SSH Connection
 
 ```bash
-# First, test the connection
-./scripts/deployment/test_connection.sh
+# Connect to staging server
+./scripts/deployment/staging/connect.sh
 
-# Then run the compact deployment
-./scripts/deployment/staging/compact_deploy.sh
-
-# After deployment, verify it was successful
-./scripts/deployment/verify_deployment.sh
-./scripts/deployment/verify_migrations.sh
+# Run a command on staging without interactive session
+./scripts/deployment/staging/connect.sh -c "docker ps"
 ```
 
-This creates a minimal deployment package with only essential files, making it faster to upload over limited bandwidth connections.
+### Environment Status
 
-#### What the compact_deploy.sh script does:
+```bash
+# Check the status of all services
+./scripts/deployment/staging/status.sh
+```
 
-1. **Preparation**:
-   - Verifies configuration files exist
-   - Builds the frontend application
-   - Verifies frontend build and schema files
+### Database Operations
 
-2. **Packaging**:
-   - Creates a minimal archive (usually <2MB)
-   - Only includes essential code and configuration
-   - Excludes node_modules, venv, and other large directories
+```bash
+# View available database commands
+./scripts/deployment/staging/db_operations.sh help
 
-3. **Deployment**:
-   - Transfers archive to staging server
-   - Extracts files with proper permissions
-   - Sets up Docker containers
-   - Installs pgvector extension
-   - Applies database migrations
+# Check database status
+./scripts/deployment/staging/db_operations.sh status
+
+# Connect to database console
+./scripts/deployment/staging/db_operations.sh console
+
+# Create a database backup
+./scripts/deployment/staging/db_operations.sh backup
+
+# Check migrations
+./scripts/deployment/staging/db_operations.sh migrations
+
+# Check pgvector extension
+./scripts/deployment/staging/db_operations.sh pgvector
+
+# Fix pgvector issues
+./scripts/deployment/staging/db_operations.sh fix-pgvector
+```
 
 ## Staging Environment
 
