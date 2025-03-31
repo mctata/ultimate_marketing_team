@@ -1,5 +1,5 @@
 #!/bin/bash
-# Simplified script to deploy the Ultimate Marketing Team application to staging
+# Ultra-simplified script to deploy the Ultimate Marketing Team application to staging
 
 set -e  # Exit immediately if a command exits with a non-zero status
 
@@ -41,59 +41,94 @@ echo "🔹 Remote directory: $REMOTE_DIR"
 echo "🔹 Cleaning up Docker resources..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker system prune -af --volumes"
 
-# Prepare deployment files
-echo "🔹 Preparing deployment package..."
-DEPLOY_DIR="tmp_deploy"
-rm -rf $DEPLOY_DIR
-mkdir -p $DEPLOY_DIR
-mkdir -p $DEPLOY_DIR/docker/health-api
-
-# Copy only essential files
-cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp scripts/deployment/src/health_api.py $DEPLOY_DIR/health_api.py
-cp scripts/deployment/src/staging_main.py $DEPLOY_DIR/staging_main.py
-cp docker/health-api/Dockerfile.health-api $DEPLOY_DIR/docker/health-api/
-cp .env.staging $DEPLOY_DIR/.env
-
-# Create a tar file of the deployment directory
-TAR_FILE="staging-deploy.tar.gz"
-tar -czf $TAR_FILE -C $DEPLOY_DIR .
-
 # Create remote directory if it doesn't exist
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
 
-# Copy the tar file to the remote server
-echo "🔹 Copying deployment files to remote server..."
-scp -i "$SSH_KEY" -P "$SSH_PORT" $TAR_FILE "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
+# Create health_api.py directly on the server
+echo "🔹 Creating health_api.py on server..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/health_api.py << 'EOF'
+import os
+import time
+import psutil
+from fastapi import FastAPI
+import uvicorn
 
-# Extract the tar file on the remote server
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf $TAR_FILE && rm $TAR_FILE"
+app = FastAPI()
 
-# Deploy health-api first (lightweight service)
+@app.get('/')
+async def root():
+    return {
+        'status': 'healthy',
+        'timestamp': time.time(),
+        'service': 'health-api',
+        'version': '1.0.0',
+        'environment': os.environ.get('ENVIRONMENT', 'development')
+    }
+
+@app.get('/ping')
+async def ping():
+    return 'pong'
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=8000)
+EOF"
+
+# Create Dockerfile.health-api directly on the server
+echo "🔹 Creating Dockerfile for health-api..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/Dockerfile.health-api << 'EOF'
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN pip install fastapi uvicorn psutil
+
+COPY health_api.py /app/
+
+EXPOSE 8000
+
+CMD [\"python\", \"health_api.py\"]
+EOF"
+
+# Create simplified docker-compose.yml directly on the server
+echo "🔹 Creating docker-compose.yml..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > $REMOTE_DIR/docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  health-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.health-api
+    ports:
+      - \"8001:8000\"
+    environment:
+      - ENVIRONMENT=staging
+    restart: always
+    networks:
+      - umt-network
+
+networks:
+  umt-network:
+    driver: bridge
+EOF"
+
+# Deploy health-api container
 echo "🔹 Deploying health-api service..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api && docker-compose up -d health-api"
 
 # Wait a bit for health-api to start
-sleep 5
+sleep 10
 
 # Check health-api is working
 echo "🔹 Checking health-api..."
 HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001/ping || echo 'failed'")
 if [ "$HEALTH_CHECK" = "failed" ]; then
   echo "❌ Health API failed to start. Check server logs."
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose logs health-api"
   exit 1
 else
   echo "✅ Health API is running"
 fi
 
-# Deploy api-gateway
-echo "🔹 Deploying api-gateway service..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build api-gateway && docker-compose up -d api-gateway"
-
-# Clean up local deployment files
-rm $TAR_FILE
-rm -rf $DEPLOY_DIR
-
 echo "✅ Deployment to STAGING complete!"
 echo "📝 Health API: https://$DOMAIN:8001"
-echo "📝 API Gateway: https://$DOMAIN:8000"

@@ -4,7 +4,32 @@ WORKDIR /app
 
 RUN pip install fastapi uvicorn psutil
 
-COPY health_api.py /app/
+# Simple health API script included directly in Dockerfile to avoid file path issues
+RUN echo 'import os\n\
+import time\n\
+import psutil\n\
+from fastapi import FastAPI\n\
+import uvicorn\n\
+\n\
+app = FastAPI()\n\
+\n\
+@app.get("/")\n\
+async def root():\n\
+    return {\n\
+        "status": "healthy",\n\
+        "timestamp": time.time(),\n\
+        "service": "health-api",\n\
+        "version": "1.0.0",\n\
+        "environment": os.environ.get("ENVIRONMENT", "development")\n\
+    }\n\
+\n\
+@app.get("/ping")\n\
+async def ping():\n\
+    return "pong"\n\
+\n\
+if __name__ == "__main__":\n\
+    uvicorn.run(app, host="0.0.0.0", port=8000)\n\
+' > /app/health_api.py
 
 EXPOSE 8000
 
