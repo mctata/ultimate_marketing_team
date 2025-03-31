@@ -28,18 +28,31 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! docker compose version &> /dev/null; then
+# Check if Docker daemon is running
+if ! docker info &> /dev/null; then
+    echo "❌ Docker daemon is not running. Please start Docker first."
+    echo "On macOS, open Docker Desktop application."
+    echo "On Linux, run: sudo systemctl start docker"
+    exit 1
+fi
+
+# Check Docker Compose version (supports both docker-compose and docker compose)
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif docker-compose --version &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
     echo "❌ Docker Compose is not installed or not in PATH."
     exit 1
 fi
+
+# Create directory for env file if it doesn't exist
+mkdir -p $(dirname "$ENV_FILE")
 
 # Check if env file exists
 if [ ! -f "$ENV_FILE" ]; then
     echo "⚠️ Environment file not found at $ENV_FILE"
     echo "Creating a default environment file..."
-    
-    # Create directory if it doesn't exist
-    mkdir -p "$(dirname "$ENV_FILE")"
     
     # Create a default environment file
     cat > "$ENV_FILE" << EOF
@@ -62,20 +75,26 @@ fi
 
 # Load environment variables
 echo "Loading environment variables from $ENV_FILE"
-export $(grep -v '^#' "$ENV_FILE" | xargs)
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+else
+    echo "⚠️ Environment file could not be loaded, using default values"
+fi
 
 # Function to back up existing deployment
 function backup_deployment() {
     echo "Creating backup of existing deployment..."
     
     # Check if there are running containers to back up
-    if [ "$(docker compose -f "$COMPOSE_FILE" ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
+    if [ "$($DOCKER_COMPOSE -f "$COMPOSE_FILE" ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
         # Export any important container data
         mkdir -p "$BACKUP_DIR/data"
         
         # Try to export database
         echo "Backing up database..."
-        if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U postgres umt > "$BACKUP_DIR/data/umt_db_backup.sql" 2>/dev/null; then
+        if $DOCKER_COMPOSE -f "$COMPOSE_FILE" exec -T postgres pg_dump -U postgres umt > "$BACKUP_DIR/data/umt_db_backup.sql" 2>/dev/null; then
             echo "✅ Database backup created successfully"
         else
             echo "⚠️ Could not create database backup"
@@ -95,8 +114,8 @@ function backup_deployment() {
 function check_postgres_health() {
     echo "Checking PostgreSQL health..."
     
-    if docker compose -f "$COMPOSE_FILE" ps postgres | grep -q "Up"; then
-        if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres; then
+    if $DOCKER_COMPOSE -f "$COMPOSE_FILE" ps postgres | grep -q "Up"; then
+        if $DOCKER_COMPOSE -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres; then
             echo "✅ PostgreSQL is healthy"
             return 0
         else
@@ -117,11 +136,17 @@ backup_deployment
 
 # Pull latest images if using pre-built ones or build locally
 echo "Building or pulling Docker images..."
-docker compose -f "$COMPOSE_FILE" build
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" build
+
+# Check if any containers already exist and stop them
+if [ "$($DOCKER_COMPOSE -f "$COMPOSE_FILE" ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
+    echo "Stopping existing containers..."
+    $DOCKER_COMPOSE -f "$COMPOSE_FILE" down
+fi
 
 # Start the database first to ensure it's ready
 echo "Starting PostgreSQL database..."
-docker compose -f "$COMPOSE_FILE" up -d postgres
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d postgres
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL to be ready..."
@@ -142,15 +167,35 @@ fi
 
 # Start the database proxy to ensure schema initialization
 echo "Starting PostgreSQL proxy for initialization..."
-docker compose -f "$COMPOSE_FILE" up -d postgres-proxy
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d postgres-proxy
+
+# Wait for proxy to be ready
+echo "Waiting for PostgreSQL proxy to be healthy..."
+attempt=1
+max_attempts=20
+until $DOCKER_COMPOSE -f "$COMPOSE_FILE" ps postgres-proxy | grep -q "(healthy)" || [ $attempt -gt $max_attempts ]; do
+    echo "Attempt $attempt/$max_attempts: PostgreSQL proxy not healthy yet, waiting..."
+    sleep 5
+    ((attempt++))
+done
 
 # Run migrations
 echo "Running database migrations..."
-docker compose -f "$COMPOSE_FILE" up migrations
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d migrations
+
+# Wait for migrations to complete
+echo "Waiting for migrations to complete..."
+attempt=1
+max_attempts=20
+until [ "$($DOCKER_COMPOSE -f "$COMPOSE_FILE" ps -q migrations 2>/dev/null)" == "" ] || [ $attempt -gt $max_attempts ]; do
+    echo "Attempt $attempt/$max_attempts: Migrations still running, waiting..."
+    sleep 5
+    ((attempt++))
+done
 
 # Start all remaining services
 echo "Starting all services..."
-docker compose -f "$COMPOSE_FILE" up -d
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d
 
 # Check if API gateway is healthy
 echo "Checking API gateway health..."
@@ -172,7 +217,7 @@ if [ $attempt -gt $max_attempts ]; then
         echo "✅ Database issues fixed successfully"
     else
         echo "⚠️ Database issues may still persist. Please check the logs:"
-        echo "docker compose -f $COMPOSE_FILE logs api-gateway"
+        echo "$DOCKER_COMPOSE -f $COMPOSE_FILE logs api-gateway"
     fi
 else
     echo "✅ API gateway is healthy"
@@ -189,7 +234,7 @@ fi
 
 # Final status check of all services
 echo "Checking status of all services..."
-docker compose -f "$COMPOSE_FILE" ps
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" ps
 
 echo "======= DEPLOYMENT COMPLETE ======="
 echo "The application should be available at:"
@@ -198,5 +243,5 @@ echo "- Frontend: http://localhost:3000"
 echo ""
 echo "If there are any issues with the API gateway database connection:"
 echo "1. Run the fix script: bash scripts/deployment/staging/fix_api_gateway_db.sh"
-echo "2. Check the logs: docker compose -f $COMPOSE_FILE logs api-gateway"
+echo "2. Check the logs: $DOCKER_COMPOSE -f $COMPOSE_FILE logs api-gateway"
 echo ""
