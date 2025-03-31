@@ -6,8 +6,10 @@ import time
 import uuid
 import os
 import sys
+import json
 from typing import Callable, List
 import contextlib
+import asyncio
 
 from fastapi import FastAPI, Request, WebSocket, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +21,7 @@ from starlette.types import ASGIApp
 from src.core.settings import settings
 from src.core.logging import setup_logging, get_logger
 from src.core.security import csrf_protection, jwt_manager
+from src.core.migration_utils import run_migrations, ensure_schema_exists
 
 # Add current directory to path to help with imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -133,7 +136,50 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         return False
 
 # Import database module
-from src.core.database import get_db
+from src.core.database import get_db, SessionLocal
+
+# Function to run database initialization tasks
+async def initialize_database(max_retries=5, retry_delay=5):
+    """Initialize database and run migrations."""
+    logger.info("Starting database initialization")
+    
+    # Run migrations first
+    if not run_migrations(max_attempts=max_retries, retry_delay=retry_delay):
+        logger.warning("Could not run migrations. API will start with limited functionality.")
+    
+    # Try to initialize database connection with retries
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Create a test session to verify database connectivity
+            db = SessionLocal()
+            try:
+                # Test database connection
+                result = db.execute("SELECT 1").scalar()
+                
+                # Ensure schema exists
+                if ensure_schema_exists(settings.SCHEMA_NAME, db):
+                    logger.info(f"Schema '{settings.SCHEMA_NAME}' is ready")
+                
+                # Test successful, break the retry loop
+                logger.info("Database connection verified successfully")
+                return True
+            except Exception as e:
+                logger.error(f"Database test query failed: {str(e)}")
+                raise
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Attempt {attempt}/{max_retries} - Database connection failed: {str(e)}")
+            
+            if attempt < max_retries:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Maximum retries reached. Could not establish database connection.")
+                logger.warning("API will start with limited database functionality.")
+                return False
+    
+    return False
 
 # Startup and shutdown events
 @app.on_event("startup")
@@ -143,32 +189,21 @@ async def startup_event():
     # Check if running in staging or production
     is_production_env = settings.ENV in ["staging", "production"]
     
-    # Initialize JWT manager with database connection
-    # We make this non-blocking for startup to ensure the API starts even if the database is not ready
-    max_retries = 5 if is_production_env else 1
-    retry_delay = 5  # seconds
+    # Initialize database and run migrations
+    db_initialized = await initialize_database(
+        max_retries=5 if is_production_env else 2,
+        retry_delay=5
+    )
     
-    # Import asyncio to safely run blocking operations
-    import asyncio
-    
-    # Run the blocking database operations in a way that won't block the event loop
-    for attempt in range(1, max_retries + 1):
-        try:
-            # This is the fix - properly use the context manager
-            with get_db() as db:
-                # Initialize JWT with db session
-                jwt_manager.initialize(db)
-                logger.info("JWT manager initialized successfully")
-                break
-        except Exception as e:
-            logger.error(f"Attempt {attempt}/{max_retries} - Failed to initialize JWT manager: {str(e)}")
-            
-            if attempt < max_retries:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                await asyncio.sleep(retry_delay)  # Use asyncio.sleep instead of time.sleep
-            else:
-                logger.warning("Max retries reached. API will start with limited JWT functionality.")
-                logger.warning("Authentication features may not work correctly until the database connection is restored.")
+    # Initialize JWT manager
+    try:
+        with get_db() as db:
+            # Initialize JWT with db session
+            jwt_manager.initialize(db)
+            logger.info("JWT manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize JWT manager: {str(e)}")
+        logger.warning("Authentication features may not work correctly until the database connection is restored.")
     
     logger.info("Application startup complete")
 
@@ -272,25 +307,39 @@ async def health_check():
 @app.get("/api/health/db", tags=["Health"])
 async def db_health_check():
     """Check database connectivity."""
-    
-    # Import asyncio to safely run blocking operations
-    import asyncio
-    
     try:
         # This is the fix - properly use the context manager
         with get_db() as db:
             # Execute simple query to verify connection
             result = db.execute("SELECT 1").scalar()
+            
+            # Check schema existence
+            from sqlalchemy import text
+            schema_query = text(
+                f"SELECT EXISTS (SELECT 1 FROM information_schema.schemata "
+                f"WHERE schema_name = '{settings.SCHEMA_NAME}')"
+            )
+            schema_exists = db.execute(schema_query).scalar()
+            
+            # Get database version info
+            version_query = text("SELECT version()")
+            version_info = db.execute(version_query).scalar()
+            
             db_status = "connected" if result == 1 else "error"
             error_msg = None
     except Exception as e:
         db_status = "error"
         error_msg = str(e)
+        schema_exists = False
+        version_info = None
     
     return {
         "status": db_status,
         "timestamp": time.time(),
         "database_url": os.environ.get("DATABASE_URL", "Not set directly in environment"),
+        "schema_exists": schema_exists if db_status == "connected" else None,
+        "schema_name": settings.SCHEMA_NAME,
+        "database_version": version_info,
         "error": error_msg
     }
 
