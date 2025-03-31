@@ -1,3 +1,9 @@
+-- Create database (will be ignored if DB already exists)
+CREATE DATABASE umt;
+
+-- Switch to the umt database for all operations
+\c umt;
+
 -- Initialize database schema
 
 -- Enable pgvector extension
@@ -6,6 +12,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Create schema
 CREATE SCHEMA IF NOT EXISTS umt;
 
+-- Rest of the initialization (tables, indexes, etc.)
 -- Users table
 CREATE TABLE IF NOT EXISTS umt.users (
     id SERIAL PRIMARY KEY,
