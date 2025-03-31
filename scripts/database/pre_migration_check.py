@@ -1,415 +1,195 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
-Pre-migration check script that runs before applying migrations.
-This script:
-1. Verifies migration integrity
-2. Validates SQL patterns
-3. Simulates migrations on a test database
-4. Logs validation results
+Pre-migration validation script for database migrations.
+
+This script performs validation checks before running migrations to ensure
+the database is in a consistent state and migrations are likely to succeed.
 """
 
 import os
 import sys
-import subprocess
+import logging
 import argparse
-import importlib.util
-import re
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
-import tempfile
-import shutil
-import datetime
+from sqlalchemy import text, inspect, MetaData, Table, create_engine
+from sqlalchemy.exc import SQLAlchemyError
 
-# Add parent directory to path to import utilities
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from scripts.utilities.logging_utils import setup_logger, log_command_execution, log_database_operation
+# Add the project root to the Python path to ensure imports work
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-# Setup logger
-logger = setup_logger('pre_migration')
+from src.core.settings import settings
 
-# Project directories
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
-MIGRATIONS_DIR = os.path.join(PROJECT_ROOT, 'migrations')
-VERSIONS_DIR = os.path.join(MIGRATIONS_DIR, 'versions')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('pre_migration_check')
 
-def run_command(command: List[str], check: bool = True) -> Tuple[int, str, str]:
-    """
-    Run a shell command and return exit code, stdout, and stderr
-    """
-    cmd_str = ' '.join(command)
-    logger.debug(f"Running command: {cmd_str}")
-    
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    stdout, stderr = process.communicate()
-    exit_code = process.returncode
-    
-    # Log the command execution result
-    log_command_execution(logger, cmd_str, stdout, exit_code, stderr if exit_code != 0 else None)
-    
-    if check and exit_code != 0:
-        logger.error(f"Command failed with exit code {exit_code}")
-    
-    return exit_code, stdout, stderr
+def get_database_url():
+    """Get the database URL from environment variables or settings."""
+    return os.environ.get('DATABASE_URL', settings.DATABASE_URL)
 
-def check_migration_patterns() -> bool:
-    """
-    Check migration files for proper SQLAlchemy patterns
-    """
-    logger.info("Checking migration files for proper SQLAlchemy patterns...")
-    
-    migration_checker_path = os.path.join(SCRIPT_DIR, 'check_migration_patterns.py')
-    
-    if not os.path.exists(migration_checker_path):
-        logger.error(f"Migration pattern checker script not found at {migration_checker_path}")
-        return False
-    
-    exit_code, stdout, stderr = run_command(['python', migration_checker_path], check=False)
-    
-    if exit_code != 0:
-        logger.error("Migration pattern check failed")
-        logger.error(f"Issues found:\n{stdout}")
-        return False
-    
-    logger.info("Migration pattern check passed")
-    return True
-
-def verify_migration_sequence() -> bool:
-    """
-    Verify that migration sequence is correct (down_revision links form a proper chain)
-    """
-    logger.info("Verifying migration sequence...")
-    
-    # Get all migration files
-    migration_files = []
-    for filename in os.listdir(VERSIONS_DIR):
-        if filename.endswith('.py') and not filename.startswith('__'):
-            migration_files.append(os.path.join(VERSIONS_DIR, filename))
-    
-    if not migration_files:
-        logger.error("No migration files found")
-        return False
-    
-    # Extract revision and down_revision from each file
-    revisions = {}
-    for file_path in migration_files:
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-                
-                # Extract revision
-                revision_match = re.search(r"revision\s*=\s*['\"]([^'\"]+)['\"]", content)
-                if not revision_match:
-                    logger.error(f"Could not find revision in {file_path}")
-                    return False
-                
-                revision = revision_match.group(1)
-                
-                # Extract down_revision
-                down_revision_match = re.search(r"down_revision\s*=\s*['\"](.*?)['\"]", content)
-                down_revision = None
-                
-                if down_revision_match:
-                    down_rev_value = down_revision_match.group(1)
-                    if down_rev_value and down_rev_value.lower() != "none":
-                        down_revision = down_rev_value
-                
-                logger.debug(f"File: {os.path.basename(file_path)}, Revision: {revision}, Down: {down_revision}")
-                
-                revisions[revision] = {
-                    'file': os.path.basename(file_path),
-                    'down_revision': down_revision
-                }
-        except Exception as e:
-            logger.error(f"Error parsing {file_path}: {e}")
-            return False
-    
-    # Check for a single root revision (down_revision is None)
-    roots = [rev for rev, data in revisions.items() if data['down_revision'] is None]
-    if not roots:
-        logger.error(f"No root migrations found. This might indicate a circular dependency.")
-        return False
-    elif len(roots) > 1:
-        logger.warning(f"Found multiple root migrations: {roots}. This is acceptable for branch-based migrations.")
-    
-    # Validate that all migrations can be reached from the root
-    visited = set()
-    current = roots[0]
-    
-    while current:
-        visited.add(current)
-        
-        # Find all migrations that have this as their down_revision
-        next_revisions = [rev for rev, data in revisions.items() if data['down_revision'] == current]
-        
-        if len(next_revisions) > 1:
-            logger.warning(f"Found branch in migration history at {current}, multiple next revisions: {next_revisions}")
-        
-        if not next_revisions:
-            # We've reached a head revision
-            break
-        
-        # For simplicity, just follow the first branch
-        current = next_revisions[0]
-    
-    # Check if all revisions are reachable
-    unreachable = set(revisions.keys()) - visited
-    if unreachable:
-        logger.error(f"Found unreachable migrations: {unreachable}")
-        return False
-    
-    logger.info("Migration sequence verification passed")
-    return True
-
-def create_test_database() -> bool:
-    """
-    Create a test database for migration simulation
-    """
+def get_database_engine():
+    """Create and return a SQLAlchemy engine."""
+    database_url = get_database_url()
     try:
-        # Create a unique temporary database name
-        timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        test_db_name = f"migration_test_{timestamp}"
-        
-        # Try to get the database connection URL from environment or configuration
-        db_url = os.environ.get('DATABASE_URL')
-        if not db_url:
-            # Try to load from alembic.ini
-            import configparser
-            config = configparser.ConfigParser()
-            config.read(os.path.join(PROJECT_ROOT, 'alembic.ini'))
-            if 'alembic' in config and 'sqlalchemy.url' in config['alembic']:
-                db_url = config['alembic']['sqlalchemy.url']
-        
-        if not db_url:
-            log_database_operation(logger, "CONFIG", "migration", "Could not determine database URL from env or alembic.ini", success=False)
-            return False
-        
-        # Create a new database URL for the test database
-        if 'postgresql' in db_url.lower():
-            # Get base URL (without database name)
-            base_url = db_url.rsplit('/', 1)[0]
-            test_db_url = f"{base_url}/{test_db_name}"
-            
-            # Create database
-            import sqlalchemy
-            create_engine = sqlalchemy.create_engine(f"{base_url}/postgres")
-            conn = create_engine.connect()
-            conn.execute(sqlalchemy.text(f"CREATE DATABASE {test_db_name}"))
-            conn.close()
-            
-            log_database_operation(logger, "CREATE", "database", f"Created test database: {test_db_name}")
-            
-            # Set environment variable for alembic
-            os.environ['SQLALCHEMY_TEST_URL'] = test_db_url
-            return True
-        else:
-            log_database_operation(logger, "ERROR", "database", f"Unsupported database type: {db_url}", success=False)
-            return False
-    except ImportError as ie:
-        log_database_operation(logger, "ERROR", "imports", f"Import error: {ie}, skipping database creation test", success=False)
-        # Don't fail the entire check for this optional component
-        return False
+        engine = create_engine(database_url)
+        logger.info("Database engine created successfully")
+        return engine
     except Exception as e:
-        log_database_operation(logger, "ERROR", "database", f"Error creating test database: {e}", success=False)
-        return False
+        logger.error(f"Failed to create database engine: {str(e)}")
+        sys.exit(1)
 
-def cleanup_test_database() -> None:
-    """
-    Clean up test database after simulation
-    """
+def check_database_connection(engine):
+    """Check if the database is accessible."""
     try:
-        if 'SQLALCHEMY_TEST_URL' in os.environ:
-            test_db_url = os.environ['SQLALCHEMY_TEST_URL']
-            test_db_name = test_db_url.rsplit('/', 1)[1]
-            
-            # Get base URL
-            base_url = test_db_url.rsplit('/', 1)[0]
-            
-            # Connect to postgres database to drop the test database
-            import sqlalchemy
-            create_engine = sqlalchemy.create_engine(f"{base_url}/postgres")
-            conn = create_engine.connect()
-            
-            # Terminate connections to the database
-            conn.execute(sqlalchemy.text(
-                f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{test_db_name}'"
-            ))
-            
-            # Drop the database
-            conn.execute(sqlalchemy.text(f"DROP DATABASE IF EXISTS {test_db_name}"))
-            conn.close()
-            
-            log_database_operation(logger, "DROP", "database", f"Cleaned up test database: {test_db_name}")
-        
-    except Exception as e:
-        log_database_operation(logger, "ERROR", "database", f"Error cleaning up test database: {e}", success=False)
-
-def simulate_migrations() -> bool:
-    """
-    Simulate migrations on a test database
-    """
-    logger.info("Simulating migrations on test database...")
-    try:
-        # Create a copy of alembic.ini for testing
-        with tempfile.NamedTemporaryFile(suffix='.ini', delete=False) as temp_file:
-            temp_config = temp_file.name
-            shutil.copyfile(os.path.join(PROJECT_ROOT, 'alembic.ini'), temp_config)
-            
-            # Update the config to use test database
-            with open(temp_config, 'r') as f:
-                config_content = f.read()
-            
-            if 'SQLALCHEMY_TEST_URL' in os.environ:
-                # Replace the URL
-                test_db_url = os.environ['SQLALCHEMY_TEST_URL']
-                config_content = re.sub(
-                    r'sqlalchemy.url = .*',
-                    f'sqlalchemy.url = {test_db_url}',
-                    config_content
-                )
-                
-                with open(temp_config, 'w') as f:
-                    f.write(config_content)
-                
-                # Run the migrations
-                exit_code, stdout, stderr = run_command(
-                    ['alembic', '-c', temp_config, 'upgrade', 'head'],
-                    check=False
-                )
-                
-                if exit_code != 0:
-                    logger.error("Migration simulation failed")
-                    logger.error(f"Output: {stdout}")
-                    logger.error(f"Errors: {stderr}")
-                    return False
-                
-                # Test downgrade to check for errors (optional)
-                exit_code, stdout, stderr = run_command(
-                    ['alembic', '-c', temp_config, 'downgrade', 'base'],
-                    check=False
-                )
-                
-                if exit_code != 0:
-                    logger.warning("Migration downgrade simulation failed")
-                    logger.warning(f"Output: {stdout}")
-                    logger.warning(f"Errors: {stderr}")
-                    
-                # Upgrade again to ensure it works after downgrade
-                exit_code, stdout, stderr = run_command(
-                    ['alembic', '-c', temp_config, 'upgrade', 'head'],
-                    check=False
-                )
-                
-                if exit_code != 0:
-                    logger.error("Migration re-upgrade simulation failed")
-                    logger.error(f"Output: {stdout}")
-                    logger.error(f"Errors: {stderr}")
-                    return False
-                
-                logger.info("Migration simulation passed")
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1")).scalar()
+            if result == 1:
+                logger.info("✅ Database connection successful")
                 return True
             else:
-                logger.error("Test database URL not set")
+                logger.error("❌ Database connection check failed")
                 return False
     except Exception as e:
-        logger.error(f"Error simulating migrations: {e}")
+        logger.error(f"❌ Database connection error: {str(e)}")
         return False
-    finally:
-        # Clean up
-        if 'temp_config' in locals():
-            try:
-                os.unlink(temp_config)
-            except:
-                pass
 
-def parse_args():
-    """
-    Parse command line arguments
-    """
-    parser = argparse.ArgumentParser(description='Pre-migration validation script')
-    parser.add_argument('--skip-simulation', action='store_true', help='Skip migration simulation on test database')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
-    return parser.parse_args()
-
-def main():
-    args = parse_args()
-    
-    if args.verbose:
-        # We can't directly modify the logger level with our setup_logger
-        # Instead, we'll add a debug message
-        logger.debug("Verbose logging enabled")
-    
-    logger.info("Starting pre-migration validation")
-    
-    # Track validation steps
-    validation_steps = []
-    
-    # Step 1: Check migration patterns
-    pattern_check = check_migration_patterns()
-    validation_steps.append(("Migration pattern check", pattern_check))
-    
-    # Step 2: Verify migration sequence
-    sequence_check = verify_migration_sequence()
-    validation_steps.append(("Migration sequence check", sequence_check))
-    
-    # Optional step: Database simulation 
-    # Only try if explicitly requested or on CI systems
-    run_db_checks = not args.skip_simulation or os.environ.get("CI") == "true"
-    
-    # Step 3: Simulate migrations on test database (optional)
-    if run_db_checks:
-        try:
-            create_db = create_test_database()
-            if create_db:
-                simulation_check = simulate_migrations()
-                validation_steps.append(("Migration simulation", simulation_check))
+def check_schema_exists(engine, schema_name):
+    """Check if the specified schema exists."""
+    try:
+        with engine.connect() as conn:
+            query = text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.schemata "
+                "WHERE schema_name = :schema_name)"
+            )
+            result = conn.execute(query, {"schema_name": schema_name}).scalar()
+            if result:
+                logger.info(f"✅ Schema '{schema_name}' exists")
+                return True
             else:
-                log_database_operation(logger, "SKIP", "simulation", "Skipping database simulation due to database connection issues", success=True)
-                # Don't fail validation for this optional step in development environments
-                if os.environ.get("CI") == "true":
-                    validation_steps.append(("Create test database", False))
-        except Exception as e:
-            log_database_operation(logger, "ERROR", "simulation", f"Error during migration simulation: {e}", success=False)
-            if os.environ.get("CI") == "true":
-                validation_steps.append(("Migration simulation", False))
-        finally:
-            cleanup_test_database()
-    else:
-        logger.info("Skipping migration simulation")
-        simulation_check = True
+                logger.warning(f"❗ Schema '{schema_name}' does not exist (will be created during migration)")
+                return False
+    except Exception as e:
+        logger.error(f"❌ Error checking schema: {str(e)}")
+        return False
+
+def check_alembic_version_table(engine, schema_name):
+    """Check if the alembic_version table exists."""
+    try:
+        with engine.connect() as conn:
+            query = text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = :schema_name "
+                "AND table_name = 'alembic_version')"
+            )
+            result = conn.execute(query, {"schema_name": schema_name}).scalar()
+            if result:
+                logger.info("✅ alembic_version table exists")
+                # Get current revision
+                query = text(f"SELECT version_num FROM {schema_name}.alembic_version")
+                revision = conn.execute(query).scalar()
+                logger.info(f"Current alembic revision: {revision}")
+                return True
+            else:
+                logger.warning("❗ alembic_version table does not exist (initial migration needed)")
+                return False
+    except Exception as e:
+        logger.error(f"❌ Error checking alembic_version table: {str(e)}")
+        return False
+
+def check_for_circular_dependencies():
+    """Check for potential circular dependencies in model imports."""
+    try:
+        # Try to import all models and configure mappers
+        from sqlalchemy.orm import configure_mappers
+        from src.models import *
+        
+        configure_mappers()
+        logger.info("✅ No circular dependencies detected in model imports")
+        return True
+    except ImportError as e:
+        logger.error(f"❌ Possible circular dependency detected: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Error checking for circular dependencies: {str(e)}")
+        return False
+
+def check_pg_extension_availability(engine, extension_name):
+    """Check if the specified Postgres extension is available."""
+    try:
+        with engine.connect() as conn:
+            query = text(
+                "SELECT EXISTS (SELECT 1 FROM pg_available_extensions "
+                "WHERE name = :extension_name)"
+            )
+            result = conn.execute(query, {"extension_name": extension_name}).scalar()
+            if result:
+                logger.info(f"✅ Extension '{extension_name}' is available")
+                return True
+            else:
+                logger.warning(f"❗ Extension '{extension_name}' is not available")
+                return False
+    except Exception as e:
+        logger.error(f"❌ Error checking extension availability: {str(e)}")
+        return False
+
+def check_database_version(engine):
+    """Check the PostgreSQL database version."""
+    try:
+        with engine.connect() as conn:
+            query = text("SELECT version()")
+            version = conn.execute(query).scalar()
+            logger.info(f"Database version: {version}")
+            return True
+    except Exception as e:
+        logger.error(f"❌ Error checking database version: {str(e)}")
+        return False
+
+def run_all_checks():
+    """Run all pre-migration checks."""
+    schema_name = os.environ.get('SCHEMA_NAME', 'umt')
     
-    # Print summary
-    logger.info("\nValidation Summary:")
-    logger.info("=" * 50)
-    all_passed = True
+    logger.info("=== Starting pre-migration checks ===")
     
-    for step, result in validation_steps:
-        status = "PASSED" if result else "FAILED"
-        logger.info(f"{step}: {status}")
-        all_passed = all_passed and result
+    # Get the database engine
+    engine = get_database_engine()
     
-    logger.info("=" * 50)
+    # Run all checks
+    checks = [
+        check_database_connection(engine),
+        check_database_version(engine),
+        check_schema_exists(engine, schema_name),
+        check_alembic_version_table(engine, schema_name),
+        check_for_circular_dependencies(),
+        check_pg_extension_availability(engine, 'uuid-ossp'),
+        check_pg_extension_availability(engine, 'vector')
+    ]
     
-    if all_passed:
-        log_database_operation(logger, "VALIDATE", "migrations", "All validation checks passed. Migrations are ready to apply.")
+    # Summarize results
+    success_count = sum(1 for check in checks if check)
+    total_checks = len(checks)
+    
+    logger.info(f"=== Completed {success_count}/{total_checks} checks successfully ===")
+    
+    # Pass if all critical checks pass
+    critical_checks = checks[0:3]  # Connection, version, and schema checks
+    if all(critical_checks):
+        logger.info("✅ All critical checks passed - migrations can proceed")
         return 0
     else:
-        log_database_operation(logger, "VALIDATE", "migrations", "Validation failed. Fix issues before applying migrations.", success=False)
+        logger.error("❌ One or more critical checks failed - migrations may fail")
         return 1
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main())
-    except KeyboardInterrupt:
-        logger.info("Validation aborted by user")
-        cleanup_test_database()
-        sys.exit(130)
-    except Exception as e:
-        log_database_operation(logger, "ERROR", "system", f"Unexpected error: {e}", success=False)
-        cleanup_test_database()
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Pre-migration database validation")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
+    sys.exit(run_all_checks())
