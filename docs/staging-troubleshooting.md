@@ -1,336 +1,121 @@
 # Staging Environment Troubleshooting Guide
 
-This guide provides solutions for common issues encountered when deploying the Ultimate Marketing Team to the staging environment, with a particular focus on database initialization problems.
+This document provides guidance for resolving common issues with the staging environment, especially after upgrading to PostgreSQL 17.
 
-## API Gateway Database Connection Issues
+## PostgreSQL 17 Compatibility
 
-### Symptoms
+The project has been updated to use PostgreSQL 17-alpine. Key changes include:
 
-- API Gateway container starts but logs show database connection failures
-- The health check endpoint `/api/health/db` returns an error or "status": "error"
-- Migrations container exits with a non-zero status code
-- API functions that require database access don't work properly
+1. **Database Creation Syntax**: PostgreSQL 17 requires a different syntax for creating databases on the fly:
+   ```sql
+   SELECT 'CREATE DATABASE mydatabase' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'mydatabase')\gexec
+   ```
 
-### Quick Fix
+2. **PGVector Extension**: We're using pgvector v0.6.0 which is compatible with PostgreSQL 17, with fallback to NO_JIT compilation if needed.
 
-Run the automated repair script:
+3. **Health Checks**: All health checks are properly configured for PostgreSQL 17.
 
-```bash
-bash scripts/deployment/staging/fix_api_gateway_db.sh
-```
+## Deployment Process
 
-This script will:
-1. Check PostgreSQL container health
-2. Test network connectivity
-3. Verify database and schema existence
-4. Run migrations manually if needed
-5. Restart the API gateway
+The staging deployment now follows a specific sequence:
 
-### Manual Debugging and Fixes
+1. Database startup and initialization
+2. Database proxy to ensure schema exists
+3. Migrations run with proper dependency checking
+4. Application services startup with health verification
+5. Automatic repair script for common issues
 
-If the automatic repair script doesn't solve the issue, follow these steps:
+## Common Issues and Solutions
 
-#### 1. Check Database Container Health
+### Database Connection Issues
 
-```bash
-docker inspect --format='{{.State.Health.Status}}' ultimate-marketing-team_postgres-proxy_1
-```
+If the API gateway can't connect to the database:
 
-If not healthy, check the logs:
-
-```bash
-docker logs ultimate-marketing-team_postgres-proxy_1
-```
-
-#### 2. Verify Database Connection Parameters
-
-The API gateway should use these connection parameters:
-- Host: postgres
-- Port: 5432
-- User: postgres
-- Password: postgres
-- Database: umt
-- Schema: umt
-
-Confirm these settings in the API gateway container:
-
-```bash
-docker exec -it ultimate-marketing-team_api-gateway_1 env | grep DB_
-```
-
-#### 3. Check Network Connectivity
-
-Test connectivity from API gateway to database:
-
-```bash
-docker exec ultimate-marketing-team_api-gateway_1 ping -c 2 postgres
-docker exec ultimate-marketing-team_api-gateway_1 pg_isready -h postgres -p 5432 -U postgres
-```
-
-#### 4. Verify Database and Schema Existence
-
-Connect to the PostgreSQL container and check:
-
-```bash
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -c "\l"  # List databases
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "\dn"  # List schemas
-```
-
-If the database or schema doesn't exist, create them:
-
-```bash
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -c "CREATE DATABASE umt;"
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "CREATE SCHEMA umt;"
-```
-
-#### 5. Check Migration Status
-
-Verify if migrations have been applied:
-
-```bash
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "SELECT * FROM umt.alembic_version;"
-```
-
-If the table doesn't exist or you want to run migrations manually:
-
-```bash
-docker exec -it ultimate-marketing-team_api-gateway_1 python -m alembic upgrade head
-```
-
-#### 6. Restart the API Gateway
-
-After fixing the issues, restart the API gateway:
-
-```bash
-docker restart ultimate-marketing-team_api-gateway_1
-```
-
-## Common Migration Issues
-
-### Multiple Alembic Heads
-
-If you encounter errors about multiple alembic heads:
-
-```
-ERROR [alembic.util.messaging] Multiple head revisions are present for given argument 'head'
-```
-
-Merge the heads:
-
-```bash
-docker exec -it ultimate-marketing-team_api-gateway_1 python -m alembic merge heads -m "merge heads"
-docker exec -it ultimate-marketing-team_api-gateway_1 python -m alembic upgrade head
-```
-
-### Migration Conflicts
-
-If migrations fail due to conflicts:
-
-1. Backup the database first:
+1. Check if the database is running:
    ```bash
-   docker exec -it ultimate-marketing-team_postgres_1 pg_dump -U postgres umt > backup_before_fix.sql
+   docker ps | grep postgres
    ```
 
-2. Check what's in the database:
+2. Verify the container is healthy:
    ```bash
-   docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "\dt umt.*"
+   docker inspect --format='{{.State.Health.Status}}' umt-postgres
    ```
 
-3. If needed, stamp the database with a known revision:
+3. Run the automatic fix script:
    ```bash
-   docker exec -it ultimate-marketing-team_api-gateway_1 python -m alembic stamp <revision>
+   scripts/deployment/fix_api_gateway_db.sh
    ```
 
-## Circular Dependencies in Models
+### Migration Issues
 
-If you're experiencing errors related to circular imports or SQLAlchemy mapper configuration:
+For migration conflicts or multiple heads:
 
-1. Check the API Gateway logs:
+1. Check current migration status:
    ```bash
-   docker logs ultimate-marketing-team_api-gateway_1 | grep -i "mapper"
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic heads"
    ```
 
-2. Look for circular imports:
+2. If you see multiple heads, merge them:
    ```bash
-   docker exec -it ultimate-marketing-team_api-gateway_1 python -c "import src.models"
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic merge heads -m 'merge heads'"
    ```
 
-3. Fix circular imports by:
-   - Moving imports to the function level (lazy imports)
-   - Using string references for foreign keys
-   - Rearranging the import order in `__init__.py` files
-
-## PostgreSQL Connection Retries
-
-The API Gateway has been configured to retry database connections multiple times. You can adjust these settings:
-
-- `MAX_RETRIES`: Number of retry attempts (default: 60)
-- `RETRY_INTERVAL`: Seconds between retries (default: 2)
-
-Change these in the Docker environment variables or in the start.sh script.
-
-## PostgreSQL 17 Specific Issues
-
-Our staging environment uses PostgreSQL 17, which may have different behavior than earlier versions. Common issues include:
-
-### CREATE DATABASE IF NOT EXISTS Syntax
-
-PostgreSQL 17 may not support `CREATE DATABASE IF NOT EXISTS` directly. If you encounter issues, use this safer approach:
-
-```sql
-SELECT 'CREATE DATABASE umt' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umt');
-```
-
-### SCRAM Authentication
-
-PostgreSQL 17 uses SCRAM-SHA-256 authentication by default instead of MD5. If you have connection issues:
-
-1. Check authentication method:
+3. Run migrations again:
    ```bash
-   docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -c "SHOW password_encryption;"
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic upgrade head"
    ```
 
-2. If necessary, modify the pg_hba.conf file or set the authentication method in the PostgreSQL container:
+### PGVector Issues
+
+If you encounter pgvector-related errors:
+
+1. Check if the extension is installed:
    ```bash
-   echo "host all all all scram-sha-256" > /var/lib/postgresql/data/pg_hba.conf
+   docker exec umt-postgres psql -U postgres -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
    ```
 
-### Extension Compatibility
-
-Ensure any extensions (like pgvector) are compatible with PostgreSQL 17:
-
-```bash
-docker exec -it ultimate-marketing-team_postgres_1 psql -U postgres -d umt -c "SELECT * FROM pg_available_extensions;"
-```
-
-## Separating Database Concerns
-
-For persistent issues, you may want to set up a dedicated database for staging:
-
-1. Create a separate database configuration in `docker-compose.staging.yml`:
-   ```yaml
-   services:
-     postgres-staging:
-       image: postgres:17-alpine
-       environment:
-         POSTGRES_USER: postgres
-         POSTGRES_PASSWORD: postgres
-         POSTGRES_DB: umt_staging
-       volumes:
-         - postgres_staging_data:/var/lib/postgresql/data
-     
-     # Update the DATABASE_URL in api-gateway service
-     api-gateway:
-       environment:
-         DATABASE_URL: postgresql://postgres:postgres@postgres-staging:5432/umt_staging
-   
-   volumes:
-     postgres_staging_data:
+2. If not, run the fix script:
+   ```bash
+   ./docker/postgres/fix_pgvector.sh umt-postgres umt
    ```
 
-2. Update the scripts to use this dedicated database.
+## Monitoring and Logging
 
-## Data Persistence Issues
+The system now includes enhanced monitoring:
 
-If database data is lost between deployments:
+1. **Health API**: Available at http://localhost:8001/health
+2. **Database Health**: Available at http://localhost:8000/api/health/db
+3. **Logs**: Can be viewed with `docker-compose -f docker-compose.staging.yml logs [service]`
 
-1. Ensure volumes are properly configured in docker-compose.yml
-2. Check if volumes are being removed during cleanup
+## Backup and Restore
 
-To verify volume persistence:
+Before making significant changes:
 
-```bash
-docker volume ls | grep postgres_data
-```
+1. Create a backup:
+   ```bash
+   scripts/database/backup_database.py --environment staging
+   ```
 
-To inspect a volume:
+2. To restore a backup:
+   ```bash
+   scripts/database/restore_database.py --environment staging --backup-file /path/to/backup.sql
+   ```
 
-```bash
-docker volume inspect postgres_data
-```
+## Complete Redeployment
 
-## Maintenance and Recovery
+If you need to completely redeploy the staging environment:
 
-### Database Backup
+1. Clean up existing containers:
+   ```bash
+   docker-compose -f docker-compose.staging.yml down
+   ```
 
-Create a backup of the database:
+2. Clean up volumes (WARNING: This will delete all data):
+   ```bash
+   docker volume prune
+   ```
 
-```bash
-docker exec -it ultimate-marketing-team_postgres_1 pg_dump -U postgres umt > backup_$(date +%Y%m%d_%H%M%S).sql
-```
-
-### Database Restore
-
-Restore from a backup:
-
-```bash
-cat backup_file.sql | docker exec -i ultimate-marketing-team_postgres_1 psql -U postgres -d umt
-```
-
-### Complete Reset
-
-If you need to start from scratch:
-
-```bash
-# Stop containers
-docker compose -f docker-compose.staging.yml down
-
-# Remove volumes (CAUTION: This deletes all data)
-docker volume rm ultimate-marketing-team_postgres_data
-
-# Start fresh
-docker compose -f docker-compose.staging.yml up -d
-```
-
-## Monitoring Database Health
-
-A custom health check endpoint is available at `/api/health/db`. Use it to monitor database connectivity:
-
-```bash
-curl http://localhost:8000/api/health/db | jq
-```
-
-The response includes:
-- `status`: "connected" or "error"
-- `schema_exists`: Whether the schema exists
-- `error`: Error message if there's a problem
-- `database_version`: PostgreSQL version information
-
-## Logging
-
-### Enhanced Logging
-
-We've implemented enhanced logging for database operations. To view these logs:
-
-```bash
-docker logs ultimate-marketing-team_api-gateway_1 | grep -i "database"
-```
-
-For migrations:
-
-```bash
-docker logs ultimate-marketing-team_migrations_1
-```
-
-### Log Files
-
-In the API gateway container, database logs are available at:
-
-```
-/app/logs/database.log
-```
-
-View with:
-
-```bash
-docker exec -it ultimate-marketing-team_api-gateway_1 cat /app/logs/database.log
-```
-
-## Contact Support
-
-If you've tried all these troubleshooting steps and still have issues, please contact the development team with:
-
-1. The output of the fix script
-2. Database logs
-3. API gateway logs
-4. Current container status (`docker ps -a`)
+3. Run the deployment script:
+   ```bash
+   scripts/deployment/staging/deploy.sh
+   ```
