@@ -28,12 +28,18 @@ else
 fi
 
 # Load deployment configuration
-DEPLOY_CONFIG="config/env/deployment.env.staging.template"
+DEPLOY_CONFIG="config/env/deployment.env.staging"
 if [ -f "$DEPLOY_CONFIG" ]; then
     echo "🔹 Loading deployment configuration from $DEPLOY_CONFIG"
-    source $DEPLOY_CONFIG
+    # Use set -a to export all variables
+    set -a
+    # Source the file with quotes to handle spaces correctly
+    source "$DEPLOY_CONFIG"
+    set +a
 else
     echo "❌ Deployment configuration file $DEPLOY_CONFIG not found!"
+    echo "Please create it from the template and set the correct SSH key path."
+    echo "cp config/env/deployment.env.staging.template config/env/deployment.env.staging"
     exit 1
 fi
 
