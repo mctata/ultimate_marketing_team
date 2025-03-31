@@ -7,6 +7,7 @@ import uuid
 import os
 import sys
 from typing import Callable, List
+import contextlib
 
 from fastapi import FastAPI, Request, WebSocket, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -131,6 +132,9 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         # In a real implementation, this would check a database or cache
         return False
 
+# Import database module
+from src.core.database import get_db
+
 # Startup and shutdown events
 @app.on_event("startup")
 async def startup_event():
@@ -146,8 +150,14 @@ async def startup_event():
     
     for attempt in range(1, max_retries + 1):
         try:
-            from src.core.database import get_db
-            with get_db() as db:
+            # Properly use the context manager
+            db_gen = get_db()
+            db = None
+            
+            # Use context manager correctly with contextlib.ExitStack if needed
+            with contextlib.ExitStack() as stack:
+                db = stack.enter_context(db_gen)
+                # Initialize JWT with db session
                 jwt_manager.initialize(db)
                 logger.info("JWT manager initialized successfully")
                 break
@@ -264,8 +274,9 @@ async def health_check():
 async def db_health_check():
     """Check database connectivity."""
     try:
-        from src.core.database import get_db
-        with get_db() as db:
+        # Use context manager correctly
+        db_gen = get_db()
+        with db_gen as db:
             # Execute simple query to verify connection
             result = db.execute("SELECT 1").scalar()
             db_status = "connected" if result == 1 else "error"
