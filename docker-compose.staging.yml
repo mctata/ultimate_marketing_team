@@ -32,20 +32,12 @@ services:
       dockerfile: ./docker/api_gateway/Dockerfile
     ports:
       - "8000:8000"
-    env_file: ./.env.staging
     environment:
       - ENVIRONMENT=staging
       - LOG_LEVEL=INFO
       - USE_SIMPLIFIED_API=true
     volumes:
       - ./staging_main.py:/app/src/api/main.py  # Override with simplified version
-    depends_on:
-      postgres-proxy:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     restart: always
     networks:
       - umt-network

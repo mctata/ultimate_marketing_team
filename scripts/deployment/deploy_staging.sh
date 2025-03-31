@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to deploy the Ultimate Marketing Team application to staging
+# Simplified script to deploy the Ultimate Marketing Team application to staging
 
 set -e  # Exit immediately if a command exits with a non-zero status
 
@@ -7,9 +7,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 ENV_FILE=".env.staging"
 if [ -f "$ENV_FILE" ]; then
   echo "🔹 Loading environment variables from $ENV_FILE"
-  # Use set -a to export all variables
   set -a
-  # Source the file with quotes to handle spaces correctly
   source "$ENV_FILE"
   set +a
 else
@@ -21,26 +19,13 @@ fi
 DEPLOY_CONFIG="config/env/deployment.env.staging"
 if [ -f "$DEPLOY_CONFIG" ]; then
   echo "🔹 Loading deployment configuration from $DEPLOY_CONFIG"
-  # Use set -a to export all variables
   set -a
-  # Source the file with quotes to handle spaces correctly
   source "$DEPLOY_CONFIG"
   set +a
 else
   echo "❌ Deployment configuration file $DEPLOY_CONFIG not found!"
-  echo "Please create it from the template and set the correct SSH key path."
-  echo "cp config/env/deployment.env.staging.template config/env/deployment.env.staging"
   exit 1
 fi
-
-# Set deploy directory
-DEPLOY_DIR="tmp_deploy"
-# Clean up any existing deployment directory
-rm -rf $DEPLOY_DIR
-# Create directory structure
-mkdir -p $DEPLOY_DIR
-mkdir -p $DEPLOY_DIR/docker
-mkdir -p $DEPLOY_DIR/scripts/deployment
 
 # Check SSH key
 if [ ! -f "$SSH_KEY" ]; then
@@ -51,51 +36,27 @@ fi
 echo "🚀 Starting deployment to STAGING environment"
 echo "🔹 Target: $SSH_USER@$SSH_HOST:$SSH_PORT"
 echo "🔹 Remote directory: $REMOTE_DIR"
-echo "🔹 Using Docker Compose file: $COMPOSE_FILE"
 
-# Copy necessary files to deployment directory
-echo "🔹 Preparing deployment files..."
-cp -r docker/* $DEPLOY_DIR/docker/
-cp docker-compose.staging.yml health_api.py Dockerfile.health-api staging_main.py $DEPLOY_DIR/
-cp .env.staging $DEPLOY_DIR/
-cp -r scripts/deployment/* $DEPLOY_DIR/scripts/deployment/
+# First clean up Docker resources
+echo "🔹 Cleaning up Docker resources..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker system prune -af --volumes"
 
-# Copy src directory for API and other services
-echo "🔹 Copying source code for API and services..."
-mkdir -p $DEPLOY_DIR/src/api
-mkdir -p $DEPLOY_DIR/src/models
-mkdir -p $DEPLOY_DIR/src/core
-mkdir -p $DEPLOY_DIR/src/schemas
-mkdir -p $DEPLOY_DIR/src/agents
+# Prepare deployment files
+echo "🔹 Preparing deployment package..."
+DEPLOY_DIR="tmp_deploy"
+rm -rf $DEPLOY_DIR
+mkdir -p $DEPLOY_DIR
 
-cp -r src/api/* $DEPLOY_DIR/src/api/
-cp -r src/models/* $DEPLOY_DIR/src/models/
-cp -r src/core/* $DEPLOY_DIR/src/core/
-[ -d "src/schemas" ] && cp -r src/schemas/* $DEPLOY_DIR/src/schemas/
-[ -d "src/agents" ] && cp -r src/agents/* $DEPLOY_DIR/src/agents/
-
-# Ensure API files exist
-if [ -f src/api/simple_health.py ]; then
-  echo "✅ simple_health.py exists"
-else
-  echo "❌ simple_health.py not found!"
-fi
-
-# Create empty __init__.py files to ensure Python modules work
-touch $DEPLOY_DIR/src/__init__.py
-touch $DEPLOY_DIR/src/api/__init__.py
-
-# Make sure scripts are executable
-echo "🔹 Making local scripts executable..."
-chmod +x $DEPLOY_DIR/scripts/deployment/*.sh
+# Copy only essential files
+cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
+cp health_api.py Dockerfile.health-api staging_main.py $DEPLOY_DIR/
+cp .env.staging $DEPLOY_DIR/.env
 
 # Create a tar file of the deployment directory
-echo "🔹 Creating deployment archive..."
-TAR_FILE="ultimate-marketing-staging-deploy.tar.gz"
+TAR_FILE="staging-deploy.tar.gz"
 tar -czf $TAR_FILE -C $DEPLOY_DIR .
 
 # Create remote directory if it doesn't exist
-echo "🔹 Creating remote directory if it doesn't exist..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
 
 # Copy the tar file to the remote server
@@ -103,40 +64,33 @@ echo "🔹 Copying deployment files to remote server..."
 scp -i "$SSH_KEY" -P "$SSH_PORT" $TAR_FILE "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
 
 # Extract the tar file on the remote server
-echo "🔹 Extracting deployment files on remote server..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf $TAR_FILE && rm $TAR_FILE"
 
-# Stop and remove existing containers
-echo "🔹 Stopping existing containers..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE down --remove-orphans"
+# Deploy health-api first (lightweight service)
+echo "🔹 Deploying health-api service..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api && docker-compose up -d health-api"
 
-# Make scripts executable
-echo "🔹 Making scripts executable..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x scripts/deployment/*.sh"
+# Wait a bit for health-api to start
+sleep 5
 
-# Initialize RDS database
-echo "🔹 Initializing RDS database..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && scripts/deployment/init_rds_database.sh"
+# Check health-api is working
+echo "🔹 Checking health-api..."
+HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001/ping || echo 'failed'")
+if [ "$HEALTH_CHECK" = "failed" ]; then
+  echo "❌ Health API failed to start. Check server logs."
+  exit 1
+else
+  echo "✅ Health API is running"
+fi
 
-# Start the containers with forced rebuild
-echo "🔹 Starting containers with forced rebuild..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE build --no-cache && docker-compose -f $COMPOSE_FILE up -d"
-
-# Verify deployment
-echo "🔹 Verifying deployment..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
-    echo 'Container status:' && \
-    docker ps && \
-    echo 'Logs from api-gateway service:' && \
-    docker-compose -f $COMPOSE_FILE logs --tail=50 api-gateway"
+# Deploy api-gateway
+echo "🔹 Deploying api-gateway service..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build api-gateway && docker-compose up -d api-gateway"
 
 # Clean up local deployment files
-echo "🔹 Cleaning up local deployment files..."
 rm $TAR_FILE
 rm -rf $DEPLOY_DIR
 
 echo "✅ Deployment to STAGING complete!"
-echo "📝 Access the application at: https://$DOMAIN"
-echo "📝 Health API: http://$DOMAIN:8001"
-echo "📝 API Gateway: http://$DOMAIN:8000"
-echo "📝 Frontend: http://$DOMAIN:3000"
+echo "📝 Health API: https://$DOMAIN:8001"
+echo "📝 API Gateway: https://$DOMAIN:8000"
