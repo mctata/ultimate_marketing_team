@@ -138,10 +138,10 @@ async def startup_event():
     
     # Initialize JWT manager with database connection
     from src.core.database import get_db
-    db = next(get_db())
     try:
-        jwt_manager.initialize(db)
-        logger.info("JWT manager initialized successfully")
+        with get_db() as db:
+            jwt_manager.initialize(db)
+            logger.info("JWT manager initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize JWT manager: {str(e)}")
     
