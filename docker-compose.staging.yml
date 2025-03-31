@@ -8,9 +8,9 @@ services:
     ports:
       - "8001:8000"
     command: >
-      bash -c '
+      bash -c "
       pip install fastapi uvicorn psutil &&
-      echo "from fastapi import FastAPI
+      echo 'from fastapi import FastAPI
 import time
 import os
 
@@ -28,8 +28,8 @@ async def health_check():
 
 @app.get(\"/ping\")
 async def ping():
-    return \"pong\"" > /app/health_app.py &&
-      uvicorn health_app:app --host 0.0.0.0 --port 8000'
+    return \"pong\"' > /app/health_app.py &&
+      uvicorn health_app:app --host 0.0.0.0 --port 8000"
     restart: always
     environment:
       - ENVIRONMENT=staging
