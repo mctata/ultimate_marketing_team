@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Simple Health API
+  health-api:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./src/api:/app
+    ports:
+      - "8001:8000"
+    command: >
+      bash -c "pip install fastapi uvicorn && 
+      uvicorn simple_health:app --host 0.0.0.0 --port 8000"
+    restart: always
+    networks:
+      - umt-network
+
   # API Gateway
   api-gateway:
     build:
