@@ -5,12 +5,12 @@ set -e
 echo "========== pgvector extension installer and verification =========="
 
 # Process arguments
-CONTAINER_PREFIX=${1:-"umt"}
+CONTAINER_PREFIX=${1:-"ultimate-marketing-team"}
 DB_NAME=${2:-"umt_db"}
 
 # Get container IDs
-POSTGRES_CONTAINER=$(docker ps -q -f name=${CONTAINER_PREFIX}-postgres | head -n 1)
-VECTOR_DB_CONTAINER=$(docker ps -q -f name=${CONTAINER_PREFIX}-vector-db | head -n 1)
+POSTGRES_CONTAINER=$(docker ps -q -f name=${CONTAINER_PREFIX}_postgres | head -n 1)
+VECTOR_DB_CONTAINER=$(docker ps -q -f name=${CONTAINER_PREFIX}_vector-db | head -n 1)
 
 if [ -z "$POSTGRES_CONTAINER" ]; then
     echo "❌ Error: Postgres container not found"
