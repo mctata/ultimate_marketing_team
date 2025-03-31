@@ -109,9 +109,9 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod 
 echo "🔹 Initializing RDS database..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && scripts/deployment/init_rds_database.sh"
 
-# Start the containers
-echo "🔹 Starting containers..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE up -d --build"
+# Start the containers with forced rebuild
+echo "🔹 Starting containers with forced rebuild..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE build --no-cache && docker-compose -f $COMPOSE_FILE up -d"
 
 # Verify deployment
 echo "🔹 Verifying deployment..."
