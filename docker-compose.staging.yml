@@ -90,7 +90,7 @@ services:
       RUN_MIGRATIONS: "true"  # Enable migrations on startup
     depends_on:
       migrations:
-        condition: service_completed
+        condition: service_completed_successfully
       postgres-proxy:
         condition: service_healthy
       redis:
