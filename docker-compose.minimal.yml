@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Simple Health API
+  health-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.health-api
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=staging
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - umt-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '256M'
+
+networks:
+  umt-network:
+    driver: bridge
