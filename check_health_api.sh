@@ -42,3 +42,4 @@ echo "🔹 Checking health-api logs..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml logs --tail=20 health-api"
 
 echo "✅ Health API check complete\!"
+echo "📝 Health API available at: https://$DOMAIN:8001"

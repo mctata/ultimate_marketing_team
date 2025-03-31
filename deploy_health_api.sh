@@ -95,4 +95,4 @@ rm $TAR_FILE
 rm -rf $DEPLOY_DIR
 
 echo "✅ Minimal deployment to STAGING complete\!"
-echo "📝 Health API: http://$DOMAIN:8001"
+echo "📝 Health API: https://$DOMAIN:8001"
