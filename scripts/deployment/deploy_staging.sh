@@ -102,19 +102,19 @@ INSERT INTO umt.alembic_version (version_num)
 VALUES ('manual_migration') 
 ON CONFLICT DO NOTHING;\" || true"
 
-# Create fix_health_api.sh script if it doesn't exist remotely
+# Create fix_health_api.sh script with simple file creation instead of heredoc
 echo "🔹 Creating fix_health_api.sh script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_health_api.sh << EOF
-#!/bin/bash
-# Script to fix health-api in case of issues
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && rm -f fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '#!/bin/bash' > fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '# Script to fix health-api in case of issues' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'echo \"Creating monitoring directory...\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'mkdir -p monitoring' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_health_api.sh"
 
-# Recreate the monitoring directory if it doesn't exist
-mkdir -p monitoring
-
-# Check if health_api.py exists, if not copy it from the source
-if [ ! -f monitoring/health_api.py ]; then
-  echo 'Creating health_api.py...'
-  cat > monitoring/health_api.py << HEALTHAPI
+# Create a separate file for health_api.py
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p monitoring"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/health_api.py << EOF
 from fastapi import FastAPI
 import uvicorn
 import time
@@ -138,13 +138,10 @@ async def ping():
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
-HEALTHAPI
-fi
+EOF"
 
-# Check if Dockerfile.health-api exists, if not create it
-if [ ! -f monitoring/Dockerfile.health-api ]; then
-  echo 'Creating Dockerfile.health-api...'
-  cat > monitoring/Dockerfile.health-api << DOCKERFILE
+# Create a separate file for Dockerfile.health-api
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/Dockerfile.health-api << EOF
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -156,55 +153,45 @@ COPY monitoring/health_api.py /app/
 EXPOSE 8000
 
 CMD [\"python\", \"health_api.py\"]
-DOCKERFILE
-fi
-
-# Install curl in containers for health checks (only if containers exist)
-echo 'Checking if health containers exist before installing curl...'
-docker ps -a | grep -q umt-health-api && (docker exec umt-health-api apt-get update && docker exec umt-health-api apt-get install -y curl) || echo "Health API container not found yet"
-docker ps -a | grep -q umt-api-gateway && (docker exec umt-api-gateway apt-get update && docker exec umt-api-gateway apt-get install -y curl) || echo "API Gateway container not found yet"
-
-echo 'Health API fix completed!'
 EOF"
+
+# Add code to copy the files in the fix_health_api.sh script
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'echo \"Checking health API files...\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'echo \"Current files in monitoring directory:\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'ls -la monitoring/' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_health_api.sh"
+
+# Add container check and curl installation commands
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'echo \"Checking if health containers exist before installing curl...\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'docker ps -a | grep -q umt-health-api && (docker exec umt-health-api apt-get update && docker exec umt-health-api apt-get install -y curl) || echo \"Health API container not found yet\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'docker ps -a | grep -q umt-api-gateway && (docker exec umt-api-gateway apt-get update && docker exec umt-api-gateway apt-get install -y curl) || echo \"API Gateway container not found yet\"' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'echo \"Health API fix completed!\"' >> fix_health_api.sh"
 
 # Make the script executable
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x fix_health_api.sh"
 
-# Create fix_vector_db.sh script
+# Create fix_vector_db.sh script as separate commands to avoid heredoc issues
 echo "🔹 Creating fix_vector_db.sh script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_vector_db.sh << EOF
-#!/bin/bash
-# Script to fix vector-db-proxy in case of issues
-
-# First create the vector_db database directly
-echo 'Creating vector_db database...'
-docker exec -i umt-postgres psql -U postgres -c 'CREATE DATABASE vector_db;' || echo 'Database may already exist'
-
-# Install PostgreSQL contrib packages and build tools
-echo 'Installing PostgreSQL contrib and build packages...'
-docker exec umt-postgres apk add --no-cache postgresql-contrib git build-base postgresql-dev clang llvm || true
-
-# Install pgvector from source
-echo 'Installing pgvector from source...'
-docker exec umt-postgres sh -c "
-cd /tmp && 
-rm -rf pgvector && 
-git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git &&
-cd pgvector &&
-make USE_PGXS=1 NO_JIT=1 &&
-make USE_PGXS=1 NO_JIT=1 install
-" || echo 'Failed to build pgvector'
-
-# Create the vector extension
-echo 'Creating vector extension...'
-docker exec -i umt-postgres psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
-
-# Verify the extension was created
-echo 'Verifying vector extension...'
-docker exec -i umt-postgres psql -U postgres -d vector_db -c "SELECT extname FROM pg_extension WHERE extname = 'vector';" 
-
-echo 'Vector DB fix completed!'
-EOF"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '#!/bin/bash' > fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '# Script to fix vector-db-proxy in case of issues' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Creating vector_db database...'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"docker exec -i umt-postgres psql -U postgres -c 'CREATE DATABASE vector_db;' || echo 'Database may already exist'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Installing PostgreSQL contrib and build packages...'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"docker exec umt-postgres apk add --no-cache postgresql-contrib git build-base postgresql-dev clang llvm || true\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Installing pgvector from source...'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"docker exec umt-postgres sh -c 'cd /tmp && rm -rf pgvector && git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git && cd pgvector && make USE_PGXS=1 NO_JIT=1 && make USE_PGXS=1 NO_JIT=1 install'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Creating vector extension...'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"docker exec -i umt-postgres psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Verifying vector extension with simple query:'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"docker exec -i umt-postgres psql -U postgres -d vector_db -c 'SELECT extname FROM pg_extension;'\" >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo '' >> fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo \"echo 'Vector DB fix completed!'\" >> fix_vector_db.sh"
 
 # Make the script executable
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x fix_vector_db.sh"
