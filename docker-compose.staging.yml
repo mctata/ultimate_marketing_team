@@ -197,7 +197,7 @@ services:
   health-api:
     build:
       context: ./monitoring
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.health-api
     container_name: umt-health-api
     environment:
       POSTGRES_HOST: postgres
