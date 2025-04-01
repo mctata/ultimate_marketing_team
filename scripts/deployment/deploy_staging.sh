@@ -104,7 +104,7 @@ ON CONFLICT DO NOTHING;\" || true"
 
 # Create fix_health_api.sh script if it doesn't exist remotely
 echo "🔹 Creating fix_health_api.sh script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_health_api.sh << 'EOF'
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_health_api.sh << EOF
 #!/bin/bash
 # Script to fix health-api in case of issues
 
@@ -114,7 +114,7 @@ mkdir -p monitoring
 # Check if health_api.py exists, if not copy it from the source
 if [ ! -f monitoring/health_api.py ]; then
   echo 'Creating health_api.py...'
-  cat > monitoring/health_api.py << 'HEALTHAPI'
+  cat > monitoring/health_api.py << HEALTHAPI
 from fastapi import FastAPI
 import uvicorn
 import time
@@ -144,7 +144,7 @@ fi
 # Check if Dockerfile.health-api exists, if not create it
 if [ ! -f monitoring/Dockerfile.health-api ]; then
   echo 'Creating Dockerfile.health-api...'
-  cat > monitoring/Dockerfile.health-api << 'DOCKERFILE'
+  cat > monitoring/Dockerfile.health-api << DOCKERFILE
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -155,7 +155,7 @@ COPY monitoring/health_api.py /app/
 
 EXPOSE 8000
 
-CMD ["python", "health_api.py"]
+CMD [\"python\", \"health_api.py\"]
 DOCKERFILE
 fi
 
@@ -171,13 +171,13 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod 
 
 # Create fix_vector_db.sh script
 echo "🔹 Creating fix_vector_db.sh script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_vector_db.sh << 'EOF'
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > fix_vector_db.sh << EOF
 #!/bin/bash
 # Script to fix vector-db-proxy in case of issues
 
 # Connect to PostgreSQL and ensure vector extension is installed
 docker exec umt-postgres psql -U postgres -c \"SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec\" || true
-docker exec umt-postgres psql -U postgres -d vector_db -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Failed to create vector extension"
+docker exec umt-postgres psql -U postgres -d vector_db -c \"CREATE EXTENSION IF NOT EXISTS vector;\" || echo \"Failed to create vector extension\"
 
 echo 'Vector DB fix completed!'
 EOF"
