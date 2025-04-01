@@ -232,6 +232,41 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker
 echo "🔹 Running database migrations..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d migrations"
 
+# Wait for migrations to complete and check status
+echo "Waiting for migrations to complete..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+  max_attempts=30
+  attempt=1
+  while [ \$(docker-compose ps migrations | grep -v CONTAINER | wc -l) -ne 0 ] && [ \$attempt -le \$max_attempts ]; do
+    echo \"Attempt \$attempt/\$max_attempts: Migrations still running...\"
+    sleep 5
+    attempt=\$((attempt+1))
+  done
+  
+  if [ \$attempt -gt \$max_attempts ]; then
+    echo '⚠️ Migration service did not complete within expected time.'
+  else
+    echo '✅ Migration service completed'
+  fi
+  
+  # Check migration logs for errors
+  migration_logs=\$(docker-compose logs migrations)
+  if echo \"\$migration_logs\" | grep -q 'ERROR\|Error\|error'; then
+    echo '⚠️ Migrations encountered errors:'
+    echo \"\$migration_logs\" | grep -A 5 -B 5 'ERROR\|Error\|error'
+    
+    # Check for multiple heads
+    if echo \"\$migration_logs\" | grep -q 'multiple heads'; then
+      echo '⚠️ Detected multiple migration heads. Attempting to merge...'
+      docker-compose run --rm migrations bash -c \"cd /app && python -m alembic merge heads -m 'merge heads'\"
+      echo 'Rerunning migrations after merge...'
+      docker-compose up -d migrations
+      sleep 10
+    fi
+  else
+    echo '✅ Migrations completed successfully'
+  fi"
+
 # Deploy agent services one by one to avoid resource exhaustion
 echo "🔹 Deploying agent services individually..."
 AGENTS=("auth-agent" "brand-agent" "content-strategy-agent" "content-creation-agent" "content-ad-agent")
