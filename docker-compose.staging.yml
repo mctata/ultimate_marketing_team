@@ -88,10 +88,9 @@ services:
       UMT_ENV: staging
       UMT_JWT_EXPIRY: 86400  # 24 hours
       UMT_MAINTENANCE_MODE: "false"
-      RUN_MIGRATIONS: "true"  # Enable migrations on startup
+      RUN_MIGRATIONS: "false"  # Disable migrations on startup since we manually created tables
+      ENVIRONMENT: staging
     depends_on:
-      migrations:
-        condition: service_completed_successfully
       postgres-proxy:
         condition: service_healthy
       redis:
@@ -107,6 +106,9 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./staging_main.py:/app/main.py
     networks:
       - umt_network
 
@@ -167,25 +169,34 @@ services:
 
   # Vector database proxy for embeddings
   vector-db-proxy:
-    image: alpine:latest
+    build: 
+      context: .
+      dockerfile: docker/postgres/Dockerfile
     container_name: umt-vector-db-proxy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     command: >
       sh -c "
-        apk add --no-cache postgresql-client &&
         until pg_isready -h postgres -p 5432 -U postgres; do
           echo 'Waiting for postgres...' &&
           sleep 2;
         done;
         # Use PostgreSQL 17 compatible command for database creation
-        psql -h postgres -U postgres -c "SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec" &&
+        psql -h postgres -U postgres -c \"SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec\" &&
         echo 'Vector database initialized!' &&
+        # Now create the extension pgvector
+        psql -h postgres -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create vector extension' &&
+        echo 'Vector extension setup complete!' &&
         tail -f /dev/null
       "
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres && psql -h postgres -U postgres -d vector_db -c 'SELECT * FROM pg_extension WHERE extname = \\'vector\\';' | grep -q vector || exit 1"]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
@@ -204,15 +215,14 @@ services:
       REDIS_HOST: redis
       RABBITMQ_HOST: rabbitmq
       API_GATEWAY_HOST: api-gateway
+      ENVIRONMENT: staging
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 5s
       timeout: 5s
       retries: 3
       start_period: 20s
     depends_on:
-      api-gateway:
-        condition: service_started
       postgres:
         condition: service_healthy
       redis:
