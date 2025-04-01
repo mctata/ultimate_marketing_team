@@ -159,9 +159,10 @@ CMD [\"python\", \"health_api.py\"]
 DOCKERFILE
 fi
 
-# Install curl in containers for health checks
-docker exec umt-health-api apt-get update && docker exec umt-health-api apt-get install -y curl || true
-docker exec umt-api-gateway apt-get update && docker exec umt-api-gateway apt-get install -y curl || true
+# Install curl in containers for health checks (only if containers exist)
+echo 'Checking if health containers exist before installing curl...'
+docker ps -a | grep -q umt-health-api && (docker exec umt-health-api apt-get update && docker exec umt-health-api apt-get install -y curl) || echo "Health API container not found yet"
+docker ps -a | grep -q umt-api-gateway && (docker exec umt-api-gateway apt-get update && docker exec umt-api-gateway apt-get install -y curl) || echo "API Gateway container not found yet"
 
 echo 'Health API fix completed!'
 EOF"
@@ -175,18 +176,21 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > 
 #!/bin/bash
 # Script to fix vector-db-proxy in case of issues
 
-# Connect to PostgreSQL and ensure vector DB exists and extension is installed
-docker exec umt-postgres psql -U postgres -c \"SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec\" || true
+# First create the vector_db database directly
+echo 'Creating vector_db database...'
+docker exec -i umt-postgres psql -U postgres -c 'CREATE DATABASE vector_db;' || echo 'Database may already exist'
 
 # Install PostgreSQL contrib packages which include pgvector
+echo 'Installing PostgreSQL contrib packages...'
 docker exec umt-postgres apk add --no-cache postgresql-contrib || true
 
 # Create the vector extension
-docker exec umt-postgres psql -U postgres -d vector_db -c \"CREATE EXTENSION IF NOT EXISTS vector;\" || true
+echo 'Creating vector extension...'
+docker exec -i umt-postgres psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create extension'
 
-# If extension creation failed, try to install from source
-docker exec umt-postgres bash -c \"psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;'\"
-echo \"Vector extension should now be installed\"
+# Verify the extension was created
+echo 'Verifying vector extension...'
+docker exec -i umt-postgres psql -U postgres -d vector_db -c 'SELECT extname FROM pg_extension WHERE extname = \\'vector\\';' | grep -q vector && echo 'Vector extension is installed!' || echo 'Vector extension is NOT installed'
 
 echo 'Vector DB fix completed!'
 EOF"
@@ -203,9 +207,32 @@ echo "🔹 Starting application services..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy"
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d vector-db-proxy"
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./fix_vector_db.sh"
+
+# Run the fix_health_api.sh script to ensure the monitoring directory and files exist
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./fix_health_api.sh"
+
+# Build the health-api and api-gateway services before starting them
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api api-gateway"
+
+# Modify the api-gateway Dockerfile to ensure proper functionality
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p src/api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cp staging_main.py src/api/staging_main.py || true"
+
+# Start the api-gateway and health-api services
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d api-gateway"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 5" # Give the API gateway time to start
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d health-api"
+
+# Check the status and logs of the api-gateway if it's unhealthy
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+if docker-compose ps api-gateway | grep -q '(unhealthy)'; then
+  echo 'API Gateway is unhealthy - checking logs:'
+  docker-compose logs api-gateway
+  echo 'Modifying api-gateway configuration and restarting...'
+  docker-compose stop api-gateway
+  docker-compose rm -f api-gateway
+  docker-compose up -d api-gateway
+fi"
 
 echo "🔹 Waiting for core services to stabilize (15s)..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 15"
