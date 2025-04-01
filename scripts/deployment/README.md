@@ -2,45 +2,30 @@
 
 This directory contains scripts for deploying the Ultimate Marketing Team to different environments.
 
-## Available Scripts
+> **For full deployment documentation, see [DEPLOYMENT_GUIDE.md](../../docs/deployment/DEPLOYMENT_GUIDE.md)**
+
+## Quick Reference
 
 ### Primary Deployment Scripts
 
-- `deploy_staging.sh`: The primary script for deploying to staging environments.
+- `deploy_staging.sh`: The main script for deploying to remote staging environment.
   - Usage: `./scripts/deployment/deploy_staging.sh`
   - This script copies necessary files to the remote server and deploys using docker-compose.
 
-### Enhanced Deployment Scripts (with Database Validation)
-
-- `staging/deploy.sh`: An enhanced version of the deployment script with better database validation and error recovery.
+- `staging/deploy.sh`: Enhanced script for local testing with PostgreSQL 17 compatibility.
   - Usage: `./scripts/deployment/staging/deploy.sh`
   - This script assumes you're running it locally with Docker installed.
-  - Features improved PostgreSQL 17 compatibility and automated error recovery.
+  - Features improved database validation and automated error recovery.
 
 ### Utility Scripts
 
-- `fix_api_gateway_db.sh`: Fixes common database issues with the API gateway.
+- `fix_api_gateway_db.sh`: Fixes database connection issues with the API gateway.
   - Usage: `./scripts/deployment/fix_api_gateway_db.sh`
-  - Run this if the API gateway is having database connectivity issues.
 
-- `fix_health_api.sh`: Fixes issues with the health-api service, ensuring proper setup of the monitoring directory.
+- `fix_health_api.sh`: Fixes "build path ./monitoring does not exist" errors.
   - Usage: `./scripts/deployment/fix_health_api.sh`
-  - Run this if you encounter "build path ./monitoring does not exist" errors.
 
-## Deployment Workflow
+## Common Issues
 
-1. For standard remote staging deployment:
-   ```
-   ./scripts/deployment/deploy_staging.sh
-   ```
-
-2. For local deployment with enhanced database validation:
-   ```
-   ./scripts/deployment/staging/deploy.sh
-   ```
-
-3. If you encounter specific service issues:
-   ```
-   ./scripts/deployment/fix_api_gateway_db.sh  # For API gateway database issues
-   ./scripts/deployment/fix_health_api.sh      # For health-api service issues
-   ```
+- If you see "build path ./monitoring does not exist": Run `./scripts/deployment/fix_health_api.sh`
+- If you see database connection issues: Run `./scripts/deployment/fix_api_gateway_db.sh`

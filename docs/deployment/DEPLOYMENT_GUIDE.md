@@ -1,5 +1,15 @@
 # Ultimate Marketing Team - Deployment Guide
 
+> **TL;DR: Quick Guide**
+>
+> **Which script should I use to deploy?**
+> - For actual remote deployment: `./scripts/deployment/deploy_staging.sh`
+> - For local testing: `./scripts/deployment/staging/deploy.sh`
+>
+> **Common issues:**
+> - If you see "build path ./monitoring does not exist": Run `./scripts/deployment/fix_health_api.sh`
+> - If you see "API gateway database connection issues": Run `./scripts/deployment/fix_api_gateway_db.sh`
+
 This guide provides comprehensive instructions for deploying the Ultimate Marketing Team application to different environments.
 
 ## Table of Contents
