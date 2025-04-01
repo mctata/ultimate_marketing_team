@@ -61,7 +61,7 @@ ENV PYTHONUNBUFFERED=1 \
     USE_SIMPLIFIED_API=false
 
 # Copy simplified API for staging
-COPY staging_main.py /app/
+COPY src/api/staging_main.py /app/
 
 # Create an enhanced startup script
 RUN echo '#!/bin/bash\n\

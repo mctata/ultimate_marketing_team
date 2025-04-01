@@ -45,7 +45,7 @@ mkdir -p $DEPLOY_DIR
 # Copy only what's needed
 cp -r docker $DEPLOY_DIR/
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp Dockerfile.health-api health_api.py staging_main.py $DEPLOY_DIR/
+cp ../../monitoring/Dockerfile.health-api ../../monitoring/health_api.py ../../src/api/staging_main.py $DEPLOY_DIR/
 cp .env.staging $DEPLOY_DIR/.env
 
 # Create the tar file

@@ -135,7 +135,7 @@ mkdir -p $DEPLOY_DIR/docker/api_gateway
 mkdir -p $DEPLOY_DIR/docker/frontend
 
 # Copy the essential files
-cp Dockerfile.health-api health_api.py staging_main.py $DEPLOY_DIR/
+cp ../../monitoring/Dockerfile.health-api ../../monitoring/health_api.py ../../src/api/staging_main.py $DEPLOY_DIR/
 cp docker/api_gateway/Dockerfile $DEPLOY_DIR/docker/api_gateway/
 cp docker/frontend/Dockerfile $DEPLOY_DIR/docker/frontend/
 
