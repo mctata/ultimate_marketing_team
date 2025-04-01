@@ -58,24 +58,13 @@ mkdir -p $DEPLOY_DIR
 
 # Copy essential files
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp monitoring/health_api.py $DEPLOY_DIR/health_api.py
+mkdir -p $DEPLOY_DIR/monitoring
+cp monitoring/health_api.py $DEPLOY_DIR/monitoring/health_api.py
+cp monitoring/Dockerfile.health-api $DEPLOY_DIR/monitoring/Dockerfile.health-api
 cp src/api/staging_main.py $DEPLOY_DIR/staging_main.py
 cp .env.staging $DEPLOY_DIR/.env
 
-# Create Dockerfile for health-api
-cat > $DEPLOY_DIR/Dockerfile.health-api << 'EOF'
-FROM python:3.10-slim
-
-WORKDIR /app
-
-RUN pip install fastapi uvicorn psutil
-
-COPY health_api.py /app/
-
-EXPOSE 8000
-
-CMD ["python", "health_api.py"]
-EOF
+# No need to create Dockerfile here - we're copying it from the monitoring directory
 
 # Create a tar file of the deployment directory
 TAR_FILE="staging-deploy.tar.gz"
@@ -93,7 +82,7 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -x
 
 # Copy source code directories (without using tar to avoid memory issues)
 echo "🔹 Copying source code directories..."
-DIRS=("src" "docker")
+DIRS=("src" "docker" "monitoring")
 for dir in "${DIRS[@]}"; do
   if [ -d "$dir" ]; then
     echo "  Copying $dir directory..."
@@ -103,7 +92,7 @@ for dir in "${DIRS[@]}"; do
 done
 
 # Ensure required directories exist
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/src/api $REMOTE_DIR/src/core $REMOTE_DIR/src/models $REMOTE_DIR/src/agents"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/src/api $REMOTE_DIR/src/core $REMOTE_DIR/src/models $REMOTE_DIR/src/agents $REMOTE_DIR/monitoring"
 
 # Create __init__.py files where needed
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "touch $REMOTE_DIR/src/__init__.py $REMOTE_DIR/src/api/__init__.py $REMOTE_DIR/src/core/__init__.py $REMOTE_DIR/src/models/__init__.py $REMOTE_DIR/src/agents/__init__.py"
