@@ -58,6 +58,7 @@ mkdir -p $DEPLOY_DIR
 
 # Copy essential files
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
+cp docker-compose.staging.minimal.yml $DEPLOY_DIR/docker-compose.minimal.yml
 mkdir -p $DEPLOY_DIR/monitoring
 cp monitoring/health_api.py $DEPLOY_DIR/monitoring/health_api.py
 cp monitoring/Dockerfile.health-api $DEPLOY_DIR/monitoring/Dockerfile.health-api
@@ -97,9 +98,21 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/src
 # Create __init__.py files where needed
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "touch $REMOTE_DIR/src/__init__.py $REMOTE_DIR/src/api/__init__.py $REMOTE_DIR/src/core/__init__.py $REMOTE_DIR/src/models/__init__.py $REMOTE_DIR/src/agents/__init__.py"
 
-# Deploy services in stages to manage disk space
-echo "🔹 Deploying infrastructure services first..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy redis rabbitmq vector-db-proxy"
+# Check if we should use minimal deployment 
+USE_MINIMAL=""
+if [ "$1" == "minimal" ]; then
+  USE_MINIMAL="true"
+  echo "🔹 Using minimal deployment configuration"
+fi
+
+# Deploy services
+if [ "$USE_MINIMAL" == "true" ]; then
+  echo "🔹 Deploying minimal infrastructure set..."
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml up -d postgres"
+else
+  echo "🔹 Deploying infrastructure services first..."
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy redis rabbitmq vector-db-proxy"
+fi
 
 # Deploy health-api as the first application service
 echo "🔹 Deploying health-api service..."
@@ -155,7 +168,11 @@ echo 'Created monitoring files on remote server';
 fi"
 
 # Now build and start the health-api
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api && docker-compose up -d health-api"
+if [ "$USE_MINIMAL" == "true" ]; then
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml build health-api && docker-compose -f docker-compose.minimal.yml up -d health-api"
+else
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api && docker-compose up -d health-api"
+fi
 
 # Check health-api is working
 echo "🔹 Checking health-api..."
@@ -226,59 +243,138 @@ fi
 
 # Deploy API gateway
 echo "🔹 Deploying API gateway..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build api-gateway && docker-compose up -d api-gateway"
+if [ "$USE_MINIMAL" == "true" ]; then
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml build api-gateway && docker-compose -f docker-compose.minimal.yml up -d api-gateway"
+else
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build api-gateway && docker-compose up -d api-gateway"
+fi
 
 # Run database migrations before starting agents
 echo "🔹 Running database migrations..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d migrations"
 
-# Wait for migrations to complete and check status
-echo "Waiting for migrations to complete..."
+# First check if postgres-proxy is healthy
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
-  max_attempts=30
-  attempt=1
-  while [ \$(docker-compose ps migrations | grep -v CONTAINER | wc -l) -ne 0 ] && [ \$attempt -le \$max_attempts ]; do
-    echo \"Attempt \$attempt/\$max_attempts: Migrations still running...\"
-    sleep 5
-    attempt=\$((attempt+1))
-  done
-  
-  if [ \$attempt -gt \$max_attempts ]; then
-    echo '⚠️ Migration service did not complete within expected time.'
-  else
-    echo '✅ Migration service completed'
-  fi
-  
-  # Check migration logs for errors
-  migration_logs=\$(docker-compose logs migrations)
-  if echo \"\$migration_logs\" | grep -q 'ERROR\|Error\|error'; then
-    echo '⚠️ Migrations encountered errors:'
-    echo \"\$migration_logs\" | grep -A 5 -B 5 'ERROR\|Error\|error'
+  echo 'Verifying postgres-proxy is healthy...'
+  if ! docker-compose ps postgres-proxy | grep -q '(healthy)'; then
+    echo 'postgres-proxy is not healthy yet. Waiting...'
+    attempt=1
+    max_attempts=30
+    while [ \$attempt -le \$max_attempts ] && ! docker-compose ps postgres-proxy | grep -q '(healthy)'; do
+      echo \"Attempt \$attempt/\$max_attempts: postgres-proxy not healthy yet, waiting...\"
+      sleep 5
+      attempt=\$((attempt+1))
+    done
     
-    # Check for multiple heads
-    if echo \"\$migration_logs\" | grep -q 'multiple heads'; then
-      echo '⚠️ Detected multiple migration heads. Attempting to merge...'
-      docker-compose run --rm migrations bash -c \"cd /app && python -m alembic merge heads -m 'merge heads'\"
-      echo 'Rerunning migrations after merge...'
-      docker-compose up -d migrations
-      sleep 10
+    if [ \$attempt -gt \$max_attempts ]; then
+      echo '⚠️ postgres-proxy did not become healthy. Will try direct DB access'
+      # Create schema directly in case proxy is failing
+      docker-compose exec -T postgres psql -U postgres -d umt -c 'CREATE SCHEMA IF NOT EXISTS umt;'
+    else
+      echo '✅ postgres-proxy is now healthy'
     fi
   else
-    echo '✅ Migrations completed successfully'
-  fi"
+    echo '✅ postgres-proxy is already healthy'
+  fi
+"
 
-# Deploy agent services one by one to avoid resource exhaustion
-echo "🔹 Deploying agent services individually..."
-AGENTS=("auth-agent" "brand-agent" "content-strategy-agent" "content-creation-agent" "content-ad-agent")
-for agent in "${AGENTS[@]}"; do
-  echo "  Starting $agent..."
-  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build $agent && docker-compose up -d $agent"
-  sleep 2  # Give a short pause between agents
-done
+# Run migrations with a simpler approach
+if [ "$USE_MINIMAL" == "true" ]; then
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+    echo 'Running migrations directly using minimal configuration...'
+    docker-compose -f docker-compose.minimal.yml run --rm migrations
+  "
+else
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+    echo 'Running migrations directly to avoid container health issues...'
+    docker-compose run --rm migrations
+  "
+fi
 
-# Deploy frontend last
-echo "🔹 Deploying frontend..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build frontend && docker-compose up -d frontend"
+# Check migration logs for errors
+echo "Checking migration results..."
+if [ "$USE_MINIMAL" == "true" ]; then
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+    # Check alembic_version table for successful migrations
+    version_check=\$(docker-compose -f docker-compose.minimal.yml exec -T postgres psql -U postgres -d umt -c \"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'alembic_version');\" -t)
+    
+    if [[ \$version_check == *\"t\"* ]]; then
+      echo '✅ Alembic version table exists - migrations likely succeeded'
+      # Get current version
+      current_version=\$(docker-compose -f docker-compose.minimal.yml exec -T postgres psql -U postgres -d umt -c \"SELECT version_num FROM umt.alembic_version;\" -t)
+      echo \"Current migration version: \$current_version\"
+    else
+      echo '⚠️ Alembic version table does not exist - migrations may have failed'
+      
+      # Check for multiple heads
+      echo 'Checking for multiple migration heads...'
+      multiple_heads=\$(docker-compose -f docker-compose.minimal.yml run --rm migrations bash -c \"cd /app && python -m alembic heads\" | grep -c head || echo \"0\")
+      
+      if [ \"\$multiple_heads\" -gt \"1\" ]; then
+        echo '⚠️ Detected multiple migration heads. Attempting to merge...'
+        docker-compose -f docker-compose.minimal.yml run --rm migrations bash -c \"cd /app && python -m alembic merge heads -m 'merge heads'\"
+        echo 'Rerunning migrations after merge...'
+        docker-compose -f docker-compose.minimal.yml run --rm migrations
+      fi
+      
+      # Check again after potential fix
+      version_check=\$(docker-compose -f docker-compose.minimal.yml exec -T postgres psql -U postgres -d umt -c \"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'alembic_version');\" -t)
+      if [[ \$version_check == *\"t\"* ]]; then
+        echo '✅ Migrations succeeded after fixes'
+      else
+        echo '⚠️ Migrations still not completed properly. Will proceed but API may not work correctly.'
+      fi
+    fi"
+else
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+    # Check alembic_version table for successful migrations
+    version_check=\$(docker-compose exec -T postgres psql -U postgres -d umt -c \"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'alembic_version');\" -t)
+    
+    if [[ \$version_check == *\"t\"* ]]; then
+      echo '✅ Alembic version table exists - migrations likely succeeded'
+      # Get current version
+      current_version=\$(docker-compose exec -T postgres psql -U postgres -d umt -c \"SELECT version_num FROM umt.alembic_version;\" -t)
+      echo \"Current migration version: \$current_version\"
+    else
+      echo '⚠️ Alembic version table does not exist - migrations may have failed'
+      
+      # Check for multiple heads
+      echo 'Checking for multiple migration heads...'
+      multiple_heads=\$(docker-compose run --rm migrations bash -c \"cd /app && python -m alembic heads\" | grep -c head || echo \"0\")
+      
+      if [ \"\$multiple_heads\" -gt \"1\" ]; then
+        echo '⚠️ Detected multiple migration heads. Attempting to merge...'
+        docker-compose run --rm migrations bash -c \"cd /app && python -m alembic merge heads -m 'merge heads'\"
+        echo 'Rerunning migrations after merge...'
+        docker-compose run --rm migrations
+      fi
+      
+      # Check again after potential fix
+      version_check=\$(docker-compose exec -T postgres psql -U postgres -d umt -c \"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'alembic_version');\" -t)
+      if [[ \$version_check == *\"t\"* ]]; then
+        echo '✅ Migrations succeeded after fixes'
+      else
+        echo '⚠️ Migrations still not completed properly. Will proceed but API may not work correctly.'
+      fi
+    fi"
+fi
+
+# Deploy agent services and frontend - only if not using minimal deployment
+if [ "$USE_MINIMAL" != "true" ]; then
+  # Deploy agent services one by one to avoid resource exhaustion
+  echo "🔹 Deploying agent services individually..."
+  AGENTS=("auth-agent" "brand-agent" "content-strategy-agent" "content-creation-agent" "content-ad-agent")
+  for agent in "${AGENTS[@]}"; do
+    echo "  Starting $agent..."
+    ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build $agent && docker-compose up -d $agent"
+    sleep 2  # Give a short pause between agents
+  done
+
+  # Deploy frontend last
+  echo "🔹 Deploying frontend..."
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build frontend && docker-compose up -d frontend"
+else
+  echo "🔹 Skipping agent services and frontend in minimal deployment"
+fi
 
 # Wait a bit for services to initialize
 sleep 5
@@ -289,6 +385,12 @@ API_HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl 
 if [[ "$API_HEALTH_CHECK" == *"failed"* ]]; then
   echo "⚠️ API Gateway might not be running correctly. Attempting to fix..."
   
+  # Use the appropriate docker-compose file
+  COMPOSE_CMD="docker-compose"
+  if [ "$USE_MINIMAL" == "true" ]; then
+    COMPOSE_CMD="docker-compose -f docker-compose.minimal.yml"
+  fi
+  
   # Run fix script remotely if it exists
   ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && if [ -f scripts/deployment/fix_api_gateway_db.sh ]; then 
     echo 'Running API gateway database fix script...'
@@ -296,10 +398,10 @@ if [[ "$API_HEALTH_CHECK" == *"failed"* ]]; then
     ./scripts/deployment/fix_api_gateway_db.sh
   else
     echo 'Fix script not found. Performing basic recovery...'
-    docker-compose restart api-gateway
-    docker-compose restart postgres
+    $COMPOSE_CMD restart api-gateway
+    $COMPOSE_CMD restart postgres
     sleep 10
-    docker-compose logs api-gateway
+    $COMPOSE_CMD logs api-gateway
   fi"
   
   # Check again after fix
@@ -307,7 +409,11 @@ if [[ "$API_HEALTH_CHECK" == *"failed"* ]]; then
   API_HEALTH_CHECK=$(ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000/api/health || echo 'failed'")
   if [[ "$API_HEALTH_CHECK" == *"failed"* ]]; then
     echo "⚠️ API Gateway still not responding. Check logs for details:"
-    ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose logs api-gateway"
+    if [ "$USE_MINIMAL" == "true" ]; then
+      ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml logs api-gateway"
+    else
+      ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose logs api-gateway"
+    fi
   else
     echo "✅ API Gateway is now running correctly after fix"
   fi
@@ -317,7 +423,11 @@ fi
 
 # Show all running containers
 echo "🔹 Deployed containers:"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
+if [ "$USE_MINIMAL" == "true" ]; then
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f docker-compose.minimal.yml ps"
+else
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
+fi
 
 # Clean up local deployment files
 rm -rf $DEPLOY_DIR $TAR_FILE
