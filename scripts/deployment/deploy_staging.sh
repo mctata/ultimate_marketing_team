@@ -185,16 +185,8 @@ docker exec umt-postgres apk add --no-cache postgresql-contrib || true
 docker exec umt-postgres psql -U postgres -d vector_db -c \"CREATE EXTENSION IF NOT EXISTS vector;\" || true
 
 # If extension creation failed, try to install from source
-docker exec umt-postgres bash -c "if ! psql -U postgres -d vector_db -c 'SELECT * FROM pg_extension WHERE extname = \\'vector\\';' | grep -q vector; then
-    echo 'Installing pgvector from source...'
-    apk add --no-cache git build-base postgresql-dev || true
-    cd /tmp
-    git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git || true
-    cd pgvector
-    make USE_PGXS=1 NO_JIT=1 || true
-    make USE_PGXS=1 NO_JIT=1 install || true
-    psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-fi"
+docker exec umt-postgres bash -c \"psql -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;'\"
+echo \"Vector extension should now be installed\"
 
 echo 'Vector DB fix completed!'
 EOF"
