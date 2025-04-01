@@ -211,22 +211,22 @@ End-to-end tests are in the `tests/integration/` directory.
 
 ## Deployment
 
-### Docker Deployment
+For complete deployment instructions, see [DEPLOYMENT_GUIDE.md](../deployment/DEPLOYMENT_GUIDE.md).
 
-The application can be deployed using Docker Compose (run from project root directory):
+The application supports several deployment environments:
+- Local development with Docker
+- Staging environment
+- Production environment (coming soon)
+
+### Quick Reference
+
 ```bash
-# Must be run from project root directory
-docker-compose up -d
+# Deploy to staging
+./scripts/deployment/deploy_staging.sh
+
+# Test deployment locally
+./scripts/deployment/staging/deploy.sh
 ```
-
-### Environment Variables
-
-For production deployment, set the following environment variables:
-- `ENVIRONMENT=production`
-- `JWT_SECRET` - A strong, unique secret key
-- `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
-- `RABBITMQ_URL` - RabbitMQ connection string
 
 ## Troubleshooting
 

@@ -333,9 +333,77 @@ curl http://localhost:8000/api/health
 
 ## Troubleshooting
 
-### Common Issues
+### PostgreSQL 17 Compatibility Issues
 
-1. **Bitwarden and Secret Management Issues**
+The project has been updated to use PostgreSQL 17-alpine. Key changes include:
+
+1. **Database Creation Syntax**: PostgreSQL 17 requires a different syntax for creating databases on the fly:
+   ```sql
+   SELECT 'CREATE DATABASE mydatabase' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'mydatabase')\gexec
+   ```
+
+2. **PGVector Extension**: We're using pgvector v0.6.0 which is compatible with PostgreSQL 17, with fallback to NO_JIT compilation if needed.
+
+3. **Health Checks**: All health checks are properly configured for PostgreSQL 17.
+
+If you encounter "build path ./monitoring does not exist" errors:
+```bash
+./scripts/deployment/fix_health_api.sh
+```
+
+### Database Connection Issues
+
+If the API gateway can't connect to the database:
+
+1. Check if the database is running:
+   ```bash
+   docker ps | grep postgres
+   ```
+
+2. Verify the container is healthy:
+   ```bash
+   docker inspect --format='{{.State.Health.Status}}' umt-postgres
+   ```
+
+3. Run the automatic fix script:
+   ```bash
+   scripts/deployment/fix_api_gateway_db.sh
+   ```
+
+### Migration Issues
+
+For migration conflicts or multiple heads:
+
+1. Check current migration status:
+   ```bash
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic heads"
+   ```
+
+2. If you see multiple heads, merge them:
+   ```bash
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic merge heads -m 'merge heads'"
+   ```
+
+3. Run migrations again:
+   ```bash
+   docker exec umt-api-gateway bash -c "cd /app && python -m alembic upgrade head"
+   ```
+
+### PGVector Issues
+
+If you encounter pgvector-related errors:
+
+1. Check if the extension is installed:
+   ```bash
+   docker exec umt-postgres psql -U postgres -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
+   ```
+
+2. If not, run the fix script:
+   ```bash
+   ./docker/postgres/fix_pgvector.sh umt-postgres umt
+   ```
+
+### Bitwarden and Secret Management Issues
    - Check that Bitwarden CLI is installed: `which bw`
    - Install jq if missing: `brew install jq` (macOS) or `apt-get install jq` (Ubuntu)
    - Verify Bitwarden status: `bw status` (should show "unlocked")
