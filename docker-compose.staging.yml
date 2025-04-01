@@ -196,8 +196,8 @@ services:
   # Health monitoring API
   health-api:
     build:
-      context: ./monitoring
-      dockerfile: Dockerfile.health-api
+      context: .
+      dockerfile: monitoring/Dockerfile.health-api
     container_name: umt-health-api
     environment:
       POSTGRES_HOST: postgres

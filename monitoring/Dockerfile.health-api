@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN pip install fastapi uvicorn psutil
 
-COPY health_api.py /app/
+COPY monitoring/health_api.py /app/
 
 EXPOSE 8000
 
