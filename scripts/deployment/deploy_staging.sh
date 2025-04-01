@@ -58,8 +58,8 @@ mkdir -p $DEPLOY_DIR
 
 # Copy essential files
 cp docker-compose.staging.yml $DEPLOY_DIR/docker-compose.yml
-cp scripts/deployment/src/health_api.py $DEPLOY_DIR/health_api.py
-cp scripts/deployment/src/staging_main.py $DEPLOY_DIR/staging_main.py
+cp monitoring/health_api.py $DEPLOY_DIR/health_api.py
+cp src/api/staging_main.py $DEPLOY_DIR/staging_main.py
 cp .env.staging $DEPLOY_DIR/.env
 
 # Create Dockerfile for health-api
