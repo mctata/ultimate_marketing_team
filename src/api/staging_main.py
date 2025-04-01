@@ -1,63 +1,67 @@
-"""
-Ultimate Marketing Team API Gateway - Simplified version for staging
-"""
-
-import time
-import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import uvicorn
+import os
+import time
 
-# Create FastAPI app with minimal configuration
+# Create FastAPI app
 app = FastAPI(
-    title="Ultimate Marketing Team",
-    description="API Gateway for the Ultimate Marketing Team",
-    version="0.1.0"
+    title="Ultimate Marketing Team API",
+    description="API for the Ultimate Marketing Team application",
+    version="1.0.0"
 )
 
-# Configure CORS
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # In production, replace with specific origins
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "version": "1.0.0",
+        "environment": os.getenv("ENVIRONMENT", "staging")
+    }
 
 # Root endpoint
 @app.get("/")
 async def root():
-    """API root endpoint."""
     return {
-        "name": "Ultimate Marketing Team",
-        "version": "0.1.0",
-        "status": "online",
-        "message": "API server is running - fixed context manager",
-        "environment": os.environ.get("ENVIRONMENT", "staging")
+        "message": "Welcome to the Ultimate Marketing Team API",
+        "docs_url": "/docs",
+        "environment": os.getenv("ENVIRONMENT", "staging")
     }
 
-# Health check endpoint
-@app.get("/api/health")
-async def health_check():
-    """API basic health check endpoint."""
+# Ping endpoint
+@app.get("/ping")
+async def ping():
+    return "pong"
+
+# Simple mocked API endpoints for demonstration
+@app.get("/api/campaigns")
+async def get_campaigns():
+    return [
+        {"id": 1, "name": "Summer Sale", "status": "active", "budget": 5000},
+        {"id": 2, "name": "Product Launch", "status": "draft", "budget": 10000},
+        {"id": 3, "name": "Holiday Special", "status": "completed", "budget": 7500}
+    ]
+
+@app.get("/api/metrics")
+async def get_metrics():
     return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "version": "0.1.0",
-        "environment": os.environ.get("ENVIRONMENT", "staging"),
-        "message": "Fixed context manager usage in startup"
+        "campaign_count": 3,
+        "active_campaigns": 1,
+        "total_budget": 22500,
+        "engagement_rate": 3.7,
+        "conversion_rate": 2.1
     }
 
-# Database health check - simplified version
-@app.get("/api/health/db")
-async def db_health_check():
-    """
-    Check database connectivity.
-    This is a simplified version that doesn't actually connect to the database.
-    """
-    return {
-        "status": "simulated_connection",
-        "timestamp": time.time(),
-        "message": "This is a simplified version for staging - fixed context manager",
-        "database_url": "Redacted for security"
-    }
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
