@@ -140,9 +140,9 @@ cd frontend && npm run dev  # Frontend
 
 For production environments, we recommend using Kubernetes or a similar container orchestration platform. Detailed deployment instructions are available in the `deployment/` directory.
 
-## Enterprise Marketing Workflows
+## Marketing Workflows
 
-The platform operates with both sequential workflows and parallel processing patterns optimized for enterprise marketing operations:
+The platform operates with both sequential workflows and parallel processing patterns optimized for small business owners and marketing coordinators operations:
 
 **End-to-End Marketing Workflow:**
 1. The Content Strategy Agent analyzes market data, competitor strategies, and previous campaign performance
@@ -187,4 +187,4 @@ For support, questions, or feedback regarding the Ultimate Marketing Team platfo
 - Reach out to us through our [Lab support](https://lab.landingpad.digital/support)
 - [Chat with our docs](https://chatg.pt/DWjSBZn)
 
-Transform your enterprise marketing operations with the Ultimate Marketing Team platform - the complete AI-driven replacement for traditional marketing departments.
+Transform your marketing operations with the Ultimate Marketing Team platform - the complete AI-driven replacement for traditional marketing departments.
