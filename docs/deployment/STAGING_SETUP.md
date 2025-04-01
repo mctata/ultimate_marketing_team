@@ -1,6 +1,6 @@
 # Staging Environment Setup Guide
 
-This guide explains how to set up and deploy the Ultimate Marketing Team application to a staging environment with AWS RDS for PostgreSQL with pgvector.
+This guide explains how to set up and deploy the Ultimate Marketing Team application to a staging environment with AWS RDS for PostgreSQL with pgvector and Google Search Console integration.
 
 ## Prerequisites
 
@@ -141,6 +141,74 @@ When deploying to staging:
 4. Use secure JWT and CSRF secrets
 5. Consider using AWS Secrets Manager for sensitive credentials
 6. Enable TLS for all services
+
+## Setting Up Google Search Console Integration
+
+### Step 1: Create a dedicated Google Cloud Project for testing
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (e.g., "UMT Staging SEO Testing")
+3. Enable the Google Search Console API:
+   - Navigate to "APIs & Services" > "Library"
+   - Search for "Search Console API"
+   - Click "Enable"
+
+### Step 2: Configure OAuth2 Consent Screen
+
+1. Go to "APIs & Services" > "OAuth consent screen"
+2. Select "External" user type
+3. Fill in the required fields:
+   - App name: "UMT Staging"
+   - User support email: Your email
+   - Developer contact information: Your email
+4. Add the required scopes:
+   - `https://www.googleapis.com/auth/webmasters.readonly`
+5. Add test users (your email and any team members who need access)
+6. Complete the setup
+
+### Step 3: Create OAuth2 Credentials
+
+1. Go to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" > "OAuth client ID"
+3. Select "Web application" as the application type
+4. Set the name to "UMT Staging Web Client"
+5. Add the authorized redirect URI:
+   - `https://staging.tangible-studios.com/api/seo/oauth2callback`
+6. Click "Create"
+7. Note the Client ID and Client Secret
+
+### Step 4: Update Environment Variables
+
+1. Update the .env.staging file with the new credentials:
+   ```
+   GOOGLE_OAUTH2_CLIENT_ID=your_client_id
+   GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret
+   ```
+
+2. Deploy these changes to the staging server
+
+### Step 5: Generate Refresh Token for GitHub Secrets
+
+1. Start the minimal testing environment:
+   ```bash
+   GOOGLE_OAUTH2_CLIENT_ID=your_client_id GOOGLE_OAUTH2_CLIENT_SECRET=your_client_secret docker-compose -f docker/gsc-test/docker-compose.gsc-test.yml up -d
+   ```
+
+2. Visit `https://staging.tangible-studios.com/api/seo/auth/google/init?brand_id=1` in your browser
+   - This will redirect you to Google's authorization page
+
+3. Complete the OAuth flow by authorizing the application
+   - You'll be redirected back to the staging frontend
+
+4. Check the token file:
+   - SSH into the staging server
+   - Locate the token file in the `.tokens` directory: `.tokens/gsc_token_1.json`
+   - Extract the `refresh_token` value from this file
+
+5. Add the refresh token to GitHub Secrets:
+   - Go to your GitHub repository settings > Secrets and variables > Actions
+   - Add or update the `TEST_GSC_REFRESH_TOKEN` secret with this value
+   - Also add `TEST_GSC_SITE_URL` with a URL you have access to in Search Console
 
 ## Next Steps
 
