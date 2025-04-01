@@ -1,13 +1,20 @@
 # Staging Environment Tools
 
-This directory contains utilities for managing the staging environment. For deployment, use the main deployment script in the parent directory.
+This directory contains utilities for managing the staging environment.
 
 ## Deployment
 
+There are two deployment options:
+
 ```bash
-# Main deployment script
+# Option 1: Standard remote deployment script (recommended for production use)
 ./scripts/deployment/deploy_staging.sh
+
+# Option 2: Enhanced local deployment with better database validation (for development)
+./scripts/deployment/staging/deploy.sh
 ```
+
+The `deploy.sh` script in this directory provides enhanced database validation and error recovery, but requires you to have Docker running locally. The `deploy_staging.sh` script in the parent directory is used for standard remote deployment.
 
 ## Management Tools
 

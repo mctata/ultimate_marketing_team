@@ -1,40 +1,46 @@
 # Deployment Scripts
 
-This directory contains scripts for deploying the Ultimate Marketing Team application.
+This directory contains scripts for deploying the Ultimate Marketing Team to different environments.
 
-## Main Deployment Script
+## Available Scripts
 
-- `deploy_staging.sh`: Simplified script to deploy to the staging environment
+### Primary Deployment Scripts
 
-## Utility Scripts
+- `deploy_staging.sh`: The primary script for deploying to staging environments.
+  - Usage: `./scripts/deployment/deploy_staging.sh`
+  - This script copies necessary files to the remote server and deploys using docker-compose.
 
-Utility scripts are located in the `util` directory:
+### Enhanced Deployment Scripts (with Database Validation)
 
-- `clean_docker.sh`: Cleans up Docker resources on the staging server
-- `check_health_api.sh`: Verifies the health API is running correctly
+- `staging/deploy.sh`: An enhanced version of the deployment script with better database validation and error recovery.
+  - Usage: `./scripts/deployment/staging/deploy.sh`
+  - This script assumes you're running it locally with Docker installed.
+  - Features improved PostgreSQL 17 compatibility and automated error recovery.
 
-## Patches
+### Utility Scripts
 
-Patches for known issues are stored in the `patches` directory:
+- `fix_api_gateway_db.sh`: Fixes common database issues with the API gateway.
+  - Usage: `./scripts/deployment/fix_api_gateway_db.sh`
+  - Run this if the API gateway is having database connectivity issues.
 
-- `db_check_fix.patch`: Fixes for database connectivity checks
-- `main_fix.patch`: Fixes for FastAPI startup issues
+- `fix_health_api.sh`: Fixes issues with the health-api service, ensuring proper setup of the monitoring directory.
+  - Usage: `./scripts/deployment/fix_health_api.sh`
+  - Run this if you encounter "build path ./monitoring does not exist" errors.
 
-## Deployment Process
+## Deployment Workflow
 
-The deployment process follows these steps:
+1. For standard remote staging deployment:
+   ```
+   ./scripts/deployment/deploy_staging.sh
+   ```
 
-1. Clean up Docker resources on the staging server
-2. Prepare a minimal deployment package
-3. Deploy the health-api service first
-4. Verify health-api is working
-5. Deploy the api-gateway service
+2. For local deployment with enhanced database validation:
+   ```
+   ./scripts/deployment/staging/deploy.sh
+   ```
 
-This approach ensures reliable deployments even with limited disk space.
-
-## Source Files
-
-Source files for deployment are in the `src` directory:
-- `health_api.py`: Simple health check API implementation
-- `staging_main.py`: Simplified API gateway for staging
-
+3. If you encounter specific service issues:
+   ```
+   ./scripts/deployment/fix_api_gateway_db.sh  # For API gateway database issues
+   ./scripts/deployment/fix_health_api.sh      # For health-api service issues
+   ```
