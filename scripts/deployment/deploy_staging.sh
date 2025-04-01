@@ -180,9 +180,20 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > 
 echo 'Creating vector_db database...'
 docker exec -i umt-postgres psql -U postgres -c 'CREATE DATABASE vector_db;' || echo 'Database may already exist'
 
-# Install PostgreSQL contrib packages which include pgvector
-echo 'Installing PostgreSQL contrib packages...'
-docker exec umt-postgres apk add --no-cache postgresql-contrib || true
+# Install PostgreSQL contrib packages and build tools
+echo 'Installing PostgreSQL contrib and build packages...'
+docker exec umt-postgres apk add --no-cache postgresql-contrib git build-base postgresql-dev clang llvm || true
+
+# Install pgvector from source
+echo 'Installing pgvector from source...'
+docker exec umt-postgres sh -c "
+cd /tmp && 
+rm -rf pgvector && 
+git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git &&
+cd pgvector &&
+make USE_PGXS=1 NO_JIT=1 &&
+make USE_PGXS=1 NO_JIT=1 install
+" || echo 'Failed to build pgvector'
 
 # Create the vector extension
 echo 'Creating vector extension...'
@@ -190,7 +201,7 @@ docker exec -i umt-postgres psql -U postgres -d vector_db -c 'CREATE EXTENSION I
 
 # Verify the extension was created
 echo 'Verifying vector extension...'
-docker exec -i umt-postgres psql -U postgres -d vector_db -c 'SELECT extname FROM pg_extension WHERE extname = \\'vector\\';' | grep -q vector && echo 'Vector extension is installed!' || echo 'Vector extension is NOT installed'
+docker exec -i umt-postgres psql -U postgres -d vector_db -c "SELECT extname FROM pg_extension WHERE extname = 'vector';" | grep vector || echo 'Vector extension is NOT installed'
 
 echo 'Vector DB fix completed!'
 EOF"
