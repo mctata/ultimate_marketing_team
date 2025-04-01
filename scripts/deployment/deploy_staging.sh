@@ -201,7 +201,7 @@ docker exec -i umt-postgres psql -U postgres -d vector_db -c 'CREATE EXTENSION I
 
 # Verify the extension was created
 echo 'Verifying vector extension...'
-docker exec -i umt-postgres psql -U postgres -d vector_db -c "SELECT extname FROM pg_extension WHERE extname = 'vector';" | grep vector || echo 'Vector extension is NOT installed'
+docker exec -i umt-postgres psql -U postgres -d vector_db -c "SELECT extname FROM pg_extension WHERE extname = 'vector';" 
 
 echo 'Vector DB fix completed!'
 EOF"
