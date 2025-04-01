@@ -116,69 +116,23 @@ postgres:
 
 ## Deployment Steps
 
-All deployment scripts now support multiple environments by passing the environment name as a parameter, with credentials securely fetched from Bitwarden.
+All deployment scripts support multiple environments by passing the environment name as a parameter, using environment-specific configuration files.
 
 ### Prerequisites
 
-Before deploying, ensure you have the following prerequisites installed:
+Before deploying, ensure you have the following prerequisites:
 
-1. **Bitwarden CLI**:
-   ```bash
-   npm install -g @bitwarden/cli
-   ```
+1. **SSH Access**:
+   - SSH key with access to the staging server
+   - SSH client installed locally
 
-2. **jq (JSON processor)**:
-   ```bash
-   # On macOS with Homebrew
-   brew install jq
-   
-   # On Ubuntu/Debian
-   sudo apt-get install jq
-   
-   # On CentOS/RHEL
-   sudo yum install jq
-   ```
-
-3. **Login to Bitwarden**:
-   ```bash
-   bw login
-   ```
-
-4. **Verify your Bitwarden has the correct items**:
-   - An item named "deployment-{environment}" (e.g., "deployment-staging") with fields:
-     - SSH_USER
-     - SSH_HOST
-     - SSH_PORT
-     - REMOTE_DIR
-     - SSH_KEY
-     - COMPOSE_FILE
-   - An item named "env-{environment}" (e.g., "env-staging") with your application environment variables
+2. **Configuration Files**:
+   - Environment configuration (see "Setting Up Credentials" below)
+   - SSH keys with correct permissions (typically chmod 400)
 
 ### Setting Up Credentials
 
-You have two options for managing deployment credentials:
-
-#### Option 1: Using Bitwarden (Recommended)
-
-Fetch the secure credentials from Bitwarden:
-
-```bash
-# Unlock your Bitwarden vault first if needed
-bw unlock
-
-# Fetch credentials for the target environment
-./scripts/utilities/fetch_secrets.sh staging
-```
-
-After running this command, verify that the configuration files were created:
-```bash
-ls -la config/env/deployment.env.staging
-ls -la config/env/.env.staging
-```
-
-#### Option 2: Manual Setup (Alternative)
-
-If you're having issues with Bitwarden, you can use the manual setup script:
+To set up deployment credentials:
 
 ```bash
 # Generate configuration files with placeholders
@@ -403,44 +357,27 @@ If you encounter pgvector-related errors:
    ./docker/postgres/fix_pgvector.sh umt-postgres umt
    ```
 
-### Bitwarden and Secret Management Issues
-   - Check that Bitwarden CLI is installed: `which bw`
-   - Install jq if missing: `brew install jq` (macOS) or `apt-get install jq` (Ubuntu)
-   - Verify Bitwarden status: `bw status` (should show "unlocked")
-   - Unlock Bitwarden if needed: `bw unlock`
-   - Check that your items exist in Bitwarden:
-     ```bash
-     # List all items
-     bw list items
-     
-     # Find specific item
-     bw list items --search "deployment-staging"
-     ```
-   - Ensure script permissions: `chmod +x scripts/utilities/fetch_secrets.sh`
-   - Check for proper item structure in your Bitwarden vault
-
-2. **Configuration Issues**
+### Configuration Issues
    - Check if your environment file exists: `config/env/deployment.env.<environment>`
    - Verify SSH connection details in the environment file
-   - Make sure you've run the fetch_secrets.sh script before deploying
+   - Ensure script permissions: `chmod +x scripts/deployment/deploy_staging.sh`
    
-3. **SSH Issues**
+### SSH Issues
    - Ensure your SSH key has correct permissions: `chmod 400 your_key.pem`
    - Test SSH connection: `ssh -i your_key.pem user@host`
    - For staging: `ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com`
-   - Verify key path in Bitwarden matches actual location on your system
 
-4. **Docker Issues**
+### Docker Issues
    - Verify Docker is running: `docker ps`
    - Check Docker Compose is installed: `docker-compose --version`
    - Ensure the correct Docker Compose file is specified in the environment config
 
-5. **EC2 Server Issues**
+### EC2 Server Issues
    - Check security groups allow necessary ports (22, 80, 443)
    - Verify Docker service is running: `systemctl status docker`
    - Check system logs: `sudo journalctl -u docker`
 
-6. **Permission Issues**
+### Permission Issues
    - If you see "Permission denied" errors during deployment:
      ```
      rm: cannot remove '/home/ubuntu/ultimate-marketing-team/something': Permission denied
@@ -450,7 +387,7 @@ If you encounter pgvector-related errors:
      ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "sudo chown -R ubuntu:ubuntu /home/ubuntu/ultimate-marketing-team"
      ```
 
-7. **Container Startup Failures**
+### Container Startup Failures
    - If containers continuously restart:
      1. Check the specific container logs:
         ```bash
@@ -461,7 +398,7 @@ If you encounter pgvector-related errors:
         ssh -i ultimate-marketing-staging.pem ubuntu@ec2-44-202-29-233.compute-1.amazonaws.com "cd /home/ubuntu/ultimate-marketing-team && cat .env"
         ```
 
-8. **Missing Frontend Assets**
+### Missing Frontend Assets
    - If the frontend is loading but shows empty/broken pages:
      1. Check that the frontend container has the correct files:
         ```bash
@@ -472,7 +409,7 @@ If you encounter pgvector-related errors:
         ./scripts/deployment/verify_frontend.sh
         ```
 
-9. **API Schema Import Errors**
+### API Schema Import Errors
    - If the API fails with import errors related to schemas:
      1. Verify the schemas directory exists in the API container:
         ```bash
