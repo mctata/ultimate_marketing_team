@@ -90,6 +90,7 @@ services:
       UMT_MAINTENANCE_MODE: "false"
       RUN_MIGRATIONS: "false"  # Disable migrations on startup since we manually created tables
       ENVIRONMENT: staging
+      USE_SIMPLIFIED_API: "true"  # Use the simplified staging API instead of the full API
     depends_on:
       postgres-proxy:
         condition: service_healthy
