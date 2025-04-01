@@ -34,9 +34,26 @@ if [ ! -f "$SSH_KEY" ]; then
   exit 1
 fi
 
+# Set proper permissions for SSH key
+chmod 600 "$SSH_KEY"
+
 echo "🚀 Starting deployment to STAGING environment"
 echo "🔹 Target: $SSH_USER@$SSH_HOST:$SSH_PORT"
 echo "🔹 Remote directory: $REMOTE_DIR"
+
+# Test SSH connection before proceeding
+echo "🔹 Testing SSH connection..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" exit 2>/dev/null
+if [ $? -ne 0 ]; then
+  echo "❌ SSH connection failed. Please check:
+  - EC2 instance is running
+  - Security groups allow SSH access from your IP
+  - SSH key is valid
+  - Instance hostname is correct"
+  exit 1
+else
+  echo "✅ SSH connection successful"
+fi
 
 # Prepare deployment files
 echo "🔹 Preparing deployment package..."
@@ -57,14 +74,14 @@ TAR_FILE="staging-deploy.tar.gz"
 tar -czf $TAR_FILE -C $DEPLOY_DIR .
 
 # Create remote directory if it doesn't exist
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
 
 # Copy the tar file to the remote server
 echo "🔹 Copying deployment files to remote server..."
-scp -i "$SSH_KEY" -P "$SSH_PORT" $TAR_FILE "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
+scp -i "$SSH_KEY" -P "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no $TAR_FILE "$SSH_USER@$SSH_HOST:$REMOTE_DIR/"
 
 # Extract the tar file on the remote server
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf $TAR_FILE && rm $TAR_FILE"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && tar -xzf $TAR_FILE && rm $TAR_FILE"
 
 # Copy source code directories
 echo "🔹 Copying source code directories..."
@@ -72,40 +89,40 @@ DIRS=("src" "docker" "monitoring" "migrations")
 for dir in "${DIRS[@]}"; do
   if [ -d "$dir" ]; then
     echo "  Copying $dir directory..."
-    ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/$dir"
-    rsync -av --delete -e "ssh -i $SSH_KEY -p $SSH_PORT" --exclude "*.pyc" --exclude "__pycache__" $dir/ "$SSH_USER@$SSH_HOST:$REMOTE_DIR/$dir/"
+    ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/$dir"
+    rsync -av --delete -e "ssh -i $SSH_KEY -p $SSH_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=no" --exclude "*.pyc" --exclude "__pycache__" $dir/ "$SSH_USER@$SSH_HOST:$REMOTE_DIR/$dir/"
   fi
 done
 
 # Deploy with complete bypass of migrations
 echo "🔹 Deploying application with migration bypass..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose down --remove-orphans"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose down --remove-orphans"
 
 # Start PostgreSQL first and ensure it's ready
 echo "🔹 Starting PostgreSQL..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'Waiting for PostgreSQL...' && sleep 15"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'Waiting for PostgreSQL...' && sleep 15"
 
 # Create database and schema directly to avoid migration issues
 echo "🔹 Setting up database directly..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -c 'CREATE DATABASE umt;' || true"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -d umt -c 'CREATE SCHEMA IF NOT EXISTS umt;' || true"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -c 'CREATE DATABASE umt;' || true"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -d umt -c 'CREATE SCHEMA IF NOT EXISTS umt;' || true"
 
 # Ensure alembic_version table exists (required for API Gateway to start)
 echo "🔹 Ensuring alembic_version table exists..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -d umt -c \"
-CREATE TABLE IF NOT EXISTS umt.alembic_version (
-    version_num VARCHAR(32) NOT NULL, 
-    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
-);
-INSERT INTO umt.alembic_version (version_num) 
-VALUES ('manual_migration') 
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose exec -T postgres psql -U postgres -d umt -c \"\
+CREATE TABLE IF NOT EXISTS umt.alembic_version (\
+    version_num VARCHAR(32) NOT NULL, \
+    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)\
+);\
+INSERT INTO umt.alembic_version (version_num) \
+VALUES ('manual_migration') \
 ON CONFLICT DO NOTHING;\" || true"
 
 # Create fix_health_api.sh script in the monitoring directory
 echo "🔹 Creating fix_health_api.sh script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p scripts/monitoring"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > scripts/monitoring/check_api_health.sh << 'EOF'
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p scripts/monitoring"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > scripts/monitoring/check_api_health.sh << 'EOF'
 #!/bin/bash
 # Script to fix health-api in case of issues
 
@@ -119,8 +136,8 @@ ls -la monitoring/
 EOF"
 
 # Create a separate file for health_api.py
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p monitoring"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/health_api.py << EOF
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p monitoring"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/health_api.py << EOF
 from fastapi import FastAPI
 import uvicorn
 import time
@@ -147,7 +164,7 @@ if __name__ == '__main__':
 EOF"
 
 # Create a separate file for Dockerfile.health-api
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/Dockerfile.health-api << EOF
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > monitoring/Dockerfile.health-api << EOF
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -162,7 +179,7 @@ CMD [\"python\", \"health_api.py\"]
 EOF"
 
 # Add container check and curl installation commands to the health check script
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat >> scripts/monitoring/check_api_health.sh << 'EOF'
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat >> scripts/monitoring/check_api_health.sh << 'EOF'
 
 # Check and install curl in containers
 echo "Checking if health containers exist before installing curl..."
@@ -173,15 +190,15 @@ echo "Health API check completed!"
 EOF"
 
 # Make the script executable
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x scripts/monitoring/check_api_health.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x scripts/monitoring/check_api_health.sh"
 
 # Create a symbolic link for convenience
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/monitoring/check_api_health.sh scripts/monitoring/fix_health_api.sh"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/monitoring/check_api_health.sh fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/monitoring/check_api_health.sh scripts/monitoring/fix_health_api.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/monitoring/check_api_health.sh fix_health_api.sh"
 
 # Create pg_vector fix script
 echo "🔹 Creating pgvector fix script..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > scripts/database/fix_pgvector.sh << 'EOF'
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cat > scripts/database/fix_pgvector.sh << 'EOF'
 #!/bin/bash
 # Script to fix vector-db-proxy in case of issues
 
@@ -209,21 +226,21 @@ echo 'Vector DB fix completed!'
 EOF"
 
 # Make the script executable
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x scripts/database/fix_pgvector.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && chmod +x scripts/database/fix_pgvector.sh"
 
 # Create a symbolic link for convenience
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/database/fix_pgvector.sh fix_vector_db.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/database/fix_pgvector.sh fix_vector_db.sh"
 
 # Start services in proper order
 echo "🔹 Starting essential infrastructure services..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d redis rabbitmq"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d redis rabbitmq"
 
 # Create a script to add healthcheck override functionality to the deploy.sh script
 echo "🔹 Creating healthcheck bypass functions..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p scripts/deployment/staging"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p scripts/deployment/staging"
 
 # Check if the file already exists, and if so, add our functions if they don't exist
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
 if [ -f scripts/deployment/staging/deploy.sh ]; then
   if ! grep -q 'force_start_service' scripts/deployment/staging/deploy.sh; then
     echo 'Adding healthcheck functions to deploy.sh'
@@ -281,26 +298,26 @@ fi"
 
 # Start application services with improved sequencing
 echo "🔹 Starting application services..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d vector-db-proxy"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/database/fix_pgvector.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d vector-db-proxy"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/database/fix_pgvector.sh"
 
 # Run the check_api_health.sh script to ensure the monitoring directory and files exist
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/monitoring/check_api_health.sh"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/monitoring/check_api_health.sh"
 
 # Build the health-api and api-gateway services before starting them
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api api-gateway"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api api-gateway"
 
 # Modify the api-gateway Dockerfile to ensure proper functionality
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p src/api"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cp staging_main.py src/api/staging_main.py || true"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p src/api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && cp staging_main.py src/api/staging_main.py || true"
 
 # Start the api-gateway and health-api services with error handling
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d api-gateway"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 10" # Give the API gateway time to start
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d api-gateway"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 10" # Give the API gateway time to start
 
 # Check for api-gateway health and use override if needed
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
 if docker-compose ps api-gateway | grep -q '(unhealthy)' || docker-compose ps api-gateway | grep -q 'Exit'; then
   echo 'API Gateway is unhealthy or exited - using force start...'
   echo 'First, try to create simpler startup script for API Gateway...'
@@ -337,10 +354,10 @@ SIMPLESCRIPT
 fi"
 
 # Start health API after api-gateway is handled
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d health-api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d health-api"
 
 # Check the status and logs of the api-gateway if it's unhealthy
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && 
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && \
 echo 'Checking API Gateway status...'
 docker-compose ps api-gateway
 
@@ -380,22 +397,22 @@ if docker-compose ps api-gateway | grep -q '(unhealthy)' || docker-compose ps ap
 fi"
 
 echo "🔹 Waiting for core services to stabilize (15s)..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 15"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && sleep 15"
 
 # Check service status
 echo "🔹 Checking service status..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
 
 # Start remaining services 
 echo "🔹 Starting agent services..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent"
 
 echo "🔹 Starting frontend..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d frontend"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d frontend"
 
 # Show all deployed containers
 echo "🔹 Deployed containers:"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
 
 # Clean up local deployment files
 rm -rf $DEPLOY_DIR $TAR_FILE
