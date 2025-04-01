@@ -197,6 +197,14 @@ done
 echo "Starting all services..."
 $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d
 
+# Specifically ensure health-api is working
+echo "Ensuring health-api is properly initialized..."
+if [ -f "$SCRIPT_DIR/../fix_health_api.sh" ]; then
+    bash "$SCRIPT_DIR/../fix_health_api.sh"
+else
+    echo "Health API fix script not found, continuing without it..."
+fi
+
 # Check if API gateway is healthy
 echo "Checking API gateway health..."
 attempt=1
