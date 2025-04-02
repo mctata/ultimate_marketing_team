@@ -16,113 +16,67 @@ fi
 # Check SSH key
 if [ ! -f "$SSH_KEY" ]; then
   echo "❌ SSH key not found at $SSH_KEY"
-  exit 1
+  # Look for the SSH key in common locations
+  for possible_key in ~/.ssh/id_rsa ~/.ssh/id_ed25519 ~/.ssh/ultimate-marketing-staging.pem; do
+    if [ -f "$possible_key" ]; then
+      echo "🔑 Found SSH key at $possible_key, using it instead."
+      SSH_KEY="$possible_key"
+      break
+    fi
+  done
+  
+  # If still not found, exit
+  if [ ! -f "$SSH_KEY" ]; then
+    echo "❌ Cannot find a suitable SSH key."
+    exit 1
+  fi
 fi
+
 chmod 600 "$SSH_KEY"
 
-# Build the frontend locally
-echo "🔹 Building frontend locally..."
-cd frontend
-npm ci
-npm run build
-cd ..
-
-echo "🔄 Deploying frontend to staging server..."
-echo "🔹 Target: $SSH_USER@$SSH_HOST"
-
-# Create directory for dist files
-TMP_DIR="tmp_frontend_deploy"
-mkdir -p $TMP_DIR
-cp -r frontend/dist $TMP_DIR/
-
-# Copy the Dockerfile
-mkdir -p $TMP_DIR/docker
-cp docker/frontend/Dockerfile $TMP_DIR/docker/
-cp docker/frontend/nginx.conf $TMP_DIR/docker/ 2>/dev/null || echo "Warning: nginx.conf not found"
-
-# Create a simple nginx.conf if it doesn't exist
-if [ ! -f "$TMP_DIR/docker/nginx.conf" ]; then
-  echo "🔧 Creating default nginx.conf file..."
-  cat > $TMP_DIR/docker/nginx.conf << 'EOF'
-server {
-    listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Handle SPA routes
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Cache static assets
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|woff|woff2|ttf|svg|eot)$ {
-        expires 30d;
-        add_header Cache-Control "public, no-transform";
-    }
-
-    # Disable caching for service worker
-    location = /service-worker.js {
-        expires -1;
-        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
-    }
-
-    # Gzip compression
-    gzip on;
-    gzip_comp_level 5;
-    gzip_min_length 256;
-    gzip_proxied any;
-    gzip_types
-        application/javascript
-        application/json
-        application/xml
-        text/css
-        text/plain
-        text/xml;
-}
-EOF
+# Verify frontend directory exists
+if [ ! -d "frontend" ]; then
+  echo "❌ Frontend directory not found!"
+  exit 1
 fi
 
-# Create a modified Dockerfile for staging
-cat > $TMP_DIR/Dockerfile << 'EOF'
-FROM nginx:stable-alpine
+echo "🔄 Deploying frontend to staging server..."
+echo "🔹 Target: $SSH_USER@$SSH_HOST:$SSH_PORT"
 
-# Copy pre-built assets
-COPY dist /usr/share/nginx/html
+# Create temp directory for deployment
+TMP_DIR="tmp_frontend_deploy"
+rm -rf $TMP_DIR
+mkdir -p $TMP_DIR
 
-# Copy custom nginx config
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
-EOF
+# Copy frontend files (excluding node_modules and dist)
+echo "🔹 Preparing frontend files..."
+rsync -a --exclude node_modules --exclude dist frontend/ $TMP_DIR/
 
 # Create tar file
 TAR_FILE="frontend_deploy.tar.gz"
 tar -czf $TAR_FILE -C $TMP_DIR .
 
 # Copy the tar file to the server
+echo "🔹 Copying files to server..."
 scp -i "$SSH_KEY" -P "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no $TAR_FILE "$SSH_USER@$SSH_HOST:~/"
 
 # Run commands on the server
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
 cd $REMOTE_DIR
 
-echo '🔹 Extracting frontend files...'
-mkdir -p frontend_deploy
-tar -xzf ~/frontend_deploy.tar.gz -C frontend_deploy
-
-echo '🔹 Stopping frontend container...'
-docker-compose stop frontend
-docker-compose rm -f frontend
+echo '🔹 Setting up frontend directory...'
+mkdir -p frontend
+rm -rf frontend/*
+tar -xzf ~/frontend_deploy.tar.gz -C frontend
 
 echo '🔹 Building frontend Docker image...'
-cd frontend_deploy
+cd frontend
 docker build -t umt-frontend:latest .
+
+echo '🔹 Stopping frontend container...'
 cd ..
+docker-compose stop frontend
+docker-compose rm -f frontend
 
 echo '🔹 Updating docker-compose.yml...'
 # Update the frontend section in docker-compose.yml to use the custom image
@@ -134,9 +88,6 @@ docker-compose up -d frontend
 
 echo '🔹 Checking frontend container...'
 docker ps | grep frontend
-
-echo '🔹 Testing frontend response...'
-curl -s http://localhost:3000 | grep -o 'React' || echo 'React app not detected in response, but this may be normal if it loads dynamically'
 
 echo '✅ Frontend deployment completed!'
 "

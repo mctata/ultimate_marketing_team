@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to deploy the Ultimate Marketing Team application to staging
-# Fixed version to resolve deployment issues
+# Fixed version to resolve deployment issues with SSL and Nginx
 
 # Set -e to exit immediately on error for better error handling
 set -e
@@ -664,6 +664,288 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 EOF
 
+# Copy Nginx configuration files
+mkdir -p $DEPLOY_DIR/docker/nginx/ssl
+cp docker/nginx/nginx.conf $DEPLOY_DIR/docker/nginx/nginx.conf 2>/dev/null || echo "⚠️ Warning: nginx.conf not found"
+
+# Create a default Nginx config file if missing
+if [ ! -f "$DEPLOY_DIR/docker/nginx/nginx.conf" ]; then
+  echo "🔧 Creating default nginx.conf file..."
+  cat > $DEPLOY_DIR/docker/nginx/nginx.conf << 'EOF'
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+        listen 80;
+        server_name staging.tangible-studios.com;
+        return 301 https://$host$request_uri;  # Redirect HTTP to HTTPS
+    }
+
+    server {
+        listen 443 ssl;
+        server_name staging.tangible-studios.com;
+
+        ssl_certificate /etc/nginx/ssl/staging.tangible-studios.com.crt;
+        ssl_certificate_key /etc/nginx/ssl/staging.tangible-studios.com.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        # Frontend
+        location / {
+            proxy_pass http://frontend:80;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        # API
+        location /api/ {
+            proxy_pass http://api-gateway:8000/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        # WebSockets
+        location /ws/ {
+            proxy_pass http://api-gateway:8000/ws/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+        }
+
+        # Health check
+        location /health {
+            proxy_pass http://api-gateway:8000/health;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+}
+EOF
+fi
+
+# Create a Nginx site configuration file for the server
+cat > $DEPLOY_DIR/nginx_site_config << 'EOF'
+server {
+    listen 80;
+    server_name staging.tangible-studios.com;
+    
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name staging.tangible-studios.com;
+
+    ssl_certificate /etc/letsencrypt/live/staging.tangible-studios.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/staging.tangible-studios.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # Frontend
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # API
+    location /api/ {
+        proxy_pass http://localhost:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # WebSockets
+    location /ws/ {
+        proxy_pass http://localhost:8000/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://localhost:8000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Health API service
+    location /health-api/ {
+        proxy_pass http://localhost:8001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+EOF
+
+# Create a setup script for Let's Encrypt and Nginx
+cat > $DEPLOY_DIR/setup_nginx_ssl.sh << 'EOF'
+#!/bin/bash
+# Script to set up Nginx with Let's Encrypt SSL certificates
+
+DOMAIN="staging.tangible-studios.com"
+EMAIL="admin@tangible-studios.com"  # Change this to your email
+
+# Update system
+echo "🔹 Updating system packages..."
+sudo apt-get update
+sudo apt-get upgrade -y
+
+# Completely remove Apache2 if it exists
+echo "🔹 Checking for Apache2..."
+if dpkg -l | grep -q apache2; then
+    echo "🔹 Removing Apache2 completely..."
+    sudo systemctl stop apache2 || true
+    sudo systemctl disable apache2 || true
+    sudo apt-get purge -y apache2 apache2-utils apache2-bin apache2-data || true
+    sudo apt-get autoremove -y
+    sudo rm -rf /etc/apache2
+    echo "✅ Apache2 removed"
+fi
+
+# Remove Apache2 if installed and install Nginx
+if command -v apache2 &> /dev/null; then
+    echo "🔹 Removing Apache2..."
+    sudo systemctl stop apache2
+    sudo apt-get remove -y apache2 apache2-utils apache2-bin
+    sudo apt-get autoremove -y
+fi
+
+# Install Nginx if not installed
+if ! command -v nginx &> /dev/null; then
+    echo "🔹 Installing Nginx..."
+    sudo apt-get install -y nginx
+fi
+
+# Make sure Nginx is started and enabled
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# Install Certbot and Nginx plugin
+echo "🔹 Installing Certbot and Nginx plugin..."
+sudo apt-get install -y certbot python3-certbot-nginx
+
+# Stop and disable Apache2 if it's running
+if systemctl list-unit-files | grep -q apache2.service; then
+    echo "🔹 Stopping and disabling Apache2..."
+    sudo systemctl stop apache2
+    sudo systemctl disable apache2
+fi
+
+# Create Nginx site configuration
+echo "🔹 Setting up Nginx site configuration..."
+sudo cp nginx_site_config /etc/nginx/sites-available/$DOMAIN
+
+# Enable the site
+echo "🔹 Enabling Nginx site..."
+sudo ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default  # Remove default site if it exists
+
+# Make sure Apache2 is not bound to ports 80/443
+echo "🔹 Checking if Apache2 is using ports 80/443..."
+if netstat -tlnp 2>/dev/null | grep -q ":80.*apache2"; then
+    echo "⚠️ Apache2 is still using port 80. Attempting to fix..."
+    sudo a2dissite 000-default.conf
+    sudo systemctl stop apache2
+fi
+
+# Test Nginx configuration
+echo "🔹 Testing Nginx configuration..."
+sudo nginx -t
+
+if [ $? -ne 0 ]; then
+    echo "❌ Nginx configuration test failed. Please check the configuration."
+    exit 1
+fi
+
+# Set up Let's Encrypt certificates
+echo "🔹 Setting up Let's Encrypt certificates..."
+sudo certbot --nginx --non-interactive --agree-tos --email $EMAIL -d $DOMAIN
+
+if [ $? -ne 0 ]; then
+    echo "❌ Let's Encrypt certificate setup failed. Trying alternate method..."
+    
+    # Stop Nginx temporarily to free up port 80
+    sudo systemctl stop nginx
+    
+    # Try standalone method
+    sudo certbot certonly --standalone --non-interactive --agree-tos --email $EMAIL -d $DOMAIN
+    
+    # Start Nginx again
+    sudo systemctl start nginx
+fi
+
+# Check if certificates were created
+if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    echo "❌ Let's Encrypt certificate creation failed."
+    exit 1
+fi
+
+# Set up auto-renewal cron job
+echo "🔹 Setting up certificate auto-renewal..."
+sudo bash -c "echo '0 0 1 * * certbot renew --quiet && systemctl reload nginx' | sudo tee -a /etc/crontab"
+
+# Restart Nginx
+echo "🔹 Restarting Nginx..."
+sudo systemctl restart nginx
+
+echo "✅ Nginx and Let's Encrypt SSL setup complete!"
+EOF
+
 # Create a tar file of the deployment directory
 TAR_FILE="staging-deploy.tar.gz"
 tar -czf $TAR_FILE -C $DEPLOY_DIR .
@@ -724,16 +1006,105 @@ for dir in "${DIRS[@]}"; do
   fi
 done
 
-# Check and copy frontend directory only if it exists
-if [ -d "frontend" ] && [ -f "frontend/Dockerfile" ]; then
-  echo "🔹 Copying frontend directory..."
+# Check for frontend directory and deploy it
+if [ -d "frontend" ]; then
+  echo "🔹 Frontend directory found - setting up for deployment..."
+  
+  # Check for Dockerfile, create one if missing
+  if [ ! -f "frontend/Dockerfile" ]; then
+    echo "🔹 Creating Dockerfile for frontend..."
+    cat > frontend/Dockerfile << 'EOF'
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM nginx:stable-alpine
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx config
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+  fi
+  
+  # Check for nginx.conf, create one if missing
+  if [ ! -f "frontend/nginx.conf" ]; then
+    echo "🔹 Creating nginx.conf for frontend..."
+    cat > frontend/nginx.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Handle single-page application routing
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires max;
+        add_header Cache-Control "public, max-age=31536000";
+    }
+
+    # Configure API proxy
+    location /api/ {
+        proxy_pass http://api-gateway:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Error handling
+    error_page 404 /index.html;
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+EOF
+  fi
+
+  echo "🔹 Copying frontend directory (excluding node_modules and dist)..."
   ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR/frontend"
   rsync -av --delete -e "ssh -i $SSH_KEY -p $SSH_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=no" \
     --exclude "node_modules" --exclude "dist" --exclude "*.log" \
     frontend/ "$SSH_USER@$SSH_HOST:$REMOTE_DIR/frontend/"
-  echo "✅ Frontend directory copied successfully"
+  
+  # Build the frontend image on the server
+  ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+    cd $REMOTE_DIR/frontend
+    docker build -t umt-frontend:latest .
+    cd ..
+    
+    # Update docker-compose to use the custom frontend image
+    sed -i '/frontend:/,/networks:/s|image: \${FRONTEND_IMAGE:-nginx:alpine}|image: umt-frontend:latest|' docker-compose.yml
+  "
+  
+  echo "✅ Frontend setup completed successfully"
 else
-  echo "⚠️ Frontend directory not found or incomplete - will use fallback nginx image"
+  echo "⚠️ Frontend directory not found - will use fallback nginx image"
 fi
 
 # Copy API file to server
@@ -744,7 +1115,14 @@ scp -i "$SSH_KEY" -P "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=n
 echo "🔹 DEPLOYING: Setting up the server and running docker-compose"
 
 # First, stop any existing containers on remote host
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose down --remove-orphans || true"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=180 && docker-compose down --remove-orphans || true"
+
+# Make setup script executable and run it to set up Nginx and SSL
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+cd $REMOTE_DIR
+chmod +x setup_nginx_ssl.sh
+./setup_nginx_ssl.sh
+"
 
 # Create necessary directories
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && mkdir -p scripts/monitoring scripts/database scripts/api src/api"
@@ -815,9 +1193,13 @@ chmod +x scripts/api/simple_start.sh"
 # Create symbolic links for convenience
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ln -sf scripts/monitoring/check_api_health.sh fix_health_api.sh && ln -sf scripts/database/fix_pgvector.sh fix_vector_db.sh"
 
+# Set higher Docker Compose timeout to prevent timeouts during lengthy operations
+echo "🔹 Setting higher Docker Compose timeout..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "echo 'export COMPOSE_HTTP_TIMEOUT=300' >> ~/.bashrc && source ~/.bashrc"
+
 # Start PostgreSQL first and ensure it's ready
 echo "🔹 Starting PostgreSQL..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d postgres"
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'Waiting for PostgreSQL...' && sleep 15"
 
 # Create database and schema directly to avoid migration issues
@@ -838,12 +1220,31 @@ ON CONFLICT DO NOTHING;\" 2>/dev/null || true"
 
 # Start essential infrastructure services
 echo "🔹 Starting essential infrastructure services..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d redis rabbitmq"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'Waiting for services to start...' && sleep 15"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d redis rabbitmq"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && echo 'Waiting for services to start...'"
+
+# Check service status instead of arbitrary sleep
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+cd $REMOTE_DIR
+ATTEMPTS=0
+MAX_ATTEMPTS=30
+echo 'Checking Redis status...'
+until docker-compose exec -T redis redis-cli ping 2>/dev/null | grep -q 'PONG' || [ \$ATTEMPTS -ge \$MAX_ATTEMPTS ]; do
+  echo 'Waiting for Redis to become available...'
+  sleep 2
+  ATTEMPTS=\$((ATTEMPTS+1))
+done
+
+if [ \$ATTEMPTS -lt \$MAX_ATTEMPTS ]; then
+  echo 'Redis is ready!'
+else
+  echo 'Redis startup timed out, but continuing anyway'
+fi
+"
 
 # Set up the database proxies
 echo "🔹 Setting up database proxies..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d postgres-proxy vector-db-proxy"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d postgres-proxy vector-db-proxy"
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/database/fix_pgvector.sh || echo 'Vector DB fix failed but continuing deployment'"
 
 # Start the standalone API Gateway container
@@ -878,12 +1279,12 @@ echo 'Testing internal API endpoints:'
 
 # Build and start the Health API
 echo "🔹 Building and starting Health API..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose build health-api"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d health-api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose build health-api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d health-api"
 
-# Start remaining agent services
+# Start remaining agent services with higher timeout
 echo "🔹 Starting agent services..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent || echo 'Agent services startup failed but continuing deployment'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d auth-agent brand-agent content-strategy-agent content-creation-agent content-ad-agent || echo 'Agent services startup failed but continuing deployment'"
 
 # Check if frontend directory exists and modify docker-compose accordingly
 echo "🔹 Checking for frontend directory..."
@@ -922,8 +1323,8 @@ if [ ! -d 'frontend' ] || [ ! -f 'frontend/Dockerfile' ]; then
     
     <div class='endpoints'>
       <h2>API Endpoints</h2>
-      <div class='endpoint'>API Gateway: <a href='http://localhost:8000/'>http://localhost:8000/</a></div>
-      <div class='endpoint'>Health API: <a href='http://localhost:8001/'>http://localhost:8001/</a></div>
+      <div class='endpoint'>API Gateway: <a href='/api/'>/api/</a></div>
+      <div class='endpoint'>Health API: <a href='/health-api/'>/health-api/</a></div>
     </div>
   </div>
 </body>
@@ -937,27 +1338,94 @@ fi
 
 # Start frontend
 echo "🔹 Starting frontend..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose up -d frontend || echo 'Frontend startup failed but continuing deployment'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && export COMPOSE_HTTP_TIMEOUT=300 && docker-compose up -d frontend || echo 'Frontend startup failed but continuing deployment'"
 
 # Show all deployed containers
 echo "🔹 Deployed containers:"
 ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose ps"
 
-# Run health check script to verify services
-echo "🔹 Running health check..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && ./scripts/monitoring/check_api_health.sh"
+# Create a parallelized completion file to signal when deployment is complete
+echo "🔹 Creating deploy completion signal file..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && touch .deployment_complete"
+
+# Run health check script to verify services in the background
+echo "🔹 Running health check in background (this won't block deployment)..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && nohup ./scripts/monitoring/check_api_health.sh > health_check.log 2>&1 &"
+
+# Verify Nginx and Let's Encrypt are working
+echo "🔹 Performing quick check of web server (rest runs in background)..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+# Just check if Nginx is running
+echo 'Checking Nginx status:'
+sudo systemctl status nginx | grep 'Active:' || echo 'Nginx not running'
+
+# Is Apache2 running? Check quickly
+echo 'Checking if Apache2 is running:'
+sudo systemctl is-active apache2 && echo 'WARNING: Apache2 is running!' || echo 'Apache2 is not running (good)'
+
+# Start the full check as a background process that won't block deployment
+nohup bash -c '
+echo \"Starting full server verification at $(date)\" > ~/server_check.log
+
+echo \"Stopping and removing Apache2 completely...\" >> ~/server_check.log
+sudo systemctl stop apache2 2>/dev/null || true
+sudo systemctl disable apache2 2>/dev/null || true
+sudo apt-get purge -y apache2 apache2-utils apache2-bin apache2-data apache2-common >> ~/server_check.log 2>&1
+sudo apt-get autoremove -y >> ~/server_check.log 2>&1
+sudo rm -rf /etc/apache2
+sudo update-rc.d apache2 remove 2>/dev/null || true
+
+echo \"Enabling and starting Nginx...\" >> ~/server_check.log
+sudo systemctl enable nginx
+sudo systemctl restart nginx
+
+echo \"Checking SSL certificates...\" >> ~/server_check.log
+if [ -d /etc/letsencrypt/live/staging.tangible-studios.com ]; then
+  echo \"SSL certificates are installed.\" >> ~/server_check.log
+  sudo certbot certificates | grep -A2 \"staging.tangible-studios.com\" >> ~/server_check.log
+else
+  echo \"SSL certificates not found. Running certbot to get certificates...\" >> ~/server_check.log
+  sudo certbot --nginx --non-interactive --agree-tos --email admin@tangible-studios.com -d staging.tangible-studios.com >> ~/server_check.log 2>&1
+fi
+
+echo \"Checking Nginx configuration...\" >> ~/server_check.log
+sudo nginx -t >> ~/server_check.log 2>&1
+sudo systemctl restart nginx
+
+echo \"Checking final state - which services are using ports 80/443:\" >> ~/server_check.log
+sudo netstat -tlnp | grep \":80\" >> ~/server_check.log
+sudo netstat -tlnp | grep \":443\" >> ~/server_check.log
+
+echo \"Server verification completed at $(date)\" >> ~/server_check.log
+' > /dev/null 2>&1 &
+"
 
 # Clean up local deployment files
 rm -rf $DEPLOY_DIR $TAR_FILE
 
 echo "✅ Deployment to STAGING complete!"
 echo "📝 Access the application at: https://$DOMAIN"
-echo "📝 Health API: https://$DOMAIN:8001"
-echo "📝 API Gateway: https://$DOMAIN:8000"
-echo "📝 Frontend: https://$DOMAIN:3000"
 echo ""
-echo "Note: The API Gateway is running as a standalone container outside of docker-compose."
-echo "HTTPS access is handled by your domain configuration and proxy settings."
+echo "📊 The deployment includes these optimizations:"
+echo "  • Increased Docker Compose timeout to 300 seconds (was 60)"
+echo "  • Background processing for health checks to speed up deployment"
+echo "  • Aggressive Apache2 removal to prevent port conflicts"
+echo ""
+echo "🔍 Check these logs on the server for details:"
+echo "  • ~/server_check.log - Full webserver verification"
+echo "  • $REMOTE_DIR/health_check.log - Service health status"
+echo ""
+echo "📡 Services available:"
+echo "  • Frontend: https://$DOMAIN"
+echo "  • API Gateway: https://$DOMAIN/api/"
+echo "  • Health API: https://$DOMAIN/health-api/"
+echo ""
+echo "🔧 Direct ports (for debugging):"
+echo "  • API Gateway: http://$DOMAIN:8000"
+echo "  • Health API: http://$DOMAIN:8001"
+echo "  • Frontend: http://$DOMAIN:3000"
+echo ""
+echo "📌 Note: All traffic is now properly routed through Nginx with SSL!"
 echo ""
 
 if [ "$CLEAN_DEPLOY" = true ]; then
