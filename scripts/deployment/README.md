@@ -11,9 +11,11 @@ This directory contains scripts for deploying the Ultimate Marketing Team to dif
 
 ## Monitoring and Maintenance Scripts
 
-- `check_server_space.sh` - Check available disk space on server
-- `check_staging_services.sh` - Comprehensive service health check
-- `check_docker_services.sh` - Check status of Docker containers
+- `check_staging.sh` - Comprehensive script to check staging environment health
+  - Checks disk space
+  - Monitors Docker containers 
+  - Verifies service health
+  - Provides cleanup options
 - `verify_deployment.sh` - Verify successful deployment
 
 ## Database Scripts
@@ -42,9 +44,18 @@ This directory contains scripts for deploying the Ultimate Marketing Team to dif
 ./scripts/deployment/deploy_frontend.sh
 ```
 
-### Checking Services
+### Check Staging Environment
 ```bash
-./scripts/deployment/check_docker_services.sh
+# Check everything (disk space, Docker, services)
+./scripts/deployment/check_staging.sh
+
+# Check and clean disk space
+./scripts/deployment/check_staging.sh --clean-disk
+
+# Check only specific components
+./scripts/deployment/check_staging.sh --disk-only
+./scripts/deployment/check_staging.sh --docker-only
+./scripts/deployment/check_staging.sh --services-only
 ```
 
 ### Database Connection
@@ -64,4 +75,4 @@ This directory contains scripts for deploying the Ultimate Marketing Team to dif
   
 - If deployment fails with timeout errors:
   - Try running with the `--clean` flag for a fresh installation
-  - Check server resources (CPU, memory, disk space)
+  - Check server resources using `./scripts/deployment/check_staging.sh`
