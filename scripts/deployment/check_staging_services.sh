@@ -35,35 +35,35 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker
 
 # Check health-api endpoint
 echo "🔹 Checking health-api endpoint..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001 | jq || echo 'Failed to connect to health-api'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001 || echo 'Failed to connect to health-api'"
 
 # Check health-api ping endpoint
 echo "🔹 Checking health-api ping endpoint..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001/ping | jq || echo 'Failed to connect to health-api ping endpoint'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8001/ping || echo 'Failed to connect to health-api ping endpoint'"
 
 # Check api-gateway endpoint
 echo "🔹 Checking api-gateway endpoint..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000 | jq || echo 'Failed to connect to api-gateway'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000 || echo 'Failed to connect to api-gateway'"
 
 # Check api-gateway health endpoint
 echo "🔹 Checking api-gateway health endpoint..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000/api/health | jq || echo 'Failed to connect to api-gateway health endpoint'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "curl -s http://localhost:8000/health || echo 'Failed to connect to api-gateway health endpoint'"
 
 # Check simplified version status
 echo "🔹 Checking if simplified API is being used..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE logs --tail=20 api-gateway | grep 'Starting simplified API gateway' || echo 'Not using simplified API'"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker logs api-gateway --tail=20 | grep 'Starting simplified API gateway' || echo 'Not using simplified API'"
 
 # Check logs from api-gateway
 echo "🔹 Checking api-gateway logs..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE logs --tail=20 api-gateway"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker logs api-gateway --tail=20 || echo 'Could not get API Gateway logs'"
 
 # Check logs from health-api
 echo "🔹 Checking health-api logs..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker-compose -f $COMPOSE_FILE logs --tail=20 health-api"
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker logs umt-health-api --tail=20 || echo 'Could not get Health API logs'"
 
 # Check RDS connection
-echo "🔹 Checking RDS connection..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && scripts/deployment/init_rds_database.sh"
+echo "🔹 Checking database connection..."
+ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cd $REMOTE_DIR && docker exec umt-postgres pg_isready -U postgres || echo 'Could not connect to database'"
 
 # Check frontend
 echo "🔹 Checking frontend..."

@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-RUN pip install fastapi uvicorn psutil
+RUN pip install fastapi uvicorn psutil requests
 
 COPY monitoring/health_api.py /app/
 

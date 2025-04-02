@@ -1,206 +1,24 @@
 version: '3.8'
 
 services:
-  # PostgreSQL database with pgvector extension
-  postgres:
-    image: postgres:17-alpine
-    container_name: umt-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: umt
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-  # A proxy service to ensure database initialization sequence is correct
-  postgres-proxy:
-    image: alpine:latest
-    container_name: umt-postgres-proxy
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./scripts/deployment:/scripts
-    command: >
-      sh -c "
-        apk add --no-cache postgresql-client &&
-        until pg_isready -h postgres -p 5432 -U postgres; do
-          echo 'Waiting for postgres...' &&
-          sleep 2;
-        done;
-        echo 'PostgreSQL is ready!' &&
-        # Use PostgreSQL 17 compatible command for database creation
-        psql -h postgres -U postgres -c "SELECT 'CREATE DATABASE umt' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'umt')\gexec" &&
-        psql -h postgres -U postgres -d umt -c 'CREATE SCHEMA IF NOT EXISTS umt;' &&
-        tail -f /dev/null
-      "
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-  # Database migrations service
-  migrations:
-    build:
-      context: .
-      dockerfile: docker/migrations/Dockerfile
-    container_name: umt-migrations
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      PYTHONPATH: /app
-      UMT_ENV: staging
-    depends_on:
-      postgres-proxy:
-        condition: service_healthy
-    command: ["alembic", "upgrade", "head"]
-    restart: on-failure
-    networks:
-      - umt_network
-
   # API Gateway
   api-gateway:
+    image: api-gateway:latest
     build:
       context: .
-      dockerfile: docker/api_gateway/Dockerfile
-    container_name: umt-api-gateway
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: umt
-      RABBITMQ_HOST: rabbitmq
-      REDIS_HOST: redis
-      UMT_ENV: staging
-      UMT_JWT_EXPIRY: 86400  # 24 hours
-      UMT_MAINTENANCE_MODE: "false"
-      RUN_MIGRATIONS: "false"  # Disable migrations on startup since we manually created tables
-      ENVIRONMENT: staging
-      USE_SIMPLIFIED_API: "true"  # Use the simplified staging API instead of the full API
-    depends_on:
-      postgres-proxy:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
+      dockerfile: docker/api-gateway.dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - ./src:/app/src
-      - ./staging_main.py:/app/main.py
-      - ./src/api/staging_main.py:/app/src/api/staging_main.py
-    networks:
-      - umt_network
-
-  # Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: umt-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      api-gateway:
-        condition: service_started
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-  # Redis for caching and session storage
-  redis:
-    image: redis:7-alpine
-    container_name: umt-redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - umt_network
-
-  # RabbitMQ for message brokering between agents
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: umt-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - ENVIRONMENT=staging
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    restart: unless-stopped
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
-      - umt_network
-
-  # Vector database proxy for embeddings
-  vector-db-proxy:
-    image: alpine:latest
-    container_name: umt-vector-db-proxy
-    command: >
-      sh -c "
-        apk add --no-cache postgresql-client &&
-        until pg_isready -h postgres -p 5432 -U postgres; do
-          echo 'Waiting for postgres...' &&
-          sleep 2;
-        done;
-        # Use PostgreSQL 17 compatible command for database creation
-        psql -h postgres -U postgres -c \"SELECT 'CREATE DATABASE vector_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vector_db')\gexec\" &&
-        echo 'Vector database initialized!' &&
-        # Now create the extension pgvector
-        psql -h postgres -U postgres -d vector_db -c 'CREATE EXTENSION IF NOT EXISTS vector;' || echo 'Failed to create vector extension - will install later' &&
-        echo 'Vector setup complete!' &&
-        # Keep container running
-        tail -f /dev/null
-      "
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - umt_network
+      - umt-network
 
   # Health monitoring API
   health-api:
@@ -209,129 +27,89 @@ services:
       dockerfile: monitoring/Dockerfile.health-api
     container_name: umt-health-api
     environment:
-      POSTGRES_HOST: postgres
-      REDIS_HOST: redis
-      RABBITMQ_HOST: rabbitmq
-      API_GATEWAY_HOST: api-gateway
-      ENVIRONMENT: staging
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=rabbitmq
+      - API_GATEWAY_HOST=api-gateway
+      - ENVIRONMENT=staging
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 5s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ping"]
+      interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 20s
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      - postgres
+      - redis
+      - rabbitmq
+      - api-gateway
     ports:
       - "8001:8000"
     restart: unless-stopped
     networks:
-      - umt_network
+      - umt-network
 
-  # Agent services
-  auth-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
+  # Infrastructure Services
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
     environment:
-      AGENT_TYPE: auth
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      RABBITMQ_HOST: rabbitmq
-      UMT_ENV: staging
-    depends_on:
-      api-gateway:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ultimatemarketing
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
-      - umt_network
+      - umt-network
+    command: >
+      postgres
+        -c shared_preload_libraries=''
 
-  brand-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - umt-network
+
+  rabbitmq:
+    image: rabbitmq:3.9-alpine
+    ports:
+      - "5672:5672"
     environment:
-      AGENT_TYPE: brand
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      RABBITMQ_HOST: rabbitmq
-      UMT_ENV: staging
-    depends_on:
-      api-gateway:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
-      - umt_network
-
-  content-strategy-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    environment:
-      AGENT_TYPE: content_strategy
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      RABBITMQ_HOST: rabbitmq
-      VECTOR_DB_URL: postgresql://postgres:postgres@postgres:5432/vector_db
-      UMT_ENV: staging
-    depends_on:
-      api-gateway:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-      vector-db-proxy:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-  content-creation-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    environment:
-      AGENT_TYPE: content_creation
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      RABBITMQ_HOST: rabbitmq
-      UMT_ENV: staging
-    depends_on:
-      api-gateway:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-  content-ad-agent:
-    build:
-      context: .
-      dockerfile: docker/agents/Dockerfile
-    environment:
-      AGENT_TYPE: content_ad
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/umt
-      RABBITMQ_HOST: rabbitmq
-      UMT_ENV: staging
-    depends_on:
-      api-gateway:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - umt_network
-
-volumes:
-  postgres_data:
-  redis_data:
-  rabbitmq_data:
+      - umt-network
 
 networks:
-  umt_network:
+  umt-network:
     driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
