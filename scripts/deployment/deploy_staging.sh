@@ -86,7 +86,13 @@ echo "🔹 Remote directory: $REMOTE_DIR"
 
 # Test SSH connection before proceeding
 echo "🔹 Testing SSH connection..."
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "echo SSH connection successful" 2>/dev/null
+echo "  HOST: $SSH_HOST"
+echo "  USER: $SSH_USER"
+echo "  PORT: $SSH_PORT"
+echo "  KEY: $SSH_KEY"
+
+# Add a more verbose connection attempt with a shorter timeout
+ssh -i "$SSH_KEY" -p "$SSH_PORT" -v -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$SSH_USER@$SSH_HOST" "echo SSH connection test" 2>&1
 SSH_RESULT=$?
 
 if [ $SSH_RESULT -ne 0 ]; then
@@ -106,17 +112,18 @@ if [ $SSH_RESULT -ne 0 ]; then
   fi
   
   # Try to ping the host to check connectivity
-  ping -c 1 $SSH_HOST >/dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    echo "✅ Host is reachable via ping"
-  else
-    echo "❌ Host is not reachable via ping. It might be down or blocking ICMP packets."
-  fi
+  echo "🔹 Checking host connectivity with ping..."
+  ping -c 2 -W 2 $SSH_HOST
   
-  # Try an SSH connection with more debugging
-  echo "🔍 Attempting SSH connection with verbose logging..."
-  ssh -i "$SSH_KEY" -p "$SSH_PORT" -v -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "echo test" 2>&1 | grep -i "debug\|error"
+  # Check if the SSH port is open
+  echo "🔹 Checking if SSH port is open..."
+  nc -zv -w 5 $SSH_HOST $SSH_PORT 2>&1 || echo "❌ Port $SSH_PORT appears to be closed"
   
+  # Show the public IP of this machine
+  echo "🔹 Your current public IP address is:"
+  curl -s ifconfig.me || echo "Could not determine IP"
+  
+  echo "❌ SSH connection failed. Please check your EC2 instance security groups to ensure they allow SSH access from your IP."
   exit 1
 else
   echo "✅ SSH connection successful"
