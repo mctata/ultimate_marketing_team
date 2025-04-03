@@ -10,8 +10,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-optional --production=false
 
 # Copy source files separately to optimize caching
-COPY tsconfig.json tsconfig.node.json vite.config.ts ./
-COPY public ./public
+COPY tsconfig.json tsconfig.node.json vite.config.ts postcss.config.js tailwind.config.js ./
+COPY index.html ./
+# Copy src directory (no public directory in this project)
 COPY src ./src
 
 # Copy simplified config for staging
