@@ -1,7 +1,7 @@
 """Add AI API usage monitoring tables
 
 Revision ID: 8c5b34a7f902
-Revises: db3a8f42c01c
+Revises: db3a8f42c01c_add_benchmark_tables
 Create Date: 2025-03-21 18:23:12.123456
 
 This migration adds tables for tracking AI API usage and costs:
@@ -115,12 +115,12 @@ def upgrade():
     )
     
     # Insert record in migration_history for this migration
-    query = text("INSERT INTO :schema.migration_history (version, applied_at, description, status, environment) "
+    # Format the schema name directly in the query string since schema can't be bound as a parameter
+    query = text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
                  "VALUES (:revision, :timestamp, :description, :status, :environment)")
     
     op.execute(
         query.bindparams(
-            schema=schema_name,
             revision=revision,
             timestamp=datetime.utcnow(),
             description='Add AI API usage monitoring tables',

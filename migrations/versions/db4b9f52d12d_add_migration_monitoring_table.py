@@ -1,7 +1,7 @@
 """Add migration monitoring table
 
-Revision ID: db3a8f42c01c
-Revises: 085ea2682734
+Revision ID: db4b9f52d12d
+Revises: db3a8f42c01c
 Create Date: 2025-03-21 15:48:12.123456
 
 This migration adds a migration_history table to track migration operations,
@@ -15,7 +15,7 @@ from datetime import datetime
 
 # revision identifiers, used by Alembic
 revision = 'db4b9f52d12d'
-down_revision = '085ea2682734'
+down_revision = 'db3a8f42c01c'
 branch_labels = None
 depends_on = None
 
@@ -55,20 +55,20 @@ def upgrade():
         schema=schema_name
     )
     
-    # We would typically register our own migration, but we're creating the table now
-    # so it's redundant.
-    # query = text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-    #             "VALUES (:revision, :timestamp, :description, :status, :environment)")
-    # 
-    # op.execute(
-    #     query.bindparams(
-    #         revision=revision,
-    #         timestamp=datetime.utcnow(),
-    #         description='Add migration monitoring table',
-    #         status='OK',
-    #         environment='development'
-    #     )
-    # )
+    # Insert record for this migration
+    # Format the schema name directly in the query string since schema can't be bound as a parameter
+    query = text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
+                "VALUES (:revision, :timestamp, :description, :status, :environment)")
+    
+    op.execute(
+        query.bindparams(
+            revision=revision,
+            timestamp=datetime.utcnow(),
+            description='Add migration monitoring table',
+            status='OK',
+            environment='development'
+        )
+    )
 
 
 def downgrade():
