@@ -11,12 +11,33 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=staging
+    env_file: ./config/env/.env.staging
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - umt-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "3000:80"
+    environment:
+      - NODE_ENV=staging
+      - API_URL=http://api-gateway:8000
+    depends_on:
+      - api-gateway
     networks:
       - umt-network
 
@@ -49,6 +70,92 @@ services:
     networks:
       - umt-network
 
+  # Agent Services
+  auth-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - AGENT_NAME=auth_integration_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: on-failure
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+
+  brand-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - AGENT_NAME=brand_project_management_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: on-failure
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+
+  content-strategy-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - AGENT_NAME=content_strategy_research_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: on-failure
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+
+  content-creation-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - AGENT_NAME=content_creation_testing_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: on-failure
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+
+  content-ad-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - AGENT_NAME=content_ad_management_agent
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: on-failure
+    networks:
+      - umt-network
+    command: ["python", "-m", "src.agents.runner"]
+
   # Infrastructure Services
   postgres:
     image: postgres:17-alpine
@@ -60,6 +167,9 @@ services:
       - POSTGRES_DB=ultimatemarketing
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/1_init.sql
+      - ./docker/postgres/integration_upgrade.sql:/docker-entrypoint-initdb.d/2_integration_upgrade.sql
+      - ./docker/postgres/install_pgvector.sql:/docker-entrypoint-initdb.d/3_install_pgvector.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -105,6 +215,22 @@ services:
       start_period: 40s
     networks:
       - umt-network
+      
+  # Database Migrations
+  migrations:
+    build:
+      context: .
+      dockerfile: docker/migrations/Dockerfile
+    env_file: ./config/env/.env.staging
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ultimatemarketing
+      - PYTHONPATH=/app
+      - ENVIRONMENT=staging
+    depends_on:
+      - postgres
+    networks:
+      - umt-network
+    command: alembic upgrade head
 
 networks:
   umt-network:
