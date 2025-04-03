@@ -107,7 +107,7 @@ def upgrade():
         sa.Column('confidence_interval_upper', sa.Float(), nullable=True),
         sa.Column('parameters', sa.JSON(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.ForeignKeyConstraint(['content_id'], ['umt.content_metrics.content_id'], ondelete='CASCADE'),
+        # Removed ForeignKeyConstraint to content_metrics.content_id since it's not a primary or unique key
         sa.ForeignKeyConstraint(['model_id'], ['umt.content_prediction_models.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['user_id'], ['umt.users.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
