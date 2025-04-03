@@ -122,19 +122,44 @@ def upgrade():
     op.execute('ALTER TABLE umt.brands ADD COLUMN api_keys_relation INTEGER;')
     op.execute('ALTER TABLE umt.brands ADD COLUMN webhooks_relation INTEGER;')
 
-    # Update IntegrationHealth to support new integration types
-    op.execute("ALTER TYPE umt.integration_health_integration_type RENAME TO integration_health_integration_type_old;")
-    op.execute("CREATE TYPE umt.integration_health_integration_type AS ENUM ('social', 'cms', 'ad', 'email', 'analytics');")
-    op.execute("ALTER TABLE umt.integration_health ALTER COLUMN integration_type TYPE umt.integration_health_integration_type USING integration_type::text::umt.integration_health_integration_type;")
-    op.execute("DROP TYPE umt.integration_health_integration_type_old;")
+    # Create or update IntegrationHealth to support new integration types
+    try:
+        # Check if the table exists first
+        op.execute("SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'integration_health';")
+        
+        # If the table exists, update the enum type
+        op.execute("DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'integration_health_integration_type') THEN "
+                  "ALTER TYPE umt.integration_health_integration_type RENAME TO integration_health_integration_type_old; "
+                  "CREATE TYPE umt.integration_health_integration_type AS ENUM ('social', 'cms', 'ad', 'email', 'analytics'); "
+                  "ALTER TABLE umt.integration_health ALTER COLUMN integration_type TYPE umt.integration_health_integration_type "
+                  "USING integration_type::text::umt.integration_health_integration_type; "
+                  "DROP TYPE umt.integration_health_integration_type_old; "
+                  "END IF; END $$;")
+    except Exception as e:
+        # If the table doesn't exist, create the enum type for future use
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'integration_health_integration_type') THEN "
+                  "CREATE TYPE umt.integration_health_integration_type AS ENUM ('social', 'cms', 'ad', 'email', 'analytics'); "
+                  "END IF; END $$;")
 
 
 def downgrade():
-    # Restore IntegrationHealth to previous state
-    op.execute("ALTER TYPE umt.integration_health_integration_type RENAME TO integration_health_integration_type_old;")
-    op.execute("CREATE TYPE umt.integration_health_integration_type AS ENUM ('social', 'cms', 'ad');")
-    op.execute("ALTER TABLE umt.integration_health ALTER COLUMN integration_type TYPE umt.integration_health_integration_type USING CASE WHEN integration_type::text = 'email' THEN 'social'::umt.integration_health_integration_type WHEN integration_type::text = 'analytics' THEN 'social'::umt.integration_health_integration_type ELSE integration_type::text::umt.integration_health_integration_type END;")
-    op.execute("DROP TYPE umt.integration_health_integration_type_old;")
+    # Restore IntegrationHealth to previous state if it exists
+    try:
+        op.execute("SELECT 1 FROM information_schema.tables WHERE table_schema = 'umt' AND table_name = 'integration_health';")
+        
+        # If the table exists, restore the enum type
+        op.execute("DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'integration_health_integration_type') THEN "
+                  "ALTER TYPE umt.integration_health_integration_type RENAME TO integration_health_integration_type_old; "
+                  "CREATE TYPE umt.integration_health_integration_type AS ENUM ('social', 'cms', 'ad'); "
+                  "ALTER TABLE umt.integration_health ALTER COLUMN integration_type TYPE umt.integration_health_integration_type "
+                  "USING CASE WHEN integration_type::text = 'email' THEN 'social'::umt.integration_health_integration_type "
+                  "WHEN integration_type::text = 'analytics' THEN 'social'::umt.integration_health_integration_type "
+                  "ELSE integration_type::text::umt.integration_health_integration_type END; "
+                  "DROP TYPE umt.integration_health_integration_type_old; "
+                  "END IF; END $$;")
+    except Exception:
+        # If the table doesn't exist, just drop the type if it exists
+        op.execute("DO $$ BEGIN DROP TYPE IF EXISTS umt.integration_health_integration_type; END $$;")
 
     # Remove relationship columns from Brand model
     op.execute('ALTER TABLE umt.brands DROP COLUMN IF EXISTS email_accounts_relation;')
