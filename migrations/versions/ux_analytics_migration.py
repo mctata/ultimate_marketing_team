@@ -1,7 +1,7 @@
 """Add UX analytics tables
 
 Revision ID: ux_analytics_migration
-Revises: db3a8f42c01c_add_benchmark_tables
+Revises: db3a8f42c01c
 Create Date: 2025-03-22
 
 This migration adds UX analytics tables for tracking:
@@ -19,7 +19,7 @@ from sqlalchemy.dialects import postgresql
 
 # Set revision identifiers, don't change if you don't know what you're doing
 revision = 'ux_analytics_migration'
-down_revision = 'db3a8f42c01c_add_benchmark_tables'
+down_revision = 'security_enhancement_migration'  # Updated to create a proper chain
 branch_labels = None
 depends_on = None
 
@@ -51,12 +51,12 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_user_interaction_events_event_category'), f'{SCHEMA_NAME}.user_interaction_events', ['event_category'], unique=False)
-    op.create_index(op.f('ix_umt_user_interaction_events_event_type'), f'{SCHEMA_NAME}.user_interaction_events', ['event_type'], unique=False)
-    op.create_index(op.f('ix_umt_user_interaction_events_page_path'), f'{SCHEMA_NAME}.user_interaction_events', ['page_path'], unique=False)
-    op.create_index(op.f('ix_umt_user_interaction_events_session_id'), f'{SCHEMA_NAME}.user_interaction_events', ['session_id'], unique=False)
-    op.create_index(op.f('ix_umt_user_interaction_events_content_id'), f'{SCHEMA_NAME}.user_interaction_events', ['content_id'], unique=False)
-    op.create_index(op.f('ix_umt_user_interaction_events_created_at'), f'{SCHEMA_NAME}.user_interaction_events', ['created_at'], unique=False)
+    op.create_index(op.f('ix_umt_user_interaction_events_event_category'), 'user_interaction_events', ['event_category'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_interaction_events_event_type'), 'user_interaction_events', ['event_type'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_interaction_events_page_path'), 'user_interaction_events', ['page_path'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_interaction_events_session_id'), 'user_interaction_events', ['session_id'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_interaction_events_content_id'), 'user_interaction_events', ['content_id'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_interaction_events_created_at'), 'user_interaction_events', ['created_at'], unique=False, schema=SCHEMA_NAME)
 
     # Feature Usage Metrics table
     op.create_table('feature_usage_metrics',
@@ -78,10 +78,10 @@ def upgrade():
         sa.UniqueConstraint('feature_id', 'date', name='uq_feature_usage_date'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_feature_usage_metrics_feature_id'), f'{SCHEMA_NAME}.feature_usage_metrics', ['feature_id'], unique=False)
-    op.create_index(op.f('ix_umt_feature_usage_metrics_feature_category'), f'{SCHEMA_NAME}.feature_usage_metrics', ['feature_category'], unique=False)
-    op.create_index(op.f('ix_umt_feature_usage_metrics_date'), f'{SCHEMA_NAME}.feature_usage_metrics', ['date'], unique=False)
-    op.create_index(op.f('ix_umt_feature_usage_metrics_variant'), f'{SCHEMA_NAME}.feature_usage_metrics', ['variant'], unique=False)
+    op.create_index(op.f('ix_umt_feature_usage_metrics_feature_id'), 'feature_usage_metrics', ['feature_id'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_feature_usage_metrics_feature_category'), 'feature_usage_metrics', ['feature_category'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_feature_usage_metrics_date'), 'feature_usage_metrics', ['date'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_feature_usage_metrics_variant'), 'feature_usage_metrics', ['variant'], unique=False, schema=SCHEMA_NAME)
 
     # AI Assistant Usage Metrics table
     op.create_table('ai_assistant_usage_metrics',
@@ -102,9 +102,9 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_date'), f'{SCHEMA_NAME}.ai_assistant_usage_metrics', ['date'], unique=False)
-    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_suggestion_type'), f'{SCHEMA_NAME}.ai_assistant_usage_metrics', ['suggestion_type'], unique=False)
-    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_variant'), f'{SCHEMA_NAME}.ai_assistant_usage_metrics', ['variant'], unique=False)
+    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_date'), 'ai_assistant_usage_metrics', ['date'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_suggestion_type'), 'ai_assistant_usage_metrics', ['suggestion_type'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_ai_assistant_usage_metrics_variant'), 'ai_assistant_usage_metrics', ['variant'], unique=False, schema=SCHEMA_NAME)
 
     # WebSocket Metrics table
     op.create_table('websocket_metrics',
@@ -127,8 +127,8 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_websocket_metrics_date'), f'{SCHEMA_NAME}.websocket_metrics', ['date'], unique=False)
-    op.create_index(op.f('ix_umt_websocket_metrics_metric_type'), f'{SCHEMA_NAME}.websocket_metrics', ['metric_type'], unique=False)
+    op.create_index(op.f('ix_umt_websocket_metrics_date'), 'websocket_metrics', ['date'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_websocket_metrics_metric_type'), 'websocket_metrics', ['metric_type'], unique=False, schema=SCHEMA_NAME)
 
     # User Journey Paths table
     op.create_table('user_journey_paths',
@@ -150,8 +150,8 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_user_journey_paths_session_id'), f'{SCHEMA_NAME}.user_journey_paths', ['session_id'], unique=False)
-    op.create_index(op.f('ix_umt_user_journey_paths_start_time'), f'{SCHEMA_NAME}.user_journey_paths', ['start_time'], unique=False)
+    op.create_index(op.f('ix_umt_user_journey_paths_session_id'), 'user_journey_paths', ['session_id'], unique=False, schema=SCHEMA_NAME)
+    op.create_index(op.f('ix_umt_user_journey_paths_start_time'), 'user_journey_paths', ['start_time'], unique=False, schema=SCHEMA_NAME)
 
     # A/B Test Variants table
     op.create_table('ab_test_variants',
@@ -174,7 +174,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         schema=SCHEMA_NAME
     )
-    op.create_index(op.f('ix_umt_ab_test_variants_test_id'), f'{SCHEMA_NAME}.ab_test_variants', ['test_id'], unique=False)
+    op.create_index(op.f('ix_umt_ab_test_variants_test_id'), 'ab_test_variants', ['test_id'], unique=False, schema=SCHEMA_NAME)
 
 def downgrade():
     # ### Drop UX analytics tables ###
