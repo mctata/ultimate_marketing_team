@@ -85,10 +85,9 @@ def upgrade():
         sa.Column('layout', sa.JSON(), nullable=False),
         sa.Column('widgets', sa.JSON(), nullable=False),
         sa.Column('is_default', sa.Boolean(), nullable=False, server_default='false'),
-        sa.Column('role_id', sa.Integer(), nullable=True),
+        # Removed role_id and ForeignKeyConstraint because roles table doesn't exist yet
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.ForeignKeyConstraint(['role_id'], ['umt.roles.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['user_id'], ['umt.users.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
         schema='umt'
