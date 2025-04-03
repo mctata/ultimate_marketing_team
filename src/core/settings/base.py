@@ -8,7 +8,7 @@ Environment-specific settings should override these in their own modules.
 import os
 from typing import List, Optional
 
-from pydantic import BaseSettings as PydanticBaseSettings
+from pydantic_settings import BaseSettings as PydanticBaseSettings
 
 class BaseSettings(PydanticBaseSettings):
     """Base settings for all environments."""

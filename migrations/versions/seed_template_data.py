@@ -180,14 +180,14 @@ def upgrade():
                 'id': 1,
                 'title': 'Client Transformation - Instagram Post',
                 'description': 'Showcase client success stories and transformations with this engaging and inspirational template.',
-                'content': '( {transformation_emoji} TRANSFORMATION TUESDAY {transformation_emoji} (\n\nMeet {client_first_name}, who achieved {transformation_achievement} with {program_name}!\n\n{transformation_description}\n\nKey results:\n {result_1}\n {result_2}\n {result_3}\n\n{client_quote}\n\nWant to start your own transformation journey? {cta_text}\n\n#TransformationTuesday #{business_hashtag} #{niche_hashtag} #{location_hashtag}',
+                'content': '✨ TRANSFORMATION TUESDAY ✨\n\nMeet {client_first_name}, who achieved {transformation_achievement} with {program_name}!\n\n{transformation_description}\n\nKey results:\n {result_1}\n {result_2}\n {result_3}\n\n{client_quote}\n\nWant to start your own transformation journey? {cta_text}\n\n#TransformationTuesday #{business_hashtag} #{niche_hashtag} #{location_hashtag}',
                 'format_id': 1, # Instagram Post
                 'preview_image': None,
                 'dynamic_fields': {
                     'transformation_emoji': {
                         'label': 'Transformation Emoji',
                         'description': 'Emoji that represents the transformation',
-                        'default': '=�',
+                        'default': '✨',
                         'multiline': False
                     },
                     'client_first_name': {
@@ -275,7 +275,7 @@ def upgrade():
                         'name': 'Professional/Medical',
                         'description': 'More clinical and professional tone',
                         'modifications': {
-                            'content': '=� CLIENT OUTCOME: {transformation_achievement} =�\n\nCase Study: {client_first_name}\nProgramme: {program_name}\n\n{transformation_description}\n\nDocumented Results:\n� {result_1}\n� {result_2}\n� {result_3}\n\nClient Testimonial:\n{client_quote}\n\nFor a personalised assessment and treatment plan: {cta_text}\n\n#ClinicalResults #{business_hashtag} #{niche_hashtag} #{location_hashtag}'
+                            'content': '📊 CLIENT OUTCOME: {transformation_achievement} 📊\n\nCase Study: {client_first_name}\nProgramme: {program_name}\n\n{transformation_description}\n\nDocumented Results:\n• {result_1}\n• {result_2}\n• {result_3}\n\nClient Testimonial:\n{client_quote}\n\nFor a personalised assessment and treatment plan: {cta_text}\n\n#ClinicalResults #{business_hashtag} #{niche_hashtag} #{location_hashtag}'
                         }
                     },
                     {
@@ -283,7 +283,7 @@ def upgrade():
                         'name': 'Conversational/Friendly',
                         'description': 'Casual and relatable tone',
                         'modifications': {
-                            'content': 'OMG CHECK OUT THIS AMAZING TRANSFORMATION! {transformation_emoji}\n\nThis is {client_first_name}, and wow, just look at what she accomplished! She achieved {transformation_achievement} with {program_name} and we couldn\'t be prouder!\n\n{transformation_description}\n\nHere\'s what she achieved:\n {result_1}\n {result_2}\n {result_3}\n\nIn her own words:\n{client_quote}\n\nFeeling inspired? We\'d love to help you too! {cta_text}\n\n#TransformationTuesday #{business_hashtag} #{niche_hashtag} #{location_hashtag}'
+                            'content': 'OMG CHECK OUT THIS AMAZING TRANSFORMATION! ✨\n\nThis is {client_first_name}, and wow, just look at what she accomplished! She achieved {transformation_achievement} with {program_name} and we couldn\'t be prouder!\n\n{transformation_description}\n\nHere\'s what she achieved:\n {result_1}\n {result_2}\n {result_3}\n\nIn her own words:\n{client_quote}\n\nFeeling inspired? We\'d love to help you too! {cta_text}\n\n#TransformationTuesday #{business_hashtag} #{niche_hashtag} #{location_hashtag}'
                         }
                     }
                 ],
@@ -297,14 +297,14 @@ def upgrade():
                 'id': 2,
                 'title': 'Wellness Daily Tip - Twitter Post',
                 'description': 'Share quick, valuable health and wellness tips with your audience on Twitter.',
-                'content': '{emoji} {wellness_tip_headline} {emoji}\n\n{wellness_tip_content}\n\n{supporting_fact}\n\n#WellnessTip #{business_hashtag} #{topic_hashtag}',
+                'content': '💧 {wellness_tip_headline} 💧\n\n{wellness_tip_content}\n\n{supporting_fact}\n\n#WellnessTip #{business_hashtag} #{topic_hashtag}',
                 'format_id': 2, # Twitter Post
                 'preview_image': None,
                 'dynamic_fields': {
                     'emoji': {
                         'label': 'Emoji',
                         'description': 'Emoji that relates to your tip',
-                        'default': '=�',
+                        'default': '💧',
                         'multiline': False
                     },
                     'wellness_tip_headline': {
@@ -350,7 +350,7 @@ def upgrade():
                         'name': 'Motivational/Inspiring',
                         'description': 'Uplifting and motivational tone',
                         'modifications': {
-                            'content': '( {wellness_tip_headline} (\n\n{wellness_tip_content}\n\nRemember: {supporting_fact}\n\nYou\'ve got this! =�\n\n#WellnessJourney #{business_hashtag} #{topic_hashtag}'
+                            'content': '✨ {wellness_tip_headline} ✨\n\n{wellness_tip_content}\n\nRemember: {supporting_fact}\n\nYou\'ve got this! 💪\n\n#WellnessJourney #{business_hashtag} #{topic_hashtag}'
                         }
                     },
                     {
@@ -358,7 +358,7 @@ def upgrade():
                         'name': 'Conversational/Friendly',
                         'description': 'Casual, friendly tone',
                         'modifications': {
-                            'content': 'Hey there! {emoji} Try this quick {wellness_tip_headline}:\n\n{wellness_tip_content}\n\nFun fact: {supporting_fact}\n\nWhat\'s your favorite wellness habit? Reply below!\n\n#DailyWellness #{business_hashtag} #{topic_hashtag}'
+                            'content': 'Hey there! 💧 Try this quick {wellness_tip_headline}:\n\n{wellness_tip_content}\n\nFun fact: {supporting_fact}\n\nWhat\'s your favorite wellness habit? Reply below!\n\n#DailyWellness #{business_hashtag} #{topic_hashtag}'
                         }
                     }
                 ],

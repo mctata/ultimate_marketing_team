@@ -184,9 +184,8 @@ services:
       start_period: 10s
     networks:
       - umt-network
-    command: >
-      postgres
-        -c shared_preload_libraries=''
+    # Removed custom postgres command that might be causing issues
+    restart: unless-stopped
 
   redis:
     image: redis:6.2-alpine
@@ -222,6 +221,29 @@ services:
     networks:
       - umt-network
       
+  # PostgreSQL Proxy for initialization
+  postgres-proxy:
+    image: alpine:latest
+    depends_on:
+      - postgres
+    command: >
+      /bin/sh -c "
+      apk add --no-cache postgresql-client &&
+      echo 'Waiting for PostgreSQL...' &&
+      until PGPASSWORD=postgres psql -h postgres -U postgres -d ultimatemarketing -c 'SELECT 1' >/dev/null 2>&1; do
+        echo 'Waiting for PostgreSQL to be ready...' &&
+        sleep 2;
+      done &&
+      echo 'PostgreSQL is ready!'"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "PGPASSWORD=postgres psql -h postgres -U postgres -d ultimatemarketing -c 'SELECT 1' > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 2s
+    networks:
+      - umt-network
+
   # Database Migrations
   migrations:
     build:

@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install only requirements needed for migrations
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir alembic psycopg2-binary sqlalchemy
+    pip install --no-cache-dir alembic psycopg2-binary sqlalchemy pydantic pydantic-settings loguru
 
 # Final stage
 FROM python:3.10-slim
@@ -33,6 +33,7 @@ COPY --from=builder /usr/local/bin/alembic /usr/local/bin/alembic
 COPY alembic.ini /app/
 COPY migrations /app/migrations
 COPY src/models /app/src/models
+COPY src/core /app/src/core
 
 # Set environment variables
 ENV PYTHONPATH=/app \
