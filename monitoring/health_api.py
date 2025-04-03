@@ -10,7 +10,7 @@ app = FastAPI()
 async def health_check():
     # Check API Gateway health if configured
     api_gateway_status = "unknown"
-    api_gateway_host = os.getenv("API_GATEWAY_HOST", "localhost")
+    api_gateway_host = os.getenv("API_GATEWAY_HOST", "api-gateway")
     api_gateway_url = f"http://{api_gateway_host}:8000/health"
     
     try:

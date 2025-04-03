@@ -33,7 +33,7 @@ frontend/bundle-stats.html
 .vscode/
 .idea/
 *.swp
-.DS_Store
+*.DS_Store
 
 # Logs
 logs/*
