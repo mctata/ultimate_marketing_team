@@ -3,20 +3,16 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Increase Node.js memory limit for build process
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci && npm install @supabase/supabase-js
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Override environment variables
-ENV REACT_APP_SUPABASE_URL=https://example.supabase.co
-ENV REACT_APP_SUPABASE_ANON_KEY=dummy_key
-
-# Build the application without TypeScript checks to avoid the error
+# Build the application
 RUN npm run build:no-check
 
 # Production stage

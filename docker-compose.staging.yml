@@ -36,8 +36,6 @@ services:
     environment:
       - NODE_ENV=staging
       - API_URL=http://api-gateway:8000
-      - REACT_APP_SUPABASE_URL=https://example.supabase.co
-      - REACT_APP_SUPABASE_ANON_KEY=dummy_key
     depends_on:
       - api-gateway
     networks:
@@ -45,9 +43,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
         reservations:
-          memory: 2G
+          memory: 4G
 
   # Health monitoring API
   health-api:
