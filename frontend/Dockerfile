@@ -2,12 +2,12 @@ FROM node:18-slim AS builder
 
 WORKDIR /app
 
-# Increase Node.js memory limit and use optimizations
-ENV NODE_OPTIONS="--max-old-space-size=4096 --optimize-for-size --max_old_space_size=4096 --gc_interval=100"
+# Increase Node.js memory limit
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --no-optional --production=false
+RUN npm ci --no-fund --no-audit --quiet
 
 # Copy source files separately to optimize caching
 COPY tsconfig.json tsconfig.node.json vite.config.ts postcss.config.js tailwind.config.js ./
