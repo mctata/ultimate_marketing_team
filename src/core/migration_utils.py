@@ -35,8 +35,8 @@ def run_migrations(max_attempts: int = 5, retry_delay: int = 5) -> bool:
         logger.error(f"alembic.ini not found at {alembic_ini}")
         return False
     
-    # Command to run migrations
-    cmd = [sys.executable, "-m", "alembic", "upgrade", "head"]
+    # Command to run migrations - use "heads" to handle multiple heads
+    cmd = [sys.executable, "-m", "alembic", "upgrade", "heads"]
     
     # Try to run migrations with retries
     for attempt in range(1, max_attempts + 1):

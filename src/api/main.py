@@ -154,7 +154,8 @@ async def initialize_database(max_retries=5, retry_delay=5):
             db = SessionLocal()
             try:
                 # Test database connection
-                result = db.execute("SELECT 1").scalar()
+                from sqlalchemy import text
+                result = db.execute(text("SELECT 1")).scalar()
                 
                 # Ensure schema exists
                 if ensure_schema_exists(settings.SCHEMA_NAME, db):
