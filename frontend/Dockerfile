@@ -19,7 +19,7 @@ COPY src ./src
 COPY vite.staging.config.ts ./
 
 # Create a simplified build script
-RUN echo '#!/bin/sh\nNODE_ENV=production VITE_APP_ENV=production vite build --config vite.staging.config.ts --outDir=./dist' > build.sh && \
+RUN echo '#!/bin/sh\nNODE_ENV=production VITE_APP_ENV=staging npx vite build --config vite.staging.config.ts --outDir=./dist' > build.sh && \
     chmod +x build.sh
 
 # Run the build with minimal memory usage
