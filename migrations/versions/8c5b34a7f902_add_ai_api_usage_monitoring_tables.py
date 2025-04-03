@@ -1,7 +1,7 @@
 """Add AI API usage monitoring tables
 
 Revision ID: 8c5b34a7f902
-Revises: db3a8f42c01c_add_benchmark_tables
+Revises: db4b9f52d12d
 Create Date: 2025-03-21 18:23:12.123456
 
 This migration adds tables for tracking AI API usage and costs:
@@ -16,7 +16,7 @@ from datetime import datetime
 
 # revision identifiers, used by Alembic
 revision = '8c5b34a7f902'
-down_revision = 'db3a8f42c01c'
+down_revision = 'db4b9f52d12d'  # Updated to depend on migration_monitoring_table migration
 branch_labels = None
 depends_on = None
 
@@ -114,20 +114,9 @@ def upgrade():
         schema=schema_name
     )
     
-    # Insert record in migration_history for this migration
-    # Format the schema name directly in the query string since schema can't be bound as a parameter
-    query = text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-                 "VALUES (:revision, :timestamp, :description, :status, :environment)")
-    
-    op.execute(
-        query.bindparams(
-            revision=revision,
-            timestamp=datetime.utcnow(),
-            description='Add AI API usage monitoring tables',
-            status='OK',
-            environment='development'
-        )
-    )
+    # Migration history is now handled by Alembic's version table
+    # We don't need to manually record migrations anymore
+    pass
 
 
 def downgrade():

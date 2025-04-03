@@ -55,20 +55,9 @@ def upgrade():
         schema=schema_name
     )
     
-    # Insert record for this migration
-    # Format the schema name directly in the query string since schema can't be bound as a parameter
-    query = text(f"INSERT INTO {schema_name}.migration_history (version, applied_at, description, status, environment) "
-                "VALUES (:revision, :timestamp, :description, :status, :environment)")
-    
-    op.execute(
-        query.bindparams(
-            revision=revision,
-            timestamp=datetime.utcnow(),
-            description='Add migration monitoring table',
-            status='OK',
-            environment='development'
-        )
-    )
+    # Migration history is now handled by Alembic's version table
+    # We don't need to manually record migrations anymore
+    pass
 
 
 def downgrade():
