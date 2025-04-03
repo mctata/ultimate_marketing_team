@@ -4,7 +4,12 @@ WORKDIR /app
 
 COPY src/api/staging_main.py .
 
-RUN pip install fastapi uvicorn
+# Install curl for healthchecks and pip packages
+RUN apt-get update && \
+    apt-get install -y curl && \
+    pip install fastapi uvicorn && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV ENVIRONMENT=staging
 
