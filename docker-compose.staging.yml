@@ -236,7 +236,7 @@ services:
       - postgres
     networks:
       - umt-network
-    command: alembic upgrade head
+    command: upgrade head
 
 networks:
   umt-network:
