@@ -93,8 +93,8 @@ class ConsentRecord(Base):
     consent_version = Column(String(50), nullable=False)  # Version of consent form/terms
     data_categories = Column(JSON, nullable=True)  # Categories of data covered by this consent
     
-    # Relationships
-    user = relationship("User", back_populates="consent_records")
+    # Relationships - Added option to handle missing relationship
+    user = relationship("User", back_populates="consent_records", foreign_keys=[user_id], primaryjoin="ConsentRecord.user_id == User.id", overlaps="content,projects,audit_logs,assigned_projects,content_drafts,notifications,preferences,data_requests")
 
 
 class DataSubjectRequest(Base):
