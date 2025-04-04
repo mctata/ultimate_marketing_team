@@ -293,6 +293,17 @@ async def root():
         "message": "API server is running with updated endpoint"
     }
 
+# Add direct health endpoint for container health checks
+@app.get("/health")
+async def direct_health_check():
+    """Direct health check endpoint for container health checks."""
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "version": settings.APP_VERSION,
+        "environment": settings.ENV
+    }
+
 # Basic Health check endpoint
 @app.get("/api/health")
 async def health_check():
