@@ -205,6 +205,9 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to initialize JWT manager: {str(e)}")
         logger.warning("Authentication features may not work correctly until the database connection is restored.")
+        
+        # Initialize JWT without database in fallback mode
+        jwt_manager.initialize()
     
     logger.info("Application startup complete")
 

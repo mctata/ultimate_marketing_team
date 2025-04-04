@@ -518,10 +518,20 @@ class CSRFProtection:
             )
             
         # Validate token
-        if not self.validate_token(csrf_token):
+        try:
+            if not self.validate_token(csrf_token):
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"detail": "CSRF token missing or invalid"}
+                )
+        except Exception as e:
+            logger.warning(f"CSRF validation exception: {str(e)}")
+            # Continue with the request in development mode
+            if settings.ENV == "development":
+                return await call_next(request)
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content={"detail": "CSRF token missing or invalid"}
+                content={"detail": "CSRF validation error"}
             )
             
         # Token is valid, continue
